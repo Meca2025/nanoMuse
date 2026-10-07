@@ -1,6 +1,6 @@
 ---
 name: inbox-triage
-description: Go through recent mail and sort it into needs-a-reply, waiting-on-others, to-do and can-ignore, with draft replies ready for review. Use when the user asks to triage, sort, catch up on or clear their inbox — never to send anything on its own.
+description: Go through recent mail and sort it into needs-a-reply, waiting-on-others, to-do and can-ignore, with draft replies ready for review. Use when the user asks to triage, sort, catch up on or clear their inbox; never to send anything on its own.
 channel: api
 metadata:
   author: nanoMuse
@@ -21,11 +21,11 @@ Needs the mail connector (`read_emails`). If it is not available, say so and sto
 
 Every message lands in exactly one group:
 
-1. **Reply needed** — someone asked the user something, or is waiting.
-2. **Waiting on them** — the user asked, no answer yet; note how long.
-3. **To do** — no reply needed, but an action is: pay, book, read a document, show up somewhere.
-4. **Read later** — newsletters, notifications, receipts.
-5. **Ignore** — clear spam, expired offers, automated noise.
+1. **Reply needed**: someone asked the user something, or is waiting.
+2. **Waiting on them**: the user asked, no answer yet; note how long.
+3. **To do**: no reply needed, but an action is: pay, book, read a document, show up somewhere.
+4. **Read later**: newsletters, notifications, receipts.
+5. **Ignore**: clear spam, expired offers, automated noise.
 
 Threads with the same subject count once. Anything that mentions money, a deadline, a contract or health goes to the top of its group.
 
@@ -36,6 +36,6 @@ Threads with the same subject count once. Anything that mentions money, a deadli
 
 ## Report
 
-In chat, a short list per group: sender name — subject — what it is about in a few words (groups 4 and 5 as counts only). Then the file with the drafts, and the two or three things that should not wait. Deadlines or events found in the mail: offer to set a `reminders` or draft a `calendar` event; do it only when the user says yes.
+In chat, a short list per group: sender name, subject, what it is about in a few words (groups 4 and 5 as counts only). Then the file with the drafts, and the two or three things that should not wait. Deadlines or events found in the mail: offer to set a `reminders` or draft a `calendar` event; do it only when the user says yes.
 
 If the user corrects a sorting decision ("newsletters from X I read"), `remember` it so the next triage gets it right.

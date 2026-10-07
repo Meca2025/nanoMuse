@@ -109,18 +109,18 @@ def intro_lines(lang: str) -> list[str]:
             "- 你指给我的文件和文件夹，我能读、能整理；提醒和定时任务也可以交给我。\n"
             "- 关键的一步之前，我会先问你。\n"
             "- 一切都在这台电脑上跑，对话只发给你自己配置的模型。",
-            "开始之前——我该怎么称呼你？",
+            "开始之前，我该怎么称呼你？",
         ]
     return [
         "Hi, I'm nanoMuse, the assistant that lives on your computer. "
         "Let me take a few things off your plate.",
         "A bit about how I work:\n\n"
-        "- I work on this computer — I can run commands, open websites and fill in forms.\n"
+        "- I work on this computer: I can run commands, open websites and fill in forms.\n"
         "- I can read and organise the files and folders you point me to, and take care of "
         "reminders and scheduled tasks.\n"
         "- Before any step that matters, I ask you first.\n"
         "- Everything runs on this computer; your messages go only to the model you configured.",
-        "Before we start — what should I call you?",
+        "Before we start, what should I call you?",
     ]
 
 
@@ -271,7 +271,7 @@ def prompt_addendum(state: FirstRunState, lang: str, agent_name: str) -> str | N
     """The system-prompt addendum for the current phase; None once it is over. ``agent_name``
     is the name on file now."""
     address_line = (
-        f' The user goes by "{state.user_address}" — address them that way.'
+        f' The user goes by "{state.user_address}"; address them that way.'
         if state.user_address
         else ""
     )
@@ -283,7 +283,7 @@ def prompt_addendum(state: FirstRunState, lang: str, agent_name: str) -> str | N
                 lines,
                 "They are now replying to the last line (what should I call you?). Decide from "
                 "their message what they meant:",
-                '(a) If it says how to address them — a name, a nickname, "just call me boss" — '
+                '(a) If it says how to address them (a name, a nickname, "just call me boss"), '
                 "confirm it in one short sentence, ask in one sentence what they would like to "
                 "call you, and end the reply with exactly this fenced block:",
                 "```" + FENCE_NAMING,
@@ -297,7 +297,7 @@ def prompt_addendum(state: FirstRunState, lang: str, agent_name: str) -> str | N
                 "as a chooser under your reply, so do not list the names in your text.",
                 "(b) If they say they would rather not be called anything in particular, do "
                 'the same with "user_address": null.',
-                "(c) If the message is about something else — a question, a task, small talk — "
+                "(c) If the message is about something else (a question, a task, small talk), "
                 "help with it first, in full, and end with one light sentence bringing the "
                 "question back (what should I call you?). No block in that case; the app keeps "
                 "waiting.",
@@ -313,8 +313,8 @@ def prompt_addendum(state: FirstRunState, lang: str, agent_name: str) -> str | N
                 "First conversation. You asked what the user would like to call you; the app "
                 f"is showing a chooser under that question with {quoted} and "
                 '"something else". Decide from their message:',
-                '(a) If it gives you a name — typed on its own, "call you 豆丁", "the first '
-                f'one" (meaning "{first}") — that is your name from now on. Reply as yourself: '
+                '(a) If it gives you a name (typed on its own, "call you 豆丁", "the first '
+                f'one" (meaning "{first}")), that is your name from now on. Reply as yourself: '
                 "one short line about the name, then three bullets with the most useful things "
                 "you can do for them right now on this computer (choose from: "
                 f"{CAN_DO}), one concrete line each, no emoji; end by asking what they want to "
@@ -322,7 +322,7 @@ def prompt_addendum(state: FirstRunState, lang: str, agent_name: str) -> str | N
                 "```" + FENCE_NAMING,
                 '{"agent_name": "<the name>"}',
                 "```",
-                "The app saves the name from the block — no tool call is needed for it.",
+                "The app saves the name from the block; no tool call is needed for it.",
                 "(b) If the message is about something else, help with it first, in full, and "
                 "end with one light sentence bringing the naming back; no block, the chooser "
                 "stays.",
@@ -331,7 +331,7 @@ def prompt_addendum(state: FirstRunState, lang: str, agent_name: str) -> str | N
         )
     if state.phase == "named":
         return (
-            f'First conversation. The user just named you "{agent_name}" — the app already '
+            f'First conversation. The user just named you "{agent_name}"; the app already '
             "saved it, so it is your name now; no tool call is needed for it. "
             "Reply in the user's language: one short line about the name, then three bullets "
             "with the most useful things you can do for them right now on this computer "

@@ -116,7 +116,7 @@ class Embedder:
         if not own_endpoint and any(host in self.base_url for host in KNOWN_WITHOUT):
             self.available, self._given_up = False, True
             self.reason = (
-                f"{self.base_url} has no embeddings endpoint — set memory.embedding_base_url "
+                f"{self.base_url} has no embeddings endpoint; set memory.embedding_base_url "
                 f"to one that has (OpenAI, or Ollama with {OLLAMA_DEFAULT}); recall is by keyword"
             )
 
@@ -142,7 +142,7 @@ class Embedder:
             return f"{where} · not tried yet"
         if self.available:
             return f"{where} · {self.dims} dims"
-        return f"not available — {self.reason}"
+        return f"not available: {self.reason}"
 
     def reset(self) -> None:
         """Forget past failures so the next call tries again (a test button, a `doctor`)."""
@@ -190,9 +190,9 @@ class Embedder:
         msg = msg[:200]
         if isinstance(exc, openai.NotFoundError):
             if is_ollama(self.base_url) and "not found" in msg.lower():
-                return True, f"Ollama has no model {self.model!r} — `ollama pull {self.model}`"
+                return True, f"Ollama has no model {self.model!r}; `ollama pull {self.model}`"
             return True, (
-                f"{self.base_url} has no /embeddings for {self.model!r} — set "
+                f"{self.base_url} has no /embeddings for {self.model!r}; set "
                 "memory.embedding_base_url to an endpoint that has one (OpenAI, or Ollama "
                 f"with {OLLAMA_DEFAULT})"
             )

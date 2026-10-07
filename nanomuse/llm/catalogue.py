@@ -232,12 +232,12 @@ class Catalogue:
             if not shown:
                 return f"{noun}需要{need}，目前没有可用的（{_HOW['zh']}）。"
             listed = "、".join(shown[:-1]) + ("或" if len(shown) > 1 else "") + shown[-1]
-            return f"{noun}需要{need}——{listed}（{_HOW['zh']}）。"
+            return f"{noun}需要{need}：{listed}（{_HOW['zh']}）。"
         if not shown:
             return f"{noun} need {need}; none is available ({_HOW['en']})."
         listed = ", ".join(shown[:-1]) + (" or " if len(shown) > 1 else "") + shown[-1]
         verb = "needs" if noun == "Chat" else "need"
-        return f"{noun} {verb} {need} — {listed} ({_HOW['en']})."
+        return f"{noun} {verb} {need}: {listed} ({_HOW['en']})."
 
     def to_dict(self) -> dict[str, Any]:
         return {

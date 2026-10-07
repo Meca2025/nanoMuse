@@ -384,7 +384,7 @@ class PythonExecute(BaseTool):
             # the level, not a warning: a warning is something in the code itself and is
             # never waved through; this is the computer's condition, which `auto` mode and
             # always_allow_tools are entitled to accept
-            summary += " — runs without a sandbox on this computer"
+            summary += "; runs without a sandbox on this computer"
         return CallAssessment(
             risk=RiskLevel.SENSITIVE if reach or not boxed else RiskLevel.MODERATE,
             egress=bool(reach.get("network")) or bool(reach.get("processes")),

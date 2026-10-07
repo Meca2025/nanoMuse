@@ -29,7 +29,7 @@ MARKER = "loopback blocked:"
 
 EXPLANATION = (
     "nanoMuse cannot connect to itself: a connection from this computer to 127.0.0.1 never "
-    "completes (nor one to ::1). Something on this machine intercepts local connections — "
+    "completes (nor one to ::1). Something on this machine intercepts local connections: "
     "usually a proxy client that routes every connection (Proxifier; Clash, V2Ray or Surge in "
     "TUN mode; a game accelerator) or security software. Make 127.0.0.1 and localhost connect "
     "directly (Proxifier: Profile → Proxification Rules → Localhost → Direct; Clash: turn TUN "

@@ -37,16 +37,16 @@ def test_providers_for_a_capability_in_a_region_keeps_the_catalogue_order():
 def test_the_unavailable_sentence_in_english_and_chinese():
     cat = catalogue.load()
     assert cat.unavailable_sentence("image", "global", "en") == (
-        "Pictures need a provider with image models — OpenRouter, OpenAI, Google Gemini or "
+        "Pictures need a provider with image models: OpenRouter, OpenAI, Google Gemini or "
         "xAI Grok (how: docs/own-key.md)."
     )
     assert cat.unavailable_sentence("image", "cn", "zh") == (
-        "生成图片需要有图像模型的服务商——阿里云百炼、智谱 GLM、硅基流动或火山方舟（豆包）"
+        "生成图片需要有图像模型的服务商：阿里云百炼、智谱 GLM、硅基流动或火山方舟（豆包）"
         "（方法见 docs/own-key.md）。"
     )
     # one provider: no "or"
     assert cat.unavailable_sentence("video", "global", "en") == (
-        "Clips need a provider with video models — Alibaba Cloud Bailian (how: docs/own-key.md)."
+        "Clips need a provider with video models: Alibaba Cloud Bailian (how: docs/own-key.md)."
     )
     # a region with nobody falls back to every region rather than naming no one
     assert "Bailian" in cat.unavailable_sentence("video", "global", "en")

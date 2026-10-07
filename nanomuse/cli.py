@@ -24,7 +24,7 @@ from nanomuse.config import DEFAULT_DATA_DIR, Settings, find_config_file, load_s
 
 app = typer.Typer(
     name="nanomuse",
-    help="nanoMuse — an open-source personal AI agent with a Sentinel gatekeeper.",
+    help="nanoMuse: an open-source personal AI agent with a Sentinel gatekeeper.",
     no_args_is_help=True,
     rich_markup_mode="rich",
     pretty_exceptions_show_locals=False,
@@ -83,7 +83,7 @@ def _root(
         is_eager=True,
     ),
 ) -> None:
-    """nanoMuse — an open-source personal AI agent with a Sentinel gatekeeper."""
+    """nanoMuse: an open-source personal AI agent with a Sentinel gatekeeper."""
     from nanomuse import loopback
 
     loopback.install()  # Windows: a self-pipe that fails with a reason instead of hanging
@@ -523,7 +523,7 @@ def calendar_agenda(
 
     s, feeds = _calendar(config)
     if not feeds.configured:
-        console.print("[yellow]no calendar feeds — `nanomuse calendar add NAME URL`[/yellow]")
+        console.print("[yellow]no calendar feeds; `nanomuse calendar add NAME URL`[/yellow]")
         raise typer.Exit(1)
     _run_async(feeds.refresh(force=refresh))
     today = datetime.now(feeds.tz).date()
@@ -549,7 +549,7 @@ def calendar_free(
 
     s, feeds = _calendar(config)
     if not feeds.configured:
-        console.print("[yellow]no calendar feeds — `nanomuse calendar add NAME URL`[/yellow]")
+        console.print("[yellow]no calendar feeds; `nanomuse calendar add NAME URL`[/yellow]")
         raise typer.Exit(1)
     _run_async(feeds.refresh())
     today = datetime.now(feeds.tz).date()
@@ -1077,7 +1077,7 @@ def memory_tidy(
         for line in lines:
             console.print(f" - {line}")
         for why in report.skipped:
-            console.print(f"[dim] · not applied — {why}[/dim]")
+            console.print(f"[dim] · not applied: {why}[/dim]")
         if report.more:
             console.print("[dim]more was proposed; the next pass continues.[/dim]")
         if not dry_run and report.changed:
@@ -1104,7 +1104,7 @@ def memory_changes(config: ConfigOpt = None, limit: int = 20) -> None:
     table.add_column("change")
     for c in changes:
         before = " + ".join(m.content for m in c.before)
-        after = c.after.content if c.after else "—"
+        after = c.after.content if c.after else "(none)"
         state = " [dim](restored)[/dim]" if c.restored else ""
         table.add_row(c.id, c.at[:16].replace("T", " "), f"{c.action}: {before} → {after}{state}")
     console.print(table)
@@ -1227,7 +1227,7 @@ def skills_new(name: str, config: ConfigOpt = None) -> None:
     (folder / "SKILL.md").write_text(
         render_skill(
             name,
-            "What this does, and when to use it — the model picks the skill from this line.",
+            "What this does, and when to use it; the model picks the skill from this line.",
             "# " + name.replace("-", " ").capitalize() + "\n\n"
             "## Gather\n\n- What to read first, with which tools.\n\n"
             "## Do\n\n1. The steps, in order.\n2. What to produce (a file in the workspace?).\n\n"
@@ -1236,7 +1236,7 @@ def skills_new(name: str, config: ConfigOpt = None) -> None:
         "utf-8",
     )
     console.print(
-        f"[green]{folder / 'SKILL.md'}[/green] — edit it; the agent sees it on its next turn"
+        f"[green]{folder / 'SKILL.md'}[/green]: edit it; the agent sees it on its next turn"
     )
 
 
@@ -1514,7 +1514,7 @@ def phone_trace(
         elif kind == "end":
             console.print(
                 f"[bold]{rec.get('status')}[/bold] after {rec.get('steps')} steps, "
-                f"{rec.get('seconds')} s — {rec.get('message', '')}"
+                f"{rec.get('seconds')} s: {rec.get('message', '')}"
             )
 
 
@@ -1662,7 +1662,7 @@ async def _doctor(settings: Settings, check_model: bool) -> None:
             (
                 "sandbox.mode = bwrap, but bubblewrap does not work here"
                 if settings.sandbox.mode == "bwrap"
-                else "commands run unboxed — on Linux, `apt install bubblewrap` gives each one its own namespace"
+                else "commands run unboxed; on Linux, `apt install bubblewrap` gives each one its own namespace"
             ),
         )
 

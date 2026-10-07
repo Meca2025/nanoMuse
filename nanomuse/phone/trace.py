@@ -231,7 +231,7 @@ def render_html(records: list[dict[str, Any]]) -> str:
         parts.append("</div></div>")
     if end.get("message"):
         parts.append(
-            f"<p><b>{html.escape(str(end.get('status')))}</b> — {html.escape(str(end['message']))}</p>"
+            f"<p><b>{html.escape(str(end.get('status')))}</b>: {html.escape(str(end['message']))}</p>"
         )
     return "\n".join(parts)
 

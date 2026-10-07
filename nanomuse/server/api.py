@@ -95,7 +95,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 # Said to a client that still puts the token in the URL (taken until 0.1.32).
 LEGACY_TOKEN_MESSAGE = (
     "the token no longer travels in the URL: send it as 'Authorization: Bearer …' "
-    "(or as the socket's first frame) — update the app, or pair again with a #token= link"
+    "(or as the socket's first frame); update the app, or pair again with a #token= link"
 )
 
 

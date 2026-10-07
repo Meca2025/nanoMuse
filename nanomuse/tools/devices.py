@@ -100,7 +100,7 @@ class _DeviceTool(BaseTool):
 class Devices(_DeviceTool):
     name: str = "devices"
     description: str = (
-        "The user's other devices on the nanoMuse hub — phone, other computers — and whether "
+        "The user's other devices on the nanoMuse hub (phone, other computers) and whether "
         "each is online. Use a device's name as listed here in the device_* tools and delegate."
     )
     parameters: dict[str, Any] = {"type": "object", "properties": {}}
@@ -114,7 +114,7 @@ class Devices(_DeviceTool):
         if not hub.client or not hub.client.connected.is_set():
             return ToolResult.fail(
                 "not connected to the hub"
-                + ("" if hub.signed_in else " — the user can sign in under Settings → Devices")
+                + ("" if hub.signed_in else "; the user can sign in under Settings → Devices")
             )
         return ToolResult(output=_json({"this": hub.device_name, "devices": others}))
 
@@ -123,7 +123,7 @@ class DeviceShell(_DeviceTool):
     name: str = "device_shell"
     description: str = (
         "Run a shell command on another device. On a phone it runs inside the nanoMuse app's "
-        "Linux sandbox (Alpine), not on Android itself — the phone's own apps are reached with "
+        "Linux sandbox (Alpine), not on Android itself; the phone's own apps are reached with "
         "`delegate`. Returns stdout, stderr and the exit code."
     )
     parameters: dict[str, Any] = {
@@ -429,7 +429,7 @@ class Delegate(_DeviceTool):
     description: str = (
         "Hand a whole task, in plain words, to the Muse running on another device and wait for "
         "its answer (up to ten minutes). Use it when the job needs that device's apps, screen, "
-        "files or context — 'open the calendar and tell me tomorrow's first meeting' on the "
+        "files or context: 'open the calendar and tell me tomorrow's first meeting' on the "
         "phone, 'find the PDF I downloaded yesterday and send it here'. Give every detail it "
         "needs; pass its answer on faithfully."
     )

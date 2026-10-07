@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import ConfigDict
 
-from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
+from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S
 from nanomuse.computer.coords import box_centre, from_norm
 from nanomuse.computer.hands import looks_like_an_application
 from nanomuse.computer.link import ACTIONS, POINTED, ComputerLink
@@ -35,6 +35,7 @@ from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped
 from nanomuse.phone.screen import Screen
 from nanomuse.schema import RiskLevel, ToolResult
 from nanomuse.tools.base import BaseTool, CallAssessment, number_arg
+from nanomuse.tools.surface import COMPUTER, hand_over, inside, num, screen_result, wait_hold
 
 # the actions of the tool that are not actions of the hands
 _TOOL_ONLY = ("hand_over", "computer_target")
@@ -55,47 +56,6 @@ _HEAVY_COMBOS = {
 }
 
 
-def _screen_result(screen: Screen, prefix: str = "") -> ToolResult:
-    text = (prefix + "\n\n" if prefix else "") + screen.render()
-    if not screen.image_path:
-        text += "\n(no screenshot came back; the display may be locked)"
-    elif screen.width and screen.height:
-        # the picture is the unit: nothing here speaks of the display's own size
-        text += (
-            f"\nCoordinates: pixels of this {screen.width}×{screen.height} picture, (0,0) top-left."
-        )
-    return ToolResult(output=text, images=[screen.image_path] if screen.image_path else None)
-
-
-async def _wait_hold(holds: Any) -> str:
-    """Wait while the user has this computer (a hold is on); the note for the model when
-    there was one, so it looks again before acting on what it last saw."""
-    if holds is None:
-        return ""
-    return took_over_note("computer") if await holds.wait(holds.thread(), "computer") else ""
-
-
-async def _hand_over(holds: Any, link: ComputerLink, reason: str, timeout: float) -> ToolResult:
-    """The operator gives the screen to the user (contract C1): a hold goes on with the
-    reason, the user does their part — a password, a code, a confirmation — and presses
-    Done; the tool returns the screen as they left it."""
-    reason = " ".join(str(reason or "").split())
-    if not reason:
-        return ToolResult.fail("`reason` is required: say what the user should do on the screen")
-    if holds is None:
-        return ToolResult.fail(
-            "hand_over is not available here; ask the user with `ask_user` to do it and tell "
-            "you when it is done"
-        )
-    finished = await holds.hand_over(holds.thread(), "computer", reason, timeout=timeout)
-    note = took_over_note("computer", finished)
-    try:
-        screen = await link.screen()
-    except DeviceError as exc:
-        return ToolResult(output=f"{note}\n\n(the screen could not be read afterwards: {exc})")
-    return _screen_result(screen, note)
-
-
 class ComputerScreen(BaseTool):
     """Read this computer's screen."""
 
@@ -105,7 +65,7 @@ class ComputerScreen(BaseTool):
     description: str = (
         "Look at this computer's screen: a screenshot, which window is in front and the "
         "picture's size as W×H. Coordinates for `computer_act` are pixels of that picture, "
-        "(0,0) top-left — the picture is the unit, not the display. Call it again after the "
+        "(0,0) top-left; the picture is the unit, not the display. Call it again after the "
         "screen changed. For a whole job on the screen, prefer `computer_task`."
     )
     parameters: dict[str, Any] = {
@@ -123,7 +83,7 @@ class ComputerScreen(BaseTool):
     holds: Any = None
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        note = await _wait_hold(self.holds)
+        note = await wait_hold(self.holds, COMPUTER)
         app = str(kwargs.get("app") or "").strip()
         if app:
             self.link.set_target(app)
@@ -133,7 +93,7 @@ class ComputerScreen(BaseTool):
             return ToolResult.fail(f"{exc} ({STOP_MARKER})")
         except DeviceError as exc:
             return ToolResult.fail(str(exc))
-        return _screen_result(screen, note)
+        return screen_result(screen, COMPUTER, note)
 
 
 class ComputerAct(BaseTool):
@@ -144,15 +104,15 @@ class ComputerAct(BaseTool):
     name: str = "computer_act"
     description: str = (
         "One action on this computer's screen, then a fresh look. `click`, `double_click`, "
-        "`right_click`, `middle_click` or `move` at `x`/`y` — pixels of the last screenshot, "
+        "`right_click`, `middle_click` or `move` at `x`/`y`, pixels of the last screenshot, "
         "(0,0) its top-left, W×H as `computer_screen` said; or `box` [x1,y1,x2,y2] in the same "
-        "pixels, whose centre is used — with `label` — the words of what is under the cursor, "
+        "pixels, whose centre is used, with `label`, the words of what is under the cursor, "
         "as the screen shows them; `drag` from `x`/`y` to `x2`/`y2` (or `box` to `box2`); "
         "`scroll` at `x`/`y` by `dy` pixels (negative = up); `type` `text` "
         "into the focused field (`clear` first, `submit` to press Enter after); `key` presses "
         '`keys` together (e.g. ["ctrl", "s"]); `open_app` starts an application by name; '
         "`wait` `seconds`; `hand_over` with a `reason` gives the screen to the user for a "
-        "password, a code or a confirmation only they can give — they press Done and you get "
+        "password, a code or a confirmation only they can give; they press Done and you get "
         "the screen as they left it. On macOS, `computer_target` with `app` makes the hands "
         "work in that application's window only (the screenshot is then that window, and "
         "coordinates are pixels of it; the user keeps the mouse); `app` on any other action "
@@ -216,7 +176,7 @@ class ComputerAct(BaseTool):
         if action == "hand_over":
             return CallAssessment(
                 risk=RiskLevel.SAFE,
-                summary=f"computer_act: hand over — {str(args.get('reason') or '')[:80]}",
+                summary=f"computer_act: hand over: {str(args.get('reason') or '')[:80]}",
             )
         if action == "computer_target":
             wanted = str(args.get("app") or "").strip()
@@ -234,7 +194,7 @@ class ComputerAct(BaseTool):
         label = str(args.get("label") or "").strip()
         shown = f' "{label[:60]}"' if label else ""
         at = (
-            f" at ({_num(args.get('x'))},{_num(args.get('y'))})"
+            f" at ({num(args.get('x'))},{num(args.get('y'))})"
             if args.get("x") is not None and args.get("y") is not None
             else ""
         )
@@ -255,7 +215,7 @@ class ComputerAct(BaseTool):
         elif action == "drag":
             summary = f"computer_act: drag{shown}{at}{where}"
         elif action == "scroll":
-            summary = f"computer_act: scroll {_num(args.get('dy') or 300)}px{at}{where}"
+            summary = f"computer_act: scroll {num(args.get('dy') or 300)}px{at}{where}"
         elif action == "open_app":
             summary = f"computer_act: open {args.get('app') or '?'}"
         else:
@@ -297,8 +257,12 @@ class ComputerAct(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         action = str(kwargs.get("action") or "")
         if action == "hand_over":
-            return await _hand_over(
-                self.holds, self.link, str(kwargs.get("reason") or ""), self.hand_over_timeout
+            return await hand_over(
+                self.holds,
+                self.link,
+                str(kwargs.get("reason") or ""),
+                self.hand_over_timeout,
+                COMPUTER,
             )
         if action == "computer_target":
             return await self._target(str(kwargs.get("app") or ""))
@@ -306,7 +270,7 @@ class ComputerAct(BaseTool):
             return ToolResult.fail(
                 f"unknown action '{action}'. One of: {', '.join((*ACTIONS, *_TOOL_ONLY))}"
             )
-        note = await _wait_hold(self.holds)
+        note = await wait_hold(self.holds, COMPUTER)
         wanted = str(kwargs.get("app") or "").strip()
         if wanted and action != "open_app" and wanted != self.link.target_app:
             # `app` with an action: the window to work in, looked at before acting
@@ -334,7 +298,7 @@ class ComputerAct(BaseTool):
                 return ToolResult.fail(
                     f"`{action}` needs `x` and `y` (pixels of the last screenshot) or `box`"
                 )
-            if screen is not None and not _inside(point, screen):
+            if screen is not None and not inside(point, screen, COMPUTER):
                 return ToolResult.fail(
                     f"({point[0]:g},{point[1]:g}) is outside the {screen.width}×{screen.height} picture"
                 )
@@ -394,7 +358,7 @@ class ComputerAct(BaseTool):
         after = self.link.last_screen
         if after is None or not raw.get("looked", True):
             return ToolResult(output=f"{done}. The screen could not be read afterwards.")
-        return _screen_result(after, done + ". Screen now:")
+        return screen_result(after, COMPUTER, done + ". Screen now:")
 
     async def _target(self, app: str) -> ToolResult:
         """``computer_target``: the application the hands work in from now on, and a look
@@ -406,7 +370,7 @@ class ComputerAct(BaseTool):
                 screen = await self.link.screen()
             except DeviceError as exc:
                 return ToolResult.fail(str(exc))
-            return _screen_result(screen, "Working on the whole screen again.")
+            return screen_result(screen, COMPUTER, "Working on the whole screen again.")
         ok, why = self.link.window_available()
         if not ok or self.link.settings.mode == "screen":
             why = why or "[hands] mode is 'screen'"
@@ -414,8 +378,9 @@ class ComputerAct(BaseTool):
                 screen = await self.link.screen()
             except DeviceError as exc:
                 return ToolResult.fail(str(exc))
-            return _screen_result(
+            return screen_result(
                 screen,
+                COMPUTER,
                 f"Window mode is not available here ({why}); the hands work on the whole screen, "
                 f"with {app.strip()} as the application they are about. Screen now:",
             )
@@ -427,15 +392,17 @@ class ComputerAct(BaseTool):
             return ToolResult.fail(str(exc))
         frame = self.link.window_frame
         if frame is None:
-            return _screen_result(
+            return screen_result(
                 screen,
+                COMPUTER,
                 f"{app.strip()} could not be worked in as a window ({self.link.status()['window']['reason']}); "
                 "showing the whole screen instead.",
             )
         w = frame.window
-        where = f"Working in the window of {w.owner}" + (f" — {w.title}" if w.title else "")
-        return _screen_result(
+        where = f"Working in the window of {w.owner}" + (f", {w.title}" if w.title else "")
+        return screen_result(
             screen,
+            COMPUTER,
             f"{where}. Coordinates are pixels of this {frame.image_width}×{frame.image_height} "
             "window picture; the user keeps the mouse. Window now:",
         )
@@ -468,12 +435,12 @@ class ComputerTask(BaseTool):
     description: str = (
         "Hand a job on this computer's screen to the operator: it opens the application, looks "
         "at the screen, clicks, types and scrolls step by step until the job is done, then "
-        "reports what it found or did. Use it only for what has no other door — a desktop "
-        "application, a dialog, a page that needs the user's real browser session — and not "
+        "reports what it found or did. Use it only for what has no other door (a desktop "
+        "application, a dialog, a page that needs the user's real browser session) and not "
         "for what `shell`, `files`, `browser`, `web_fetch` or a skill does exactly and "
         "instantly. Give one concrete `goal` with the facts it needs and any `context` you "
         "already have; one goal per call, in order. It stops and asks before paying, sending or "
-        "deleting; it never enters passwords or codes — it hands the screen to the user for "
+        "deleting; it never enters passwords or codes; it hands the screen to the user for "
         "those and carries on when they press Done. When it asks a question instead, put it to "
         "the user and call again with their answer in `context`."
     )
@@ -515,20 +482,13 @@ class ComputerTask(BaseTool):
                 + (self.link.status().get("reason") or "no backend")
             )
         operator: PhoneOperator = self.operator
-        await _wait_hold(self.holds)
+        await wait_hold(self.holds, COMPUTER)
         outcome = await operator.run(
             goal, context=str(kwargs.get("context") or ""), app=str(kwargs.get("app") or "")
         )
         text = outcome.report()
         images = [outcome.last_image] if outcome.last_image else None
         return ToolResult(output=text, images=images)
-
-
-def _num(value: Any) -> str:
-    try:
-        return f"{float(value):g}"
-    except (TypeError, ValueError):
-        return "?"
 
 
 def _point(
@@ -560,12 +520,6 @@ def _point(
     if norm and screen is not None and screen.width and screen.height:
         point = from_norm(point[0], point[1], screen.width, screen.height)
     return point
-
-
-def _inside(point: tuple[float, float], screen: Screen) -> bool:
-    if not (screen.width and screen.height):
-        return True
-    return 0 <= point[0] <= screen.width and 0 <= point[1] <= screen.height
 
 
 __all__ = ["ComputerAct", "ComputerScreen", "ComputerTask"]

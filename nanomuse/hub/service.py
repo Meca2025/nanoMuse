@@ -622,7 +622,7 @@ class HubService:
             raise HubError(
                 "no_hub",
                 "not connected to the hub"
-                + ("" if self.signed_in else " — sign in to nanoMuse Cloud first"),
+                + ("" if self.signed_in else "; sign in to nanoMuse Cloud first"),
             )
         return await self.client.call(to, action, args, timeout=timeout, on_event=on_event)
 

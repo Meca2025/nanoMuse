@@ -13,9 +13,9 @@ from nanomuse.tools.base import BaseTool, CallAssessment
 class Reminders(BaseTool):
     name: str = "reminders"
     description: str = (
-        "Schedule something for later, on the user's behalf. Two kinds: kind=`remind` — at that "
+        "Schedule something for later, on the user's behalf. Two kinds: kind=`remind`, at that "
         'time you simply tell the user the text ("call mum", "the parking runs out"); '
-        'kind=`task` — at that time you do the work described and report the result ("summarise '
+        'kind=`task`, at that time you do the work described and report the result ("summarise '
         'unread email", "check the weather for the ride"). Actions: `create` (text, kind, and '
         "either `at` = 'YYYY-MM-DD HH:MM' local time for a one-off, or `repeat` = 'daily 08:00' | "
         "'weekdays 07:30' | 'weekly mon 09:00' | 'monthly 1 09:00' for a routine), `list`, "
@@ -30,7 +30,7 @@ class Reminders(BaseTool):
             "action": {"type": "string", "enum": ["create", "list", "cancel"]},
             "text": {
                 "type": "string",
-                "description": "What to remind about, or what to do — in the user's words.",
+                "description": "What to remind about, or what to do, in the user's words.",
             },
             "kind": {"type": "string", "enum": ["remind", "task"]},
             "at": {
@@ -60,7 +60,7 @@ class Reminders(BaseTool):
         action = str(args.get("action") or "?")
         if action == "create":
             when = args.get("repeat") or args.get("at") or "?"
-            detail = f"{when} — {str(args.get('text') or '')[:60]}"
+            detail = f"{when}: {str(args.get('text') or '')[:60]}"
         elif action == "cancel":
             detail = str(args.get("reminder_id") or "")
         else:

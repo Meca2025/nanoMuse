@@ -128,7 +128,7 @@ class Bridge:
                 {
                     "type": "notice",
                     "level": "info",
-                    "text": f"Opened {args.get('url', '')} in the browser view — you can take it from there.",
+                    "text": f"Opened {args.get('url', '')} in the browser view; you can take it from there.",
                     "handoff": args.get("url", ""),
                 }
             )

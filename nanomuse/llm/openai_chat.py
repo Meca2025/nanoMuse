@@ -103,7 +103,7 @@ class OpenAIChatLLM(BaseLLM):
                 # with the text only, and no pictures for the rest of this run
                 logger.warning(
                     "the endpoint rejected a message with images ({}); sending text only "
-                    'from now on — set llm.vision = "off" to skip the attempt',
+                    'from now on; set llm.vision = "off" to skip the attempt',
                     str(e).splitlines()[0][:200],
                 )
                 self.vision_available = False

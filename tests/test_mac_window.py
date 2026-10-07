@@ -358,7 +358,7 @@ async def test_open_app_sets_the_target_and_computer_target_reports(
     act = ComputerAct(link=link, gui=GUISettings())
     # computer_target: the window, its size, who keeps the mouse
     r = await act.execute(action="computer_target", app="Notes")
-    assert r.ok and "Working in the window of Notes — Shopping" in r.output
+    assert r.ok and "Working in the window of Notes, Shopping" in r.output
     assert "400×320" in r.output and r.images
     assert link.target_app == "Notes" and link.window_frame is not None
     assert act.assess({"action": "computer_target", "app": "Notes"}).target == "Notes"

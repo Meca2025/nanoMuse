@@ -258,7 +258,7 @@ async def test_operator_hands_the_phone_over_and_continues(settings: Settings):
     asyncio.ensure_future(user_logs_in())
     outcome = await operator.run("sign in to WeChat")
     assert outcome.status == "done" and outcome.message == "signed in"
-    assert outcome.actions[0] == "hand over — 请登录微信"
+    assert outcome.actions[0] == "hand over: 请登录微信"
     # the model was told, in the progress, that the user did their part
     third = llm.calls[1]["messages"][1].content
     assert "the user took over the phone for a while and has finished" in third

@@ -161,7 +161,7 @@ def exposed_description(tool: BaseTool) -> str:
     )
 
 
-REFUSED = "Not done — "
+REFUSED = "Not done: "
 
 
 def gate(tool: BaseTool, args: dict[str, Any]) -> str | None:

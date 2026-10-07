@@ -26,11 +26,11 @@ and `nanomuse vault set AMAP_KEY`. Without Node, the hosted URL is the way; with
 
 ## The tools
 
-- `amap__maps_geo` — an address or a landmark (`北京南站`, `上海市浦东新区世纪大道100号`) → coordinates `lng,lat`; `amap__maps_regeocode` the other way round. Almost everything else wants coordinates, so this comes first.
-- `amap__maps_text_search` — places by keyword (`咖啡`, `汉庭酒店`) in a `city`; `amap__maps_around_search` — the same within `radius` metres of a `location`; `amap__maps_search_detail` — one place's details by its `id` (opening hours, rating, phone, address).
-- `amap__maps_direction_driving`, `amap__maps_direction_walking`, `amap__maps_bicycling` — a route between two coordinates with distance, duration and the steps; `amap__maps_direction_transit_integrated` — bus, metro and train together, and across cities with `city` and `cityd`.
-- `amap__maps_distance` — just the distance and time between points (`type` 1 = driving, 3 = straight line).
-- `amap__maps_weather` — today and the next few days for a `city` name or adcode.
+- `amap__maps_geo`: an address or a landmark (`北京南站`, `上海市浦东新区世纪大道100号`) → coordinates `lng,lat`; `amap__maps_regeocode` the other way round. Almost everything else wants coordinates, so this comes first.
+- `amap__maps_text_search`: places by keyword (`咖啡`, `汉庭酒店`) in a `city`; `amap__maps_around_search`, the same within `radius` metres of a `location`; `amap__maps_search_detail`, one place's details by its `id` (opening hours, rating, phone, address).
+- `amap__maps_direction_driving`, `amap__maps_direction_walking`, `amap__maps_bicycling`: a route between two coordinates with distance, duration and the steps; `amap__maps_direction_transit_integrated`, bus, metro and train together, and across cities with `city` and `cityd`.
+- `amap__maps_distance`: just the distance and time between points (`type` 1 = driving, 3 = straight line).
+- `amap__maps_weather`: today and the next few days for a `city` name or adcode.
 
 Coordinates are `经度,纬度` (longitude first, GCJ-02). Durations come in seconds and distances in metres: say them as minutes and kilometres.
 
@@ -39,7 +39,7 @@ Coordinates are `经度,纬度` (longitude first, GCJ-02). Durations come in sec
 - Resolve both ends first, then one route call per mode the user cares about. When they did not say how they travel, compare transit and driving in one line each and say which you would take at that hour.
 - A "what's near" question: geocode the centre, one `around_search`, then give three places at most with what makes each worth it (rating, distance, open now), not the whole list.
 - Travel time is an estimate for now; for a departure later or tomorrow say so, and for a real day-of-travel plan add slack.
-- Weather goes into plans the user is making — an outdoor day, a trip — without being asked when it changes the plan (rain on the day of the hike).
+- Weather goes into plans the user is making (an outdoor day, a trip) without being asked when it changes the plan (rain on the day of the hike).
 
 ## With the other hands
 

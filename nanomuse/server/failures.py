@@ -29,7 +29,7 @@ _TOO_LONG = (
 _RELAY: dict[str, tuple[str, str]] = {
     "allowance_exhausted": (
         "allowance",
-        "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key under Connections — your sign-in and your devices keep working either way.",
+        "The free allowance is used up. Invite a friend (the relay adds to both your allowances) or add your own model key under Connections; your sign-in and your devices keep working either way.",
     ),
     "daily_cap": (
         "allowance",

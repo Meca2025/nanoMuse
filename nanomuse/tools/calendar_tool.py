@@ -41,11 +41,11 @@ def _slug(text: str) -> str:
 class Calendar(BaseTool):
     name: str = "calendar"
     description: str = (
-        "The user's calendar (read from their calendar feeds). Actions: `agenda` — the events "
+        "The user's calendar (read from their calendar feeds). Actions: `agenda`, the events "
         "on a `day` ('today', 'tomorrow' or 'YYYY-MM-DD') and the `days` after it (default 1, "
-        "max 31); `search` — events whose title, place or notes contain `query` (past 90 and "
-        "next 180 days); `free` — gaps of at least `minutes` in the working hours of `day`; "
-        "`draft` — write an event as an .ics file the user can add to their calendar with a "
+        "max 31); `search`, events whose title, place or notes contain `query` (past 90 and "
+        "next 180 days); `free`, gaps of at least `minutes` in the working hours of `day`; "
+        "`draft`, write an event as an .ics file the user can add to their calendar with a "
         "tap (`title`, `start` 'YYYY-MM-DD HH:MM' or 'YYYY-MM-DD' for all-day, `end` likewise "
         "or `duration_minutes`, optional `location`, `notes`). You cannot change the user's "
         "calendar directly; `draft` is how you propose an event. Times are the user's local time."
@@ -104,8 +104,7 @@ class Calendar(BaseTool):
             if action == "refresh":
                 status = await feeds.refresh(force=True)
                 lines = [
-                    f"{f['name']}: {f['events']} events"
-                    + (f" — {f['error']}" if f["error"] else "")
+                    f"{f['name']}: {f['events']} events" + (f": {f['error']}" if f["error"] else "")
                     for f in status["feeds"]
                 ]
                 return ToolResult(output="Refreshed.\n" + "\n".join(lines))
@@ -131,7 +130,7 @@ class Calendar(BaseTool):
                 # All-day events do not block hours, but the user may well be away: say so.
                 all_day = [o.summary for o in feeds.agenda(day) if o.all_day]
                 note = (
-                    f"\nAll-day that day: {', '.join(all_day)} — the gaps assume it leaves the hours free; check with the user."
+                    f"\nAll-day that day: {', '.join(all_day)}; the gaps assume it leaves the hours free; check with the user."
                     if all_day
                     else ""
                 )

@@ -138,7 +138,7 @@ def missing_note(names: list[str]) -> str:
     shown = ", ".join(names[:5]) + (" …" if len(names) > 5 else "")
     return (
         f"\n\n[{len(names)} attached image{'s' if len(names) != 1 else ''} ({shown}) cannot "
-        "be shown to you — this model does not take images. Say so plainly rather than "
+        "be shown to you: this model does not take images. Say so plainly rather than "
         "describing what you cannot see; the files are in the workspace.]"
     )
 
@@ -164,7 +164,7 @@ def content_parts(message: Message, image_type: str = "image_url") -> str | list
     if dropped:
         text += (
             f"\n\n[{len(dropped)} attached image{'s' if len(dropped) != 1 else ''} could not be "
-            f"included: {', '.join(dropped)} — missing or too large.]"
+            f"included: {', '.join(dropped)}; missing or too large.]"
         )
     if not parts:
         return text

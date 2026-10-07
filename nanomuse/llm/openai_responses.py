@@ -150,7 +150,7 @@ class OpenAIResponsesLLM(BaseLLM):
             if with_images and self.settings.vision == "auto":
                 logger.warning(
                     "the endpoint rejected a message with images ({}); sending text only "
-                    'from now on — set llm.vision = "off" to skip the attempt',
+                    'from now on; set llm.vision = "off" to skip the attempt',
                     str(e).splitlines()[0][:200],
                 )
                 self.vision_available = False

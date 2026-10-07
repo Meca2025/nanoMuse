@@ -356,7 +356,7 @@ class NanoMuseApp:
         if not playwright_available() and s.browser.backend != "device" and self.device is None:
             logger.warning(
                 "browser.enabled=true but playwright is missing: pip install 'nanomuse[browser]' "
-                "— the browser tool will use the phone's WebView when the app is connected"
+                "(the browser tool will use the phone's WebView when the app is connected)"
             )
         return tool
 

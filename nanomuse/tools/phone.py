@@ -21,13 +21,14 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import ConfigDict
 
-from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S, took_over_note
+from nanomuse.agent.holds import HAND_OVER_TIMEOUT_S
 from nanomuse.config import GUISettings
 from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped, PhoneLink
 from nanomuse.phone.screen import Screen
 from nanomuse.prompts import detect_language
 from nanomuse.schema import RiskLevel, ToolResult
 from nanomuse.tools.base import BaseTool, CallAssessment, number_arg
+from nanomuse.tools.surface import PHONE, hand_over, inside, num, screen_result, wait_hold
 
 if TYPE_CHECKING:
     from nanomuse.phone.operator import PhoneOperator
@@ -49,42 +50,6 @@ DIRECTIONS = ("up", "down", "left", "right")
 POINTED = ("tap", "long_press", "double_tap")
 
 
-def _screen_result(screen: Screen, prefix: str = "") -> ToolResult:
-    text = (prefix + "\n\n" if prefix else "") + screen.render()
-    if not screen.image_path:
-        text += "\n(no screenshot came back; the phone may be locked or showing a protected screen)"
-    return ToolResult(output=text, images=[screen.image_path] if screen.image_path else None)
-
-
-async def _wait_hold(holds: Any) -> str:
-    """Wait while the user has the phone (a hold is on); the note for the model when there
-    was one, so it looks again before acting on what it last saw."""
-    if holds is None:
-        return ""
-    return took_over_note("phone") if await holds.wait(holds.thread(), "phone") else ""
-
-
-async def _hand_over(holds: Any, link: PhoneLink, reason: str, timeout: float) -> ToolResult:
-    """The agent gives the phone to the user (contract C1): a hold goes on with the reason,
-    the user does their part — a password, a code, a payment confirmation — and presses
-    Done; the tool returns the screen as they left it."""
-    reason = " ".join(str(reason or "").split())
-    if not reason:
-        return ToolResult.fail("`reason` is required: say what the user should do on the phone")
-    if holds is None:
-        return ToolResult.fail(
-            "hand_over is not available here; ask the user with `ask_user` to do it and tell "
-            "you when it is done"
-        )
-    finished = await holds.hand_over(holds.thread(), "phone", reason, timeout=timeout)
-    note = took_over_note("phone", finished)
-    try:
-        screen = await link.screen()
-    except DeviceError as exc:
-        return ToolResult(output=f"{note}\n\n(the screen could not be read afterwards: {exc})")
-    return _screen_result(screen, note)
-
-
 class PhoneScreen(BaseTool):
     """Read the phone's screen."""
 
@@ -104,14 +69,14 @@ class PhoneScreen(BaseTool):
     holds: Any = None
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        note = await _wait_hold(self.holds)
+        note = await wait_hold(self.holds, PHONE)
         try:
             screen = await self.link.screen()
         except DeviceStopped as exc:
             return ToolResult.fail(f"{exc} ({STOP_MARKER})")
         except DeviceError as exc:
             return ToolResult.fail(str(exc))
-        return _screen_result(screen, note)
+        return screen_result(screen, PHONE, note)
 
 
 class PhoneAct(BaseTool):
@@ -122,14 +87,14 @@ class PhoneAct(BaseTool):
     name: str = "phone_act"
     description: str = (
         "Do one thing on the phone and get the screen after it. Actions: `tap`, `long_press`, "
-        "`double_tap` at `x`/`y` (pixels of the last screenshot), with `label` — the words of "
+        "`double_tap` at `x`/`y` (pixels of the last screenshot), with `label`, the words of "
         "what is under the finger, as shown on the screen; `swipe` from `x`/`y` to `x2`/`y2`, or "
         "`direction` up|down|left|right (`up` moves the finger up, so the content scrolls down); "
-        "`type` (`text` into the focused field — tap the field first; `clear` empties it first; "
+        "`type` (`text` into the focused field; tap the field first; `clear` empties it first; "
         "`submit` presses enter); `enter`, `back`, `home`, `recents`; `open_app` (`app` name or "
         "id); `wait` (`seconds`); `hand_over` with a `reason` gives the phone to the user for a "
-        "step only they can do — a password, a card number, a one-time code, a payment "
-        "confirmation — and returns the screen once they press Done. One action per call — "
+        "step only they can do (a password, a card number, a one-time code, a payment "
+        "confirmation) and returns the screen once they press Done. One action per call; "
         "look at the result before the next. Never type passwords, card numbers or one-time "
         "codes yourself: `hand_over`."
     )
@@ -175,7 +140,7 @@ class PhoneAct(BaseTool):
         if action == "hand_over":
             return CallAssessment(
                 risk=RiskLevel.SAFE,
-                summary=f"phone_act: hand over — {str(args.get('reason') or '')[:80]}",
+                summary=f"phone_act: hand over: {str(args.get('reason') or '')[:80]}",
             )
         screen = self.link.last_screen
         app = (screen.app if screen else "") or None
@@ -183,7 +148,7 @@ class PhoneAct(BaseTool):
         label = str(args.get("label") or "").strip()
         shown = f' "{label[:60]}"' if label else ""
         at = (
-            f" at ({_num(args.get('x'))},{_num(args.get('y'))})"
+            f" at ({num(args.get('x'))},{num(args.get('y'))})"
             if args.get("x") is not None and args.get("y") is not None
             else ""
         )
@@ -199,7 +164,7 @@ class PhoneAct(BaseTool):
             )
         elif action == "swipe":
             how = args.get("direction") or (
-                f"({_num(args.get('x'))},{_num(args.get('y'))})→({_num(args.get('x2'))},{_num(args.get('y2'))})"
+                f"({num(args.get('x'))},{num(args.get('y'))})→({num(args.get('x2'))},{num(args.get('y2'))})"
                 if args.get("x2") is not None
                 else ""
             )
@@ -221,13 +186,13 @@ class PhoneAct(BaseTool):
             # is a search box or a chat: submitting blind is a step the user gets to see
             risk, egress = RiskLevel.SENSITIVE, True
             warnings.append(
-                "this types and submits in one step — the text goes out (a message, a search, an "
+                "this types and submits in one step; the text goes out (a message, a search, an "
                 "order) before anyone sees the screen"
             )
         if hit:
             risk, egress = RiskLevel.SENSITIVE, True
             warnings.append(
-                f"this step touches {', '.join(repr(w) for w in hit[:3])} — paying, transferring, "
+                f"this step touches {', '.join(repr(w) for w in hit[:3])}; paying, transferring, "
                 "sending or deleting is not undone by pressing back"
             )
         return CallAssessment(
@@ -252,12 +217,16 @@ class PhoneAct(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         action = str(kwargs.get("action") or "")
         if action == "hand_over":
-            return await _hand_over(
-                self.holds, self.link, str(kwargs.get("reason") or ""), self.hand_over_timeout
+            return await hand_over(
+                self.holds,
+                self.link,
+                str(kwargs.get("reason") or ""),
+                self.hand_over_timeout,
+                PHONE,
             )
         if action not in ACTIONS:
             return ToolResult.fail(f"unknown action '{action}'. One of: {', '.join(ACTIONS)}")
-        held = await _wait_hold(self.holds)
+        held = await wait_hold(self.holds, PHONE)
         params: dict[str, Any] = {"action": action}
         label = str(kwargs.get("label") or "").strip()
         if label:
@@ -271,7 +240,7 @@ class PhoneAct(BaseTool):
                     f"`{action}` needs `x` and `y` (pixels of the last screenshot)"
                     + (" or a `direction`" if action == "swipe" else "")
                 )
-            if screen is not None and not _inside(point, screen):
+            if screen is not None and not inside(point, screen, PHONE):
                 return ToolResult.fail(
                     f"({point[0]:g},{point[1]:g}) is outside the {screen.width}×{screen.height} screen"
                 )
@@ -339,7 +308,7 @@ class PhoneAct(BaseTool):
         except DeviceError as exc:
             # the action itself ran; only the look afterwards failed
             return ToolResult(output=f"{done}. The screen could not be read afterwards: {exc}")
-        return _screen_result(after, done + ". Screen now:")
+        return screen_result(after, PHONE, done + ". Screen now:")
 
     def _resolve_app(self, wanted: str) -> str:
         """An app named the way the user says it → the id the device knows."""
@@ -357,13 +326,6 @@ class PhoneAct(BaseTool):
         return wanted
 
 
-def _num(value: Any) -> str:
-    try:
-        return f"{float(value):g}"
-    except (TypeError, ValueError):
-        return "?"
-
-
 def _point(args: dict[str, Any], kx: str, ky: str) -> tuple[float, float] | None:
     if args.get(kx) is None or args.get(ky) is None:
         return None
@@ -371,13 +333,6 @@ def _point(args: dict[str, Any], kx: str, ky: str) -> tuple[float, float] | None
         return float(args[kx]), float(args[ky])
     except (TypeError, ValueError):
         return None
-
-
-def _inside(point: tuple[float, float], screen: Screen) -> bool:
-    if not (screen.width and screen.height):
-        return True
-    x, y = point
-    return -1 <= x <= screen.width + 1 and -1 <= y <= screen.height + 1
 
 
 class PhoneTask(BaseTool):
@@ -390,13 +345,13 @@ class PhoneTask(BaseTool):
         "Hand a job on the user's phone to the GUI operator: it opens the app, looks at the "
         "screen, taps, types and swipes step by step until the job is done, then reports what it "
         "found or did. It works on any app, through the screen alone. Use it for what lives in "
-        "an app and nowhere else — buying a train ticket on 12306, reading or answering a WeChat "
-        "chat, paying a bill in Alipay, ordering on Meituan — and not for what another tool does "
+        "an app and nowhere else (buying a train ticket on 12306, reading or answering a WeChat "
+        "chat, paying a bill in Alipay, ordering on Meituan) and not for what another tool does "
         "exactly and instantly (search, a web page, mail, the calendar, a file): those come first, "
         "the phone is for the rest. Give one concrete `goal` with the facts it needs (names, dates, "
         "amounts, which account) and any `context` you already have; one goal per call, in order. "
         "It stops and asks before paying, transferring, sending or deleting; it never enters "
-        "passwords or codes — it hands the phone to the user for those and carries on when they "
+        "passwords or codes; it hands the phone to the user for those and carries on when they "
         "press Done. When it asks a question instead, put it to the user and call again with "
         "their answer in `context`. Its report holds everything it read, so ask for what you need."
     )
@@ -438,7 +393,7 @@ class PhoneTask(BaseTool):
                 "turned on) or the MobileGym module, then try again."
             )
         operator: PhoneOperator = self.operator
-        await _wait_hold(self.holds)
+        await wait_hold(self.holds, PHONE)
         # the agent's `step` is written in the user's language (prompts.py); the goal is often
         # in the app's (a skill's 微信 phrases), and the capsule should speak the user's. A
         # call without a `step` falls back to the goal's language: a name is still better

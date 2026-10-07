@@ -159,7 +159,7 @@ def test_tidy_summary_follows_the_reply_language():
         ],
     )
     zh = _tidy_summary(zh_report, "auto")
-    assert zh.startswith("我整理了一下记忆——合并了 1 条，删除了 1 条：")
+    assert zh.startswith("我整理了一下记忆，合并了 1 条，删除了 1 条：")
     assert "- 合并 “住在上海” + “搬到了北京” → “从上海搬到了北京”" in zh
     assert "- 删除 “问过今天的天气” (一次性请求)" in zh and "最近的改动" in zh
 
@@ -170,11 +170,11 @@ def test_tidy_summary_follows_the_reply_language():
     )
     en = _tidy_summary(en_report, "auto")
     assert (
-        en.startswith("I tidied your memory — dropped 1:")
+        en.startswith("I tidied your memory: dropped 1:")
         and "Dropped “Asked for the weather”" in en
     )
     # a fixed reply language wins over the script of the memories
-    assert _tidy_summary(en_report, "中文").startswith("我整理了一下记忆——删除了 1 条：")
+    assert _tidy_summary(en_report, "中文").startswith("我整理了一下记忆，删除了 1 条：")
     assert _tidy_summary(zh_report, "English").startswith(
-        "I tidied your memory — merged 1 line and dropped 1:"
+        "I tidied your memory: merged 1 line and dropped 1:"
     )

@@ -34,7 +34,7 @@ def test_off_and_missing_are_not_errors(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.setattr("nanomuse.sandbox.platform.system", lambda: "Linux")
     box = Sandbox(SandboxSettings(), workspace=tmp_path)
     assert not box.active and "not installed" in box.reason
-    assert box.status.startswith("off — ")
+    assert box.status.startswith("off: ")
     monkeypatch.setenv("NANOMUSE_IN_CONTAINER", "1")
     box = Sandbox(SandboxSettings(), workspace=tmp_path)
     assert not box.active and box.reason == "in a container, which is the box"
@@ -137,7 +137,7 @@ def test_a_box_that_cannot_take_the_network_away(tmp_path: Path, monkeypatch: py
     box = Sandbox(SandboxSettings(), workspace=tmp_path)
     assert box.active and not box.blocks_network and box.reason == ""
     assert len(calls) == 3  # version, with --unshare-net (refused), without (works)
-    assert box.status.startswith("bubblewrap 0.9.0 — the network is not blocked")
+    assert box.status.startswith("bubblewrap 0.9.0; the network is not blocked")
     assert "cannot block it" in box.describe()
     # no command asks for --unshare-net any more …
     assert "--unshare-net" not in box.wrap(["/bin/true"], network=False, cwd=tmp_path)

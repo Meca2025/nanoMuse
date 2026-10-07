@@ -176,11 +176,26 @@ class PushService:
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            self._send_all(payload)
+            self._forget(self._send_all(payload))
             return
-        keep_task(loop.create_task(asyncio.to_thread(self._send_all, payload)))
 
-    def _send_all(self, payload: dict[str, Any]) -> None:
+        async def deliver() -> None:
+            # the network goes to a worker thread; the list and its file are only ever
+            # touched on the loop, where subscribe() and unsubscribe() run too
+            self._forget(await asyncio.to_thread(self._send_all, payload))
+
+        keep_task(loop.create_task(deliver()))
+
+    def _forget(self, gone: list[str]) -> None:
+        """Drop the endpoints a push service reported gone (404/410)."""
+        if not gone:
+            return
+        self.subscriptions = [s for s in self.subscriptions if s["endpoint"] not in gone]
+        self._save_subscriptions()
+
+    def _send_all(self, payload: dict[str, Any]) -> list[str]:
+        """Send ``payload`` to a snapshot of the devices; returns the endpoints that are
+        gone. Reads the list, never writes it: it may run in a worker thread."""
         from pywebpush import WebPushException, webpush
 
         data = json.dumps(payload)
@@ -203,9 +218,7 @@ class PushService:
                     logger.warning("push failed ({}): {}", status, str(exc)[:200])
             except Exception as exc:  # noqa: BLE001
                 logger.warning("push failed: {}", str(exc)[:200])
-        if gone:
-            self.subscriptions = [s for s in self.subscriptions if s["endpoint"] not in gone]
-            self._save_subscriptions()
+        return gone
 
     async def test(self, name: str = "nanoMuse") -> dict[str, Any]:
         if not self.enabled:

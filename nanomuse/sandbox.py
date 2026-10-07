@@ -225,7 +225,7 @@ class Sandbox:
             reason = "bubblewrap cannot create a namespace here" + (f" ({err})" if err else "")
             if userns_restricted():
                 reason += (
-                    " — kernel.apparmor_restrict_unprivileged_userns=1 and no AppArmor profile "
+                    " (kernel.apparmor_restrict_unprivileged_userns=1 and no AppArmor profile "
                     "covers bwrap; see docs/sentinel.md → The sandbox"
                 )
             return False, reason
@@ -255,8 +255,8 @@ class Sandbox:
         if self.active and self.blocks_network:
             return f"bubblewrap {self.version}".strip()
         if self.active:
-            return f"bubblewrap {self.version}".strip() + f" — {self.NO_NETWORK_BLOCKING}"
-        return f"off — {self.reason}"
+            return f"bubblewrap {self.version}".strip() + f"; {self.NO_NETWORK_BLOCKING}"
+        return f"off: {self.reason}"
 
     def describe(self) -> str:
         """One line for the model and the app."""

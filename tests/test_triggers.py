@@ -116,7 +116,7 @@ def test_triggers_tool(tmp_path: Path):
     summary = tool.assess(
         {"action": "create", "kind": "mail", "match": "landlord", "text": "draft a reply"}
     ).summary
-    assert summary == "triggers create: mail “landlord” — draft a reply"
+    assert summary == "triggers create: mail “landlord”: draft a reply"
     store.close()
 
 

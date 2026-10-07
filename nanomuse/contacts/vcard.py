@@ -75,7 +75,7 @@ class Contact:
         if self.nickname and self.nickname.lower() != self.name.lower():
             head += f" ({self.nickname})"
         if self.org:
-            head += f" — {self.title + ', ' if self.title else ''}{self.org}"
+            head += f": {self.title + ', ' if self.title else ''}{self.org}"
         lines = [f"{head}  [{self.id}]"]
         if self.emails:
             lines.append("  email: " + ", ".join(self.emails))

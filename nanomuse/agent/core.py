@@ -225,7 +225,7 @@ class MuseAgent:
             return ""
         n = len(book)
         return (
-            f"- Address book: {n} {'person' if n == 1 else 'people'} — look someone up with "
+            f"- Address book: {n} {'person' if n == 1 else 'people'}; look someone up with "
             "`contacts` before writing to them; never guess an address\n"
         )
 
@@ -275,7 +275,7 @@ class MuseAgent:
                     if g.category:
                         bits.append(g.category)
                     if g.due:
-                        bits.append(f"due {g.due}" + (" — overdue" if g.overdue else ""))
+                        bits.append(f"due {g.due}" + (", overdue" if g.overdue else ""))
                     if nxt:
                         bits.append(f"next: {nxt.idx}. {nxt.title}")
                     if g.proposal:

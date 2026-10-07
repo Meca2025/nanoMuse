@@ -7,7 +7,7 @@ data_dir = "~/.nanomuse"
 log_level = "INFO"
 
 # ------------------------------------------------------------------------------
-# LLM — any OpenAI-compatible endpoint works. Pick ONE of the presets below.
+# LLM: any OpenAI-compatible endpoint works. Pick ONE of the presets below.
 # ------------------------------------------------------------------------------
 [llm]
 # --- DeepSeek (default; V4.1 Flash) ---------------------------------------------
@@ -57,7 +57,7 @@ temperature = 0.3
 timeout = 180
 max_retries = 5
 # Streaming shows text as it is generated. Some proxies/gateways that inline
-# "<think>…</think>" drop the first tokens after </think> when streaming — if the
+# "<think>…</think>" drop the first tokens after </think> when streaming; if the
 # beginning of replies goes missing, set stream = false (responses stay complete).
 stream = true
 # "auto" uses the provider's function-calling API and falls back to describing tools in
@@ -66,7 +66,7 @@ stream = true
 tool_mode = "auto"
 # Pictures attached in chat go to the model as images. "auto": send them and, if the
 # endpoint refuses (DeepSeek, text-only models), send text only from then on and say so
-# once. "on": always. "off": never — the model gets the file names.
+# once. "on": always. "off": never; the model gets the file names.
 vision = "auto"
 # Some DeepSeek thinking endpoints want reasoning_content echoed back with tool calls.
 pass_reasoning = false
@@ -93,7 +93,7 @@ user_profile = ""
 instructions = ""
 
 # ------------------------------------------------------------------------------
-# Sentinel — the gatekeeper between the agent and the world.
+# Sentinel: the gatekeeper between the agent and the world.
 # ------------------------------------------------------------------------------
 [sentinel]
 # ask    : safe/moderate actions run freely, sensitive ones need your approval (default)
@@ -193,11 +193,11 @@ enabled = true
 
 [sandbox]
 # Linux + bubblewrap (apt install bubblewrap): every shell / python_execute call runs in its
-# own namespace — only the workspace is writable, your home directory is not there, and
+# own namespace: only the workspace is writable, your home directory is not there, and
 # there is no network unless the command needs it. auto: use it when it works here (default);
 # bwrap: insist; off: run commands unboxed with the scrubbed environment only.
 mode = "auto"
-# Directories the box may use — the home directory as a whole stays out. share_read_only
+# Directories the box may use; the home directory as a whole stays out. share_read_only
 # for the programs, share for state a tool also writes (its login, a token it refreshes);
 # a directory under your home is also visible at the same place under the box's home.
 # share_read_only = ["~/.nvm"]        # e.g. node and the Feishu CLI (lark-cli), see docs/showcase.md
@@ -215,7 +215,7 @@ headless = true
 timeout_ms = 30000
 
 # ------------------------------------------------------------------------------
-# The phone — the agent reads a connected phone's screen and taps, types and swipes
+# The phone: the agent reads a connected phone's screen and taps, types and swipes
 # in its apps (12306, WeChat, Alipay have no API). Off by default; the Phone card in
 # the app is the same switch. docs/gui.md explains what asks for approval.
 # ------------------------------------------------------------------------------
@@ -230,7 +230,7 @@ device_timeout_s = 20.0  # how long to wait for the phone to answer one request
 reconnect_grace_s = 30.0  # how long a running task waits for a phone whose connection dropped to come back; 0 = give up at once
 
 # ------------------------------------------------------------------------------
-# Pictures and clips — where the avatar studio draws when it is not the chat model's
+# Pictures and clips: where the avatar studio draws when it is not the chat model's
 # host. All empty (the default): the chat provider's own picture model when it has one,
 # else the account's when signed in, else none. `provider` is a catalogue id
 # (nanomuse/llm/providers.json); base_url fills in from it. The app sets the same keys
@@ -249,7 +249,7 @@ reconnect_grace_s = 30.0  # how long a running task waits for a phone whose conn
 # api_key = "{{vault:VIDEO_API_KEY}}"
 
 # ------------------------------------------------------------------------------
-# MCP servers — reuse the ecosystem instead of writing connectors.
+# MCP servers: reuse the ecosystem instead of writing connectors.
 # ------------------------------------------------------------------------------
 # [[mcp.servers]]
 # name = "filesystem"
@@ -263,7 +263,7 @@ reconnect_grace_s = 30.0  # how long a running task waits for a phone whose conn
 # risk = "sensitive"
 # reads_private_data = true
 #
-# 高德地图 (Amap): places, routes, weather, distance — twelve tools, no browser, no phone.
+# 高德地图 (Amap): places, routes, weather, distance; twelve tools, no browser, no phone.
 # Get a key at https://console.amap.com (Web 服务), keep it in the vault
 # (`nanomuse vault set AMAP_KEY`); url, args and env accept {{vault:NAME}}.
 # [[mcp.servers]]
@@ -272,7 +272,7 @@ reconnect_grace_s = 30.0  # how long a running task waits for a phone whose conn
 # risk = "safe"
 # egress = true
 #
-# 12306 (trains in China): timetable, seats and prices, connections, stops — a community
+# 12306 (trains in China): timetable, seats and prices, connections, stops; a community
 # server (https://github.com/Joooook/12306-mcp), no key, no login; it cannot book.
 # The `train-tickets` skill searches here and books on the phone only when told to.
 # [[mcp.servers]]
@@ -282,7 +282,7 @@ reconnect_grace_s = 30.0  # how long a running task waits for a phone whose conn
 # risk = "safe"
 # egress = true
 #
-# 快递100 (parcels): where a parcel is, when it arrives, what shipping costs — the official
+# 快递100 (parcels): where a parcel is, when it arrives, what shipping costs; the official
 # server (https://github.com/kuaidi100-api/kuaidi100-MCP). Paid per new tracking number, with
 # a free trial; the 授权 key from api.kuaidi100.com goes in the vault (`nanomuse vault set KUAIDI100_KEY`).
 # [[mcp.servers]]
@@ -293,7 +293,7 @@ reconnect_grace_s = 30.0  # how long a running task waits for a phone whose conn
 # reads_private_data = true    # a tracking number and a phone number go out
 
 # ------------------------------------------------------------------------------
-# App server — `nanomuse serve` (the phone app)
+# App server: `nanomuse serve` (the phone app)
 # ------------------------------------------------------------------------------
 [server]
 host = "127.0.0.1"       # 0.0.0.0 to open it on your Wi-Fi, then scan the QR code with your phone
@@ -307,7 +307,7 @@ update_check = true      # say under Settings → About when a newer release is 
 start_grace = 4          # seconds the tools/MCP servers/cloud account may take before the app answers anyway (/api/health names the step still running)
 
 # ------------------------------------------------------------------------------
-# Conversation sync — what this device sends to and takes from the account
+# Conversation sync: what this device sends to and takes from the account
 # (the account-wide switch is Data controls → Sync; see docs/every-device.md)
 # ------------------------------------------------------------------------------
 [sync]
@@ -318,7 +318,7 @@ start_grace = 4          # seconds the tools/MCP servers/cloud account may take 
 side_chats = false
 
 # ------------------------------------------------------------------------------
-# nanoMuse Cloud — the relay this runtime signs in to (docs/cloud.md)
+# nanoMuse Cloud: the relay this runtime signs in to (docs/cloud.md)
 # ------------------------------------------------------------------------------
 [cloud]
 base_url = "https://cloud.nanomuse.cn"   # a relay you run yourself: its public address (docs/self-hosting.md)
@@ -326,7 +326,7 @@ required = true          # the first run does not finish without an account; fal
 sync = true              # default for the account-wide Data controls → Sync switch (the person's choice, once made, counts)
 
 # ------------------------------------------------------------------------------
-# The hub — this computer as one of the account's devices (docs/hub.md)
+# The hub: this computer as one of the account's devices (docs/hub.md)
 # ------------------------------------------------------------------------------
 [hub]
 enabled = true           # join the hub whenever the Cloud account is signed in
