@@ -75,7 +75,7 @@ proxy         = ""                 # an HTTP(S) or SOCKS proxy for this slot onl
 | vLLM / LM Studio | 你起的服务名 | `http://localhost:8000/v1` | 服务器不理会 `tools` 的话，设 `tool_mode = "prompt"` |
 | 公司网关 | 按要求 | 按要求 | 用 `extra_headers` / `extra_body`；按网关说的 API 形状来选 provider |
 
-App 里提供同一组预设（「连接 → 模型」，以及第一次打开时），每个都带一个链接，指向它的 key 从哪里领；确切的主机名在 `nanomuse/server/connections.py` 的 `PROVIDERS` 里。从 App 保存的 `base_url` 如果没有路径，会补上 `/v1`（`http://host:8000` → `http://host:8000/v1`）；预设自带的主机原样保留。Ollama 和自定义端点可以没有 key。
+网页控制台提供同一组预设（「连接 → 对话模型」，以及第一次打开时），每个都带一个链接，指向它的 key 从哪里领；确切的主机名在 `nanomuse/server/connections.py` 的 `PROVIDERS` 里。从 App 保存的 `base_url` 如果没有路径，会补上 `/v1`（`http://host:8000` → `http://host:8000/v1`）；预设自带的主机原样保留。Ollama 和自定义端点可以没有 key。
 
 `provider` 也可以是服务商目录 [`nanomuse/llm/providers.json`](../../nanomuse/llm/providers.json) 里的一个 id——`bailian`、`deepseek`、`moonshot`、`zhipu`、`openrouter`、`openai`、`gemini`……——这时 `base_url` 以及（为空时的）`model` 从目录里填上，只有 `api_key` 是你自己的。目录还写明每家服务商的 key 覆盖什么（聊天、手、图片、短视频）；服务器上的 `GET /api/providers` 报告每个槽位用的是哪家服务商、还剩哪些没被覆盖，App 对一项没人覆盖的功能只显示一句话（[own-key.md](own-key.md)）。
 

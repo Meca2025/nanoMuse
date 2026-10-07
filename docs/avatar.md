@@ -28,9 +28,11 @@ Where the pictures come from: the chat model's host and key. The relay speaks th
 images API (`/v1/images/generations`, `/v1/images/edits`), as does any OpenAI-compatible
 provider that draws; Alibaba Cloud Model Studio's own host has neither and is called on its
 native multimodal endpoint with the same key (qwen-image-3.0 by default). Which model draws
-is `[llm] image_model` in `config.toml` or *Connections → Image & video models* in the app;
-empty means the relay's image model for the account, qwen-image-3.0 on Model Studio, none
-elsewhere — and then the chat says so plainly instead of trying.
+is the `[image]` block in `config.toml` (`[llm] image_model` still works), the *Making
+pictures* row on *Connections* in the web console, or *Settings → Models* on the phones and
+the desktop; empty means *Automatic*: the chat model's provider when it draws (qwen-image-3.0
+on Model Studio), else the relay's image model for the account, else none, and then the chat
+says so plainly instead of trying.
 
 Once the stills are on, the studio makes the four short clips the phone's does — idle,
 working, waiting, happy; the same fixed motions — from them, when the endpoint has a video

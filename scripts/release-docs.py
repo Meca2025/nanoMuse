@@ -7,7 +7,7 @@
 - ``CHANGELOG.md``: a ``## [<new>] - <date> · <Codename>`` heading goes right under
   ``## [Unreleased]`` so the Unreleased bullets fall under it; the empty ``### Cloud / Runtime /
   …`` headings for the next version are put back by hand (see the previous release commit).
-- ``README.md``, ``docs/readme/README_*.md``, ``docs/index.md``: ``<old> <OldName>`` becomes
+- ``README.md``, ``docs/readme/README_*.md``, ``docs/index.md``, ``docs/zh/index.md``: ``<old> <OldName>`` becomes
   ``<new> <NewName>``, every ``v<old>`` tag and ``nanoMuse-<old>`` asset name moves to the new
   version; News lines (``- `<date>` ...``) are left alone, they name the milestones and the
   version they were written for on purpose. The *News* lists themselves (the README family and
@@ -55,7 +55,12 @@ def main(argv: list[str]) -> int:
     # version it was written for on purpose and keeps its tag; every other line moves to the new
     # version.
     news_line = re.compile(r"^- `\d{4}-\d{2}-\d{2}` ")
-    pages = ["README.md", "docs/index.md", *sorted(glob.glob("docs/readme/README_*.md"))]
+    pages = [
+        "README.md",
+        "docs/index.md",
+        "docs/zh/index.md",
+        *sorted(glob.glob("docs/readme/README_*.md")),
+    ]
     for name in pages:
         p = Path(name)
         out: list[str] = []

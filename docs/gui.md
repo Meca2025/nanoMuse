@@ -61,10 +61,13 @@ base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 api_key  = "{{vault:GUI_API_KEY}}"
 ```
 
-The chat model and the hands model are two settings (Connections → *Chat model* / *Hands model*). Leave `[gui] model` empty and:
+The chat model and the hands model are two settings: *Operating the screen* on *Settings → Models* (phones and desktop), the *Hands model* select on *Connections* (web console), `[gui] model` here. Leave it empty (the row's *Automatic*) and the hands follow one order:
 
-- with a nanoMuse Cloud account, the relay's hands model is used — `qwen3.8-27b` unless the relay names another (`/v1/models` says which models are `for` `chat`, `gui` or both); the chat default there is `deepseek-v4.1-flash`, which reads pictures too, but the hands want the model trained to point at things on a screen, so the two are kept apart;
-- with your own key, the chat model does both — which only works when it sees. The presets name a hands model on the same endpoint (Alibaba Cloud Bailian `qwen3.8-27b`, OpenRouter `qwen/qwen3.8-27b`) and the Hands model row fills it in; a model that is known to be blind (DeepSeek ids without `v4.1`, `vision` or `ocr`) is flagged there.
+- the chat model's provider, when it is a key of yours whose catalogue entry names a hands model on the same endpoint (Alibaba Cloud Bailian `qwen3.8-27b`, OpenRouter `qwen/qwen3.8-27b`); a model that is known to be blind (DeepSeek ids without `v4.1`, `vision` or `ocr`) is never offered for the hands;
+- else, with a nanoMuse Cloud account, the relay's hands model: `qwen3.8-27b` unless the relay names another (`/v1/models` says which models are `for` `chat`, `gui` or both); the chat default there is `deepseek-v4.1-flash`, which reads pictures too, but the hands want the model trained to point at things on a screen, so the two are kept apart;
+- else the chat model itself, which only works when it sees (the phones and the desktop try the first key of yours with a model that sees before that).
+
+A choice you made on the row always wins, and the row says what *Automatic* gives right now. When a hands model of your own fails, nothing switches by itself; the card offers *Use nanoMuse Cloud this time* for that one turn ([own-key.md](own-key.md#which-model-does-what)).
 
 The key goes into the vault like any other (`nanomuse vault set GUI_API_KEY`, or type it into the Phone card). The operator's model **must accept images**: a screenshot is the whole observation. The operator calls it at temperature 0 — grounding wants the model's first choice, not a sample.
 
