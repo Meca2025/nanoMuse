@@ -12,7 +12,9 @@
  * - `signed_out`: one sentence and *Sign in*; the others one sentence and *Try again*.
  *
  * Any other failure — an own key the provider refused, a model that timed out — gets a plain
- * sentence by the harness's routing code, with what came back folded under it.
+ * sentence by the harness's routing code, with what came back folded under it, and, signed
+ * in, *Use nanoMuse Cloud this time* (0.1.41): that one turn again through the account, the
+ * chat slot untouched (`POST /retry-cloud`, then the same resend). Nothing falls back by itself.
  */
 import { createElement as h, Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { providerFailureKind, refusalCard, refusalKindOf, type RefusalKind } from '../refusals.ts'
@@ -22,6 +24,7 @@ import { call, muted, row, type Translate } from './api.ts'
 import { settingsBus } from './bus.ts'
 import { focusComposer } from './composer.ts'
 import { IconRefresh } from './icons.tsx'
+import { useLive } from './live.ts'
 import { ACCOUNT_SECTION } from './OwnKey.tsx'
 
 /** The node the harness hands the seat: the failure's words and code, the turn it ended. */
@@ -118,6 +121,8 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
     const kind = refusalKindOf(code)
     const ref = useRef<HTMLDivElement>(null)
     const [busy, setBusy] = useState(false)
+    const [cloudError, setCloudError] = useState<string | undefined>()
+    const signedIn = useLive().cloud.signedIn
     const retry = () => {
       const text = turnText(ref.current, data.turn)
       if (!sessionId || !text) {
@@ -126,6 +131,20 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
       }
       setBusy(true)
       void deps.retry(sessionId, text).catch(() => focusComposer()).finally(() => setBusy(false))
+    }
+    // this one turn through the account: the host switches the session for a turn and puts it back when the turn ends
+    const retryOnCloud = () => {
+      const text = turnText(ref.current, data.turn)
+      if (!sessionId || !text) {
+        focusComposer()
+        return
+      }
+      setBusy(true)
+      setCloudError(undefined)
+      void call('retry-cloud', { sessionId })
+        .then(() => deps.retry(sessionId, text))
+        .catch((err: unknown) => setCloudError(t('failed', { message: (err as Error).message })))
+        .finally(() => setBusy(false))
     }
     const openSettings = () => { settingsBus.openSection?.(ACCOUNT_SECTION) }
     const button = (label: string, onClick: () => void, primary = false, icon?: ReactNode) =>
@@ -163,8 +182,10 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
     return h('div', { ref, className: 'nm-refusal nm-card', role: 'note', 'data-testid': 'nm-refusal', 'data-kind': `provider-${generic}` },
       h('div', { className: 'nm-refusal-text' }, providerFailureText(t, code, message)),
       message ? h('details', { className: 'nm-refusal-details' }, h('summary', { style: muted }, t('rfDetails')), h('pre', null, message, code ? `\n${code}` : '')) : null,
+      cloudError ? h('div', { className: 'nm-refusal-sub', style: muted }, cloudError) : null,
       h('div', { className: 'nm-refusal-actions', style: row },
         button(t('rfRetry'), retry, false, h(IconRefresh, { size: 14 })),
+        signedIn && sessionId ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm nm-pill-ghost', 'data-testid': 'nm-rf-cloud-once', disabled: busy, onClick: retryOnCloud }, t('rfUseCloudOnce')) : null,
         generic === 'too_large' ? button(t('rfNewChat'), () => deps.newChat()) : null,
         generic === 'auth' || generic === 'quota' ? button(t('rfSettings'), openSettings) : null))
   }

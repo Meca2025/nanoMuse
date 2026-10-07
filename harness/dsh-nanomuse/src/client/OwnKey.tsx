@@ -3,7 +3,7 @@
  *
  * One catalogue (`assets/providers.json`, read through the host's `GET /providers`) drives
  * three places: the onboarding's own-key step, Settings → Account's "ways on", and the model
- * pickers. Rows are grouped — the person's region first (mainland China: Bailian, one key for
+ * pickers on Settings → Models (`ModelsSection.tsx`). Rows are grouped — the person's region first (mainland China: Bailian, one key for
  * chat, hands, pictures and clips; elsewhere: OpenRouter, then OpenAI), then the subscriptions
  * one can sign in with, then the rest ordered by how much they cover, then servers on this
  * computer, then any OpenAI-compatible endpoint by hand. Each row says what it covers (`chat ·
@@ -13,7 +13,8 @@
  * The gate: the pickers list only models of providers that have the capability; a
  * capability nobody has is one sentence naming the catalogue's providers for the region
  * (`ownKeyNoImage`, `ownKeyNoVideo`, `ownKeyNoVision`; with only the ChatGPT sign-in,
- * `ownKeyChatGptNoMedia`), never a raw error. Mounted in `CloudSection.tsx` (Settings →
+ * `ownKeyChatGptNoMedia`), never a raw error. After a key is saved, the "Use it for" card
+ * (0.1.41) offers the slots the row could take. Mounted in `CloudSection.tsx` (Settings →
  * Account, signed in or out), `Onboarding.tsx` (the own-key step), `AvatarStudio.tsx` and
  * `MediaSection.tsx` (the sentences for pictures and clips).
  */
@@ -56,7 +57,7 @@ export interface ProvidersView {
   chat: { provider: string; model: string }
 }
 
-export interface ModelOption { provider: string; providerLabel: string; id: string; name: string }
+export interface ModelOption { provider: string; providerLabel: string; id: string; name: string; /** The relay's recommended one for that lane. */ recommended?: boolean }
 
 const CAPS: Capability[] = ['chat', 'vision', 'image', 'video']
 
@@ -121,7 +122,7 @@ export function UnavailableLine({ t, view, capability, link = false, className =
 
 // ---- one row -----------------------------------------------------------------------------------
 
-function KeyForm({ t, entry, region, configured, onSaved, onCancel }: { t: Translate; entry: ProviderEntry; region: Region; configured: OwnProvider | undefined; onSaved(said: string): void; onCancel(): void }): ReactNode {
+function KeyForm({ t, entry, region, configured, onSaved, onCancel }: { t: Translate; entry: ProviderEntry; region: Region; configured: OwnProvider | undefined; onSaved(said: string, got: { label: string; offer: SlotOffer }): void; onCancel(): void }): ReactNode {
   const base = baseUrlFor(entry, region)
   const [apiKey, setApiKey] = useState('')
   const [baseURL, setBaseURL] = useState(configured?.baseURL ?? base)
@@ -138,8 +139,8 @@ function KeyForm({ t, entry, region, configured, onSaved, onCancel }: { t: Trans
     const body: Record<string, unknown> = { id: entry.id, apiKey, lang: t('langTag') }
     if (editable) body.baseURL = baseURL
     if (entry.user_capabilities) { body.capabilities = caps; body.label = label }
-    call<OwnProvider>('providers/save', body)
-      .then((saved) => onSaved(saved.models.length ? t('ownKeySaved', { n: saved.models.length }) : t('ownKeySavedNone')))
+    call<OwnProvider & { offer?: SlotOffer }>('providers/save', body)
+      .then((saved) => onSaved(saved.models.length ? t('ownKeySaved', { n: saved.models.length }) : t('ownKeySavedNone'), { label: saved.label, offer: saved.offer ?? {} }))
       .catch((err: unknown) => setError(t('failed', { message: (err as Error).message })))
       .finally(() => setBusy(false))
   }
@@ -214,10 +215,54 @@ export function ChatGptRow({ t, view, onChanged }: { t: Translate; view: Provide
             : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: busy || !view.chatgpt.runtime, onClick: signIn }, t('ownKeySignIn')))))
 }
 
+// ---- the "Use it for" card ------------------------------------------------------------------------
+
+export type Slot = 'chat' | 'hands' | 'image' | 'video'
+const SLOTS: readonly Slot[] = ['chat', 'hands', 'image', 'video']
+/** What a saved row could take and the model each slot would get (`POST /providers/save` → `offer`). */
+export type SlotOffer = Partial<Record<Slot, string>>
+
+/**
+ * After a key is saved (contract section 2): one toggle per slot the row has a model for, all
+ * on; *Use it* switches the ticked slots to the row through the Models page's own setters
+ * (`POST /providers/adopt`), *Not now* leaves everything as it is. The footnote says where to
+ * change it later. Signed out, the body does not promise that nanoMuse Cloud keeps the rest.
+ */
+export function UseItCard({ t, id, label, offer, signedIn, onDone }: { t: Translate; id: string; label: string; offer: SlotOffer; signedIn: boolean; onDone(said?: string): void }): ReactNode {
+  const slots = SLOTS.filter((s) => offer[s])
+  const [ticked, setTicked] = useState<Slot[]>(slots)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | undefined>()
+  const title = (s: Slot) => (s === 'chat' ? t('mlChat') : s === 'hands' ? t('mlHands') : s === 'image' ? t('mlImage') : t('mlVideo'))
+  const use = () => {
+    setBusy(true)
+    setError(undefined)
+    call<{ done: SlotOffer }>('providers/adopt', { id, slots: ticked })
+      .then((r) => onDone(Object.keys(r.done).length ? t('useItDone', { label }) : undefined))
+      .catch((err: unknown) => setError(t('failed', { message: (err as Error).message })))
+      .finally(() => setBusy(false))
+  }
+  if (!slots.length) return null
+  return h('div', { className: 'nm-card nm-useit', 'data-testid': 'nm-useit', style: { marginTop: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 } },
+    h('div', { style: { fontWeight: 600 } }, t('useItTitle')),
+    h('div', { className: 'nm-wrap', style: muted }, signedIn ? t('useItBody') : t('useItBodyOut')),
+    h('div', { style: { display: 'flex', flexDirection: 'column', gap: 4 } },
+      slots.map((s) => h('label', { key: s, style: { display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 } },
+        h('input', { type: 'checkbox', 'data-testid': `nm-useit-${s}`, checked: ticked.includes(s), disabled: busy, onChange: () => setTicked((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s])) }),
+        h('span', null, title(s)),
+        h('span', { style: muted }, `${label} · ${offer[s]}`)))),
+    error ? h('div', { style: errorStyle }, error) : null,
+    h('div', { style: row },
+      h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: busy || !ticked.length, onClick: use }, busy ? t('sending') : t('useItUse')),
+      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: busy, onClick: () => onDone() }, t('useItNotNow'))),
+    h('div', { className: 'nm-wrap', style: { ...muted, fontSize: 12 } }, t('useItFoot')))
+}
+
 export function ProviderRow({ t, entry, view, onChanged }: { t: Translate; entry: ProviderEntry; view: ProvidersView; onChanged(said?: string): void }): ReactNode {
   const configured = view.configured.find((p) => p.provider === entry.id)
   const [open, setOpen] = useState(false)
   const [said, setSaid] = useState<string | undefined>()
+  const [offer, setOffer] = useState<{ label: string; offer: SlotOffer } | undefined>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const keyUrl = keyUrlFor(entry, view.region)
@@ -225,7 +270,7 @@ export function ProviderRow({ t, entry, view, onChanged }: { t: Translate; entry
   const remove = () => {
     setBusy(true)
     setError(undefined)
-    call('providers/remove', { id: entry.id }).then(() => { setSaid(undefined); onChanged() }).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+    call('providers/remove', { id: entry.id }).then(() => { setSaid(undefined); setOffer(undefined); onChanged() }).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
   }
   return h('div', { className: 'nm-way' },
     h('span', { className: 'nm-way-icon' }, configured ? h(IconCheck, { size: 15 }) : h(IconKey, { size: 15 })),
@@ -234,9 +279,12 @@ export function ProviderRow({ t, entry, view, onChanged }: { t: Translate; entry
       open ? h('div', { className: 'nm-way-sub nm-wrap', style: muted }, noteOf(t, entry), entry.verified ? ` · ${t('ownKeyVerified', { month: entry.verified })}` : '') : null,
       configured ? h('div', { className: 'nm-way-sub' }, `${t('ownKeyConfigured')} · ${configured.models.length ? t('ownKeySaved', { n: configured.models.length }) : t('ownKeySavedNone')}`) : null,
       said ? h('div', { className: 'nm-way-sub' }, said) : null,
+      offer
+        ? h(UseItCard, { t, id: entry.id, label: offer.label || nameOf(t, entry), offer: offer.offer, signedIn: view.cloud.signedIn, onDone: (text) => { setOffer(undefined); if (text) setSaid(text); onChanged(text) } })
+        : null,
       error ? h('div', { style: errorStyle }, error) : null,
       open
-        ? h(KeyForm, { t, entry, region: view.region, configured, onSaved: (text) => { setOpen(false); setSaid(text); onChanged(text) }, onCancel: () => setOpen(false) })
+        ? h(KeyForm, { t, entry, region: view.region, configured, onSaved: (text, got) => { setOpen(false); setSaid(text); setOffer(Object.keys(got.offer).length ? got : undefined); onChanged(text) }, onCancel: () => setOpen(false) })
         : h('div', { style: row },
             h('button', { type: 'button', className: `nm-pill nm-pill-sm${configured ? ' nm-pill-ghost' : ''}`, disabled: busy, onClick: () => setOpen(true) }, configured ? t('ownKeyChange') : needsKey ? t('ownKeyAdd') : t('ownKeyConnect')),
             keyUrl && needsKey ? h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: () => openLink(keyUrl) }, t('ownKeyGetKey')) : null,
@@ -301,78 +349,32 @@ export function WaysOnRows({ t, view, groups = ALL_GROUPS, signInRow = true, hea
   return h('div', { className: 'nm-ways' }, out)
 }
 
-// ---- the pickers ----------------------------------------------------------------------------------
+// ---- the link to Settings → Models ---------------------------------------------------------------
 
-const SEP = '\u0000'
+/** The settings section the four model slots live in (0.1.41), as `ModelsSection.tsx` registers it. */
+export const MODELS_SECTION = 'nanomuse-models'
 
 /**
- * The chat and hands pickers (C4, C11): the account's models and the own rows' together, each
- * list only the models of providers with the capability; a list with nothing in it is the
- * gate's one sentence instead.
+ * Where the pickers went (0.1.41): one line on the Account page that opens Settings → Models,
+ * with what new chats answer through and what the hands see with, in `<provider> · <model>`.
  */
-export function ModelPickers({ t, view, onChanged }: { t: Translate; view: ProvidersView; onChanged(): void }): ReactNode {
-  const [chat, setChat] = useState<ModelOption[] | undefined>()
-  const [hands, setHands] = useState<ModelOption[] | undefined>()
-  const [busy, setBusy] = useState<'chat' | 'hands' | null>(null)
-  const [error, setError] = useState<string | undefined>()
-  const [handsNote, setHandsNote] = useState(false)
-  const key = `${view.configured.map((p) => p.provider + p.at).join(',')}|${view.cloud.signedIn}`
-  useEffect(() => {
-    let alive = true
-    void Promise.all([call<{ options: ModelOption[] }>('providers/models?cap=chat'), call<{ options: ModelOption[] }>('providers/models?cap=vision')])
-      .then(([c, v]) => { if (alive) { setChat(c.options); setHands(v.options) } })
-      .catch(() => { if (alive) { setChat([]); setHands([]) } })
-    return () => { alive = false }
-  }, [key])
-  const set = (kind: 'chat' | 'hands', value: string) => {
-    const [provider, model] = value.split(SEP)
-    if (!provider || !model) return
-    setBusy(kind)
-    setError(undefined)
-    call(kind === 'chat' ? 'chat-model' : 'hands-model', { model, provider })
-      .then(() => { if (kind === 'hands') setHandsNote(true); onChanged() })
-      .catch((err: unknown) => setError(t('failed', { message: (err as Error).message })))
-      .finally(() => setBusy(null))
-  }
-  if (!chat || !hands) return h('div', { style: muted }, t('loading'))
-  // a configured source with chat but no sighted model (DeepSeek's key, a local server): the hands row says so rather than listing nothing
-  const handsSub = hands.length
-    ? (handsNote ? t('mdHandsRestart') : t('mdHandsSub'))
-    : view.capabilities.includes('vision') ? t('ownKeyHandsNoneSub') : t('ownKeyNoVision', { providers: providersNamed(t, view, 'vision') })
-  const select = (kind: 'chat' | 'hands', list: ModelOption[], current: { provider: string; model: string }) => {
-    const value = `${current.provider}${SEP}${current.model}`
-    const known = list.some((o) => `${o.provider}${SEP}${o.id}` === value)
-    const byProvider = new Map<string, ModelOption[]>()
-    for (const o of list) byProvider.set(o.providerLabel, [...(byProvider.get(o.providerLabel) ?? []), o])
-    return h('select', {
-      className: 'nm-field nm-select',
-      value: known ? value : '',
-      disabled: busy !== null,
-      'aria-label': kind === 'chat' ? t('mdChat') : t('mdHands'),
-      onChange: (e: { currentTarget: HTMLSelectElement }) => set(kind, e.currentTarget.value),
-    },
-      known ? null : h('option', { value: '' }, kind === 'chat' && current.provider ? t('mdOther') : t('mdPick')),
-      [...byProvider.entries()].map(([label, options]) => h('optgroup', { key: label, label }, options.map((o) => h('option', { key: `${o.provider}${SEP}${o.id}`, value: `${o.provider}${SEP}${o.id}` }, o.name)))))
-  }
+export function ModelsLink({ t, view }: { t: Translate; view: ProvidersView }): ReactNode {
+  const labelOf = (provider: string) => (provider === 'nanomuse' ? 'nanoMuse Cloud' : view.configured.find((p) => p.provider === provider)?.label || provider)
+  const line = (slot: { provider: string; model: string }) => (slot.model ? `${labelOf(slot.provider)} · ${slot.model}` : t('mdPick'))
   return h('div', { className: 'nm-card', style: { marginTop: 4 } },
-    h('div', { className: 'nm-row' },
+    h('button', { type: 'button', className: 'nm-row nm-row-button', 'data-testid': 'nm-models-link', onClick: () => { settingsBus.openSection?.(MODELS_SECTION) } },
       h('div', { className: 'nm-row-main' },
-        h('span', { className: 'nm-row-title' }, t('mdChat')),
-        h('span', { className: 'nm-row-sub nm-wrap' }, chat.length ? t('mdChatSub') : t('ownKeyNoChat'))),
-      chat.length ? select('chat', chat, view.chat) : null),
-    h('div', { className: 'nm-row' },
-      h('div', { className: 'nm-row-main' },
-        h('span', { className: 'nm-row-title' }, t('mdHands')),
-        h('span', { className: 'nm-row-sub nm-wrap' }, handsSub)),
-      hands.length ? select('hands', hands, view.hands) : null),
-    error ? h('div', { style: { ...errorStyle, padding: '0 14px 10px' } }, error) : null)
+        h('span', { className: 'nm-row-title' }, t('mlTitle')),
+        h('span', { className: 'nm-row-sub nm-wrap' }, `${t('mlChat')}: ${line(view.chat)} · ${t('mlHands')}: ${line(view.hands)}`)),
+      h('span', { className: 'nm-row-chevron', 'aria-hidden': true }, '›')))
 }
 
 const heading: Record<string, string | number> = { fontSize: 14, fontWeight: 600, margin: '8px 0 0' }
 
 /**
  * Settings → Account: *Ways on* — the account's row first while signed in, then the catalogue
- * in its groups — and the two pickers, with the gate's sentences for what nothing covers yet.
+ * in its groups — and one line that opens Settings → Models, where the four pickers live
+ * (0.1.41), with the gate's sentences for what nothing covers yet.
  */
 export function OwnKeyPanel({ t, onChanged }: { t: Translate; onChanged?(): void }): ReactNode {
   const { view, error, reload } = useProviders(t)
@@ -380,9 +382,7 @@ export function OwnKeyPanel({ t, onChanged }: { t: Translate; onChanged?(): void
   if (error) return h('div', { style: errorStyle }, error)
   if (!view) return h('div', { style: muted }, t('loading'))
   return h('div', { 'data-testid': 'nm-ownkey-panel', style: { display: 'flex', flexDirection: 'column', gap: 12 } },
-    h('h3', { style: heading }, t('ownKeyPickers')),
-    h('div', { style: muted }, t('ownKeyPickersSub')),
-    h(ModelPickers, { t, view, onChanged: changed }),
+    h(ModelsLink, { t, view }),
     h(UnavailableLine, { t, view, capability: 'image' }),
     h(UnavailableLine, { t, view, capability: 'video' }),
     h('h3', { style: heading }, t('ownKeyWaysTitle')),

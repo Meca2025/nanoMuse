@@ -62,6 +62,8 @@ export interface MotionProgress {
   current?: MotionMood
   stage?: VideoProgress
   error?: string
+  /** Where the run draws: `nanomuse` for the account, else an own row's id (the failure line offers Cloud when it is an own row). */
+  source?: string
 }
 
 export interface ClipInfo {
@@ -81,8 +83,8 @@ export interface MotionView {
 export interface MotionDeps {
   /** `$DSH_HOME/nanomuse/avatar/motion`. */
   dir: string
-  /** The video model to draw with, or nothing (no key, switched off, OpenRouter). */
-  endpoint(): Promise<VideoEndpoint | undefined>
+  /** The video model to draw with, or nothing (no key, switched off, OpenRouter); `viaCloud` asks for the account whatever the slot says. */
+  endpoint(viaCloud?: boolean): Promise<VideoEndpoint | undefined>
   /** Whether the person wants a new face animated (the Media setting; default on). */
   animate(): boolean
   /** The face worn now: its id (empty for the dragon or an emoji) and a still per mood. */
@@ -182,9 +184,10 @@ export class AvatarMotion {
    * Draws the missing clips (all of them with `force`). No-op without a face or a video
    * model. Returns false when nothing was started. Clips are drawn one after another; a
    * failure marks that mood and the rest carry on — a partial set is fine, the still fills in.
+   * `viaCloud` draws this run with the account (*Use nanoMuse Cloud this time*), the slot untouched.
    */
-  async animateAll(force = false): Promise<boolean> {
-    const ep = await this.deps.endpoint()
+  async animateAll(force = false, viaCloud = false): Promise<boolean> {
+    const ep = await this.deps.endpoint(viaCloud)
     if (!ep) return false
     const face = this.deps.faceId()
     if (!face) return false
@@ -196,7 +199,7 @@ export class AvatarMotion {
     if (!todo.length) return false
     this.cancel()
     const abort = new AbortController()
-    this.progress = { done: 0, total: todo.length, failed: [], running: true }
+    this.progress = { done: 0, total: todo.length, failed: [], running: true, source: ep.instanceId }
     this.deps.onChange()
     const generate = this.deps.generate ?? imageToVideo
     const promise = (async () => {
@@ -207,7 +210,7 @@ export class AvatarMotion {
       await writeFile(join(this.deps.dir, MARKER), JSON.stringify({ faceId: face, model: ep.model, at: Date.now() }, null, 2) + '\n').catch(() => undefined)
       for (const [i, mood] of todo.entries()) {
         if (abort.signal.aborted) break
-        this.progress = { done: i, total: todo.length, failed: [...failed], running: true, current: mood }
+        this.progress = { done: i, total: todo.length, failed: [...failed], running: true, current: mood, source: ep.instanceId }
         this.deps.onChange()
         const frame = (await this.deps.still(mood).catch(() => undefined)) ?? (await this.deps.still('idle').catch(() => undefined))
         if (!frame) {
@@ -218,7 +221,7 @@ export class AvatarMotion {
           const bytes = await generate(ep, frame, motionPrompt(mood), SECONDS, {
             signal: abort.signal,
             onProgress: (stage) => {
-              this.progress = { done: i, total: todo.length, failed: [...failed], running: true, current: mood, stage }
+              this.progress = { done: i, total: todo.length, failed: [...failed], running: true, current: mood, stage, source: ep.instanceId }
               this.deps.onChange()
             },
           })
@@ -237,7 +240,7 @@ export class AvatarMotion {
         }
       }
       if (!abort.signal.aborted) {
-        this.progress = { done: todo.length, total: todo.length, failed, running: false, ...(lastError ? { error: lastError } : {}) }
+        this.progress = { done: todo.length, total: todo.length, failed, running: false, source: ep.instanceId, ...(lastError ? { error: lastError } : {}) }
         this.deps.onChange()
       }
     })().finally(() => {

@@ -168,42 +168,14 @@
           # runtime's descriptions and its "ask the person first" gate. NANOMUSE_PY
           # names the runtime's executable when it is not on PATH (a venv, the
           # desktop app's bundled runtime); a missing runtime leaves the preset
-          # without hands rather than broken.
+          # without hands rather than broken. src/hands-tools.ts mounts one
+          # `@deepseek-ai/dsh-mcp-client` with the hands model's environment
+          # (NANOMUSE_GUI_*) from the cloud service, and mounts it again when
+          # the model changes (Settings → Models → Operating the screen), so a
+          # change takes effect without a restart. Needs the host row
+          # `nanomuse-cloud`.
           - id: nanomuse-hands
-            name: '@deepseek-ai/dsh-mcp-client'
-            config:
-              transport: stdio
-              serverName: nanomuse
-              command: !!js process.env.NANOMUSE_PY || 'nanomuse'
-              args: [mcp]
-              # DISPLAY for the hands on Linux; NANOMUSE_MCP_CONFIRM binds the
-              # server's "the person agreed" confirmations to this host (the
-              # desktop shell sets it per launch; see nanomuse/bridge/mcp_server.py).
-              # NANOMUSE_OPERATOR_URL/TOKEN: the desktop app's own mouse, keyboard
-              # and screenshot on loopback (harness/desktop/src/operator-server.ts),
-              # which the runtime prefers over its Python backends. Named here
-              # because the harness drops credential-shaped names (…TOKEN) from
-              # a child's inherited environment.
-              # The hands model (Settings → Account → Hands model) reaches the
-              # runtime's `[gui]` through $DSH_HOME/nanomuse/hands.json, which
-              # src/cloud.ts writes; read once, when the server starts.
-              env: !!js |
-                Object.assign(
-                  Object.fromEntries(['DISPLAY', 'NANOMUSE_MCP_CONFIRM', 'NANOMUSE_OPERATOR_URL', 'NANOMUSE_OPERATOR_TOKEN'].filter((k) => process.env[k]).map((k) => [k, process.env[k]])),
-                  (() => {
-                    try {
-                      const fs = process.getBuiltinModule('node:fs')
-                      const path = process.getBuiltinModule('node:path')
-                      const home = process.env.DSH_HOME || path.join(process.env.HOME || process.env.USERPROFILE || '.', '.dsh')
-                      const hands = JSON.parse(fs.readFileSync(path.join(home, 'nanomuse', 'hands.json'), 'utf8'))
-                      if (!hands || !hands.model || !hands.api_key) return {}
-                      return { NANOMUSE_GUI_ENABLED: '1', NANOMUSE_GUI_PROVIDER: String(hands.provider || 'openai'), NANOMUSE_GUI_MODEL: String(hands.model), NANOMUSE_GUI_BASE_URL: String(hands.base_url || ''), NANOMUSE_GUI_API_KEY: String(hands.api_key) }
-                    } catch { return {} }
-                  })(),
-                )
-              cwd: !!js process.env.HOME || process.env.USERPROFILE || process.cwd()
-              toolCallTimeoutMs: 120000
-              failOnStartupError: false
+            name: dsh-nanomuse/hands-tools
           # Reach: the account's other devices over the hub — `devices`,
           # `device_screen`, `device_shell`, `device_files`, `device_open`,
           # `device_notify` and `delegate` (src/reach.ts), plus the prompt

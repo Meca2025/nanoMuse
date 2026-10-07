@@ -38,7 +38,9 @@ export const HARNESS_SECTION = 'nanomuse-harness'
 /** Muse's nav, in its order; the account page, models and presets are Advanced (the account card on General opens the first). */
 /** Desk-B's Media page (image and video models), as registered in `index.ts`. */
 const MEDIA_SECTION = 'nanomuse-media'
-const PRIMARY: readonly string[] = ['general', 'nanomuse-connectors', COMPUTER_SECTION, MEDIA_SECTION, 'nanomuse-files', 'nanomuse-dictation', WALLET_SECTION, STORAGE_SECTION, 'nanomuse-permissions', CHANNELS_SECTION, 'nanomuse-devices', DATA_SECTION, HELP_SECTION, LEGAL_SECTION]
+/** Settings → Models (0.1.41): the four slots, right after General. */
+const MODELS_SECTION = 'nanomuse-models'
+const PRIMARY: readonly string[] = ['general', MODELS_SECTION, 'nanomuse-connectors', COMPUTER_SECTION, MEDIA_SECTION, 'nanomuse-files', 'nanomuse-dictation', WALLET_SECTION, STORAGE_SECTION, 'nanomuse-permissions', CHANNELS_SECTION, 'nanomuse-devices', DATA_SECTION, HELP_SECTION, LEGAL_SECTION]
 
 export interface SectionRow {
   id: string
@@ -89,6 +91,7 @@ function navIcon(id: string): ReactNode {
     case 'general': return h(IconSliders, { size: 16 })
     case 'nanomuse-cloud': return h(IconUser, { size: 16 })
     case 'models': return h(IconDatabase, { size: 16 })
+    case MODELS_SECTION: return h(IconDatabase, { size: 16 })
     case 'agent-presets': return h(IconSparkle, { size: 16 })
     case 'nanomuse-devices': return h(IconDevices, { size: 16 })
     case COMPUTER_SECTION: return h(IconHand, { size: 16 })

@@ -40,6 +40,10 @@
       "types": "./lib/types/connectors-tools.d.ts",
       "default": "./lib/connectors-tools.js"
     },
+    "./hands-tools": {
+      "types": "./lib/types/hands-tools.d.ts",
+      "default": "./lib/hands-tools.js"
+    },
     "./client": {
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"

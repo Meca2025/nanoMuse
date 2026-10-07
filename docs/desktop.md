@@ -161,11 +161,40 @@ the browser side keeps in that origin's storage, stays the same from launch to l
 home kept by nanoMuse Harness 0.1.28–0.1.29 under `~/.nanomuse/harness`
 is taken over once. `NANOMUSE_CLOUD_URL` points the account at another relay;
 `NANOMUSE_PY` points the preset at another runtime for the hands. The CLI's own `~/.dsh`
-is not touched. `nanomuse/hands.json` under the home (mode 0600) is the hands model the
-person picked in Settings → nanoMuse Cloud — provider, model, base URL and the account's token
-— read by the preset into the runtime's `NANOMUSE_GUI_*` environment at the next start,
-and removed on sign-out; `nanomuse/rooms.json` keeps the rooms (feed, goals with their
-steps and progress, which ideas were tried, the library index, memory).
+is not touched. `nanomuse/hands.json` under the home (mode 0600) is the hands model as
+Settings → Models resolves it — provider, model, base URL and the key — the same values
+the plugin hands the runtime as its `NANOMUSE_GUI_*` environment. Since 0.1.41 the hands'
+MCP client is mounted by the plugin itself (`dsh-nanomuse/hands-tools`) rather than by a
+fixed preset row: a change under *Operating the screen* disposes the client and starts
+`nanomuse mcp` again with the new environment, so it takes effect without a restart (a
+hands call in flight finishes first). The file is removed when nothing is configured;
+`nanomuse/rooms.json` keeps the rooms (feed, goals with their steps and progress, which
+ideas were tried, the library index, memory).
+
+## Models
+
+Settings → Models, right after General, is one row per thing a model does: *Chat*,
+*Operating the screen*, *Making pictures*, *Making clips*. Each picker lists nanoMuse Cloud
+first while you are signed in, its recommended model marked, then one group per provider
+you added under Settings → nanoMuse Cloud, each group holding only the models that can do
+that row's job (the screen needs a model that sees images; the hands speak OpenAI's shape,
+so an Anthropic or native Gemini key is named under the row but not listed). A row nothing
+can do shows one sentence naming who could and *Add a provider*.
+
+What a row uses when you have not chosen: the provider new chats answer through, when it
+is one of your own and has a model for the job (its catalogue default); else nanoMuse
+Cloud while signed in; else the first of your providers that can. A chat change applies to
+new chats. Pictures through your own key go straight to that provider — Model Studio's
+native image API, OpenRouter's image API, or the OpenAI shape for the rest — and nothing
+is billed to the account; the avatar studio says so in place of the cost line. Clips come
+from Model Studio only, through the account or your own Bailian key.
+
+After you save a key, a small card asks *Use it for* with a toggle per thing the key can
+handle, all on; *Use it* switches those rows to that provider, *Not now* changes nothing.
+When a model of your own fails under a turn, the card offers *Use nanoMuse Cloud this
+time* while signed in: that one message is sent again through the account and the chat
+goes back to its model when the turn ends; the Models page stays as it was. Nothing falls
+back on its own. The same button follows a failed studio round and a failed set of clips.
 
 The profile's `node_modules/dsh-nanomuse` is a link (a junction on Windows) to the plugin
 inside the installed app, rewritten at every launch whose install folder differs from the
