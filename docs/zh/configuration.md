@@ -146,7 +146,7 @@ model    = ""                         # empty → the catalogue's default (wan2.
 api_key  = "{{vault:VIDEO_API_KEY}}"
 ```
 
-目录里没有的主机可以不写 `provider`，改写 `base_url`；`api_key` 发给那台主机（`[video]` 自己的主机用 `[video]` 的 key，不用图片主机的）。一项没有任何配置覆盖的功能就是不可用，并用一句话说明谁可以——大陆是*图片需要一家有图像模型的服务商——阿里云百炼、智谱 GLM、SiliconFlow 或火山方舟（怎么做：docs/own-key.md）*，其他地方是 OpenRouter、OpenAI、Google Gemini 或 xAI Grok，按 `[agent] language` 用英文或中文——出现在形象工作室、「连接」里的「生成图片」和「生成视频」下，以及 `GET /api/providers` 里。这些句子和能力都来自目录，目录变它们就变。
+目录里没有的主机可以不写 `provider`，改写 `base_url`；`api_key` 发给那台主机（`[video]` 自己的主机用 `[video]` 的 key，不用图片主机的）。一项没有任何配置覆盖的功能就是不可用，并用一句话说明谁可以——大陆是*图片需要一家有图像模型的服务商：阿里云百炼、智谱 GLM、SiliconFlow 或火山方舟（怎么做：docs/own-key.md）*，其他地方是 OpenRouter、OpenAI、Google Gemini 或 xAI Grok，按 `[agent] language` 用英文或中文——出现在形象工作室、「连接」里的「生成图片」和「生成视频」下，以及 `GET /api/providers` 里。这些句子和能力都来自目录，目录变它们就变。
 
 应用层设置的是同样的槽位：`PUT /api/connections/image` 和 `PUT /api/connections/video` 接受 `provider`（目录 id，或 `openai` / `openai_responses` 加 `base_url`）、`model`（空：目录的默认值）、`base_url` 和 `api_key`（进保险库，名为 `IMAGE_API_KEY` / `VIDEO_API_KEY`，或原样保留的 `{{vault:NAME}}` 引用；`""` 删掉它），写 `app-settings.json` 的 `image` / `video` 对象，键和这里一样是四个，像其他设置一样叠在这个文件之上，并回答槽位的设置加上它解析成什么（`effective_provider`、`effective_model`、`effective_source`：`app`、`config`、`chat` 或 `cloud`）；`GET /api/connections/image` 和 `/video` 回答同样的内容，`GET /api/connections` 两者都带。四项都空就清掉槽位。目录里列出但没有这项能力的服务商被拒绝，400 加那一句话（`DeepSeek has no image models; Pictures need …`），ChatGPT 登录也一样；本地服务器或目录不认识的主机放行，因为它有的是你装的东西。网页控制台的「生成图片」和「生成视频」两行用的就是这些路由（[web.md](web.md)）。
 

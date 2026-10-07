@@ -220,8 +220,8 @@ class Catalogue:
 
     def unavailable_sentence(self, capability: str, region: str = "", lang: str = "en") -> str:
         """The one sentence a client shows for a feature nobody configured can do, e.g.
-        *Pictures need a provider with image models — Bailian, OpenAI, Gemini or OpenRouter
-        (how: docs/own-key.md).*"""
+        *Pictures need a provider with image models: OpenRouter, OpenAI, Google Gemini or
+        xAI Grok (how: docs/own-key.md).*"""
         lang = "zh" if str(lang).lower().startswith("zh") else "en"
         noun, need = _NOUNS[lang].get(capability) or (capability, _NOUNS[lang]["chat"][1])
         names = [p.label(lang) for p in self.providers_for(capability, region)]
