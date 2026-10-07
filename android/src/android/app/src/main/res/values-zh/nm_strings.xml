@@ -1040,4 +1040,26 @@
     <string name="nm_ways_computer_title">你的电脑</string>
     <string name="nm_ways_computer_body">在对话里输入 @ 和电脑的名字，这一轮就在那台电脑上、用它配置好的提供方完成。</string>
     <string name="nm_ways_devices">设备</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">模型</string>
+    <string name="nm_models_intro">哪个模型做哪件事。每一行都会打开一个选择页；nanoMuse Cloud 和你添加的服务商会连同合适的模型一起列在那里。</string>
+    <string name="nm_models_chat_title">对话</string>
+    <string name="nm_models_chat_sub">和你说话的模型。</string>
+    <string name="nm_models_hands_title">操作屏幕</string>
+    <string name="nm_models_hands_sub">看着屏幕替你操作，需要能看图的模型。</string>
+    <string name="nm_models_image_title">生成图片</string>
+    <string name="nm_models_image_sub">形象的肖像，以及你要的图片。</string>
+    <string name="nm_models_video_title">生成视频</string>
+    <string name="nm_models_video_sub">形象的短视频。</string>
+    <string name="nm_models_new_chats">新对话起生效。</string>
+    <string name="nm_models_media_more">更多图片和视频选项</string>
+    <string name="nm_models_media_more_sub">手动输入模型名、查看缺了哪个模型会停下什么，或重新检查一把 key 能用哪些视频模型。</string>
+    <string name="nm_useit_title">用它来做什么</string>
+    <string name="nm_useit_body">选这把 key 负责哪些事，其余仍由 nanoMuse Cloud 负责。</string>
+    <string name="nm_useit_body_signed_out">选这把 key 负责哪些事。</string>
+    <string name="nm_useit_use">就这样</string>
+    <string name="nm_useit_not_now">暂不</string>
+    <string name="nm_useit_footnote">以后可以在 设置 › 模型 里改。</string>
+    <string name="nm_retry_on_cloud">这次改用 nanoMuse Cloud</string>
+    <string name="nm_hands_why_chat_provider">你对话服务商的动手默认模型</string>
 </resources>

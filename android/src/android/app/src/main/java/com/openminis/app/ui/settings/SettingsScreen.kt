@@ -43,7 +43,6 @@ import androidx.compose.material.icons.outlined.FrontHand
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -100,7 +99,7 @@ fun SettingsScreen(
     onSoulClick: () -> Unit = {},
     onSystemFilesClick: () -> Unit = {}, // nanoMuse
     onAvatarClick: () -> Unit = {}, // nanoMuse
-    onMediaModelsClick: () -> Unit = {}, // nanoMuse: Settings → Image & video models
+    onModelsClick: () -> Unit = {}, // nanoMuse: Settings → Models (the four slots: chat, the screen, pictures, clips)
     onCloudClick: () -> Unit = {}, // nanoMuse: Settings → nanoMuse Cloud (the starter allowance)
     onHandsClick: () -> Unit = {}, // nanoMuse: Settings → Hands (the screen as a hand)
     onDataControlsClick: () -> Unit = {}, // nanoMuse: Settings → Data controls (what nanoMuse Cloud keeps)
@@ -134,13 +133,14 @@ fun SettingsScreen(
     // or subtitles. Every OpenMinis entry is kept; they are regrouped the way
     // Muse groups its own (the agent, the data on the phone, the app, about).
     // The card at the top stands where Muse's plan card stands and shows the
-    // model the agent talks to, now that the home header no longer does.
+    // model the agent talks to, now that the home header no longer does; it
+    // opens Settings → Models (0.1.41), the page of the four slots.
     val providerRepo = (context.applicationContext as? com.openminis.app.MinisApp)?.providerRepositoryOrNull
     val providerConfig = providerRepo?.config?.collectAsState()?.value
     val defaultGroup = providerConfig?.let { cfg -> cfg.modelGroups.firstOrNull { it.id == cfg.defaultPrimaryGroupId } ?: cfg.modelGroups.firstOrNull() }
     val firstEntry = providerConfig?.let { cfg -> defaultGroup?.memberEntryIds?.firstNotNullOfOrNull { id -> cfg.modelEntries.firstOrNull { it.id == id } } }
     val firstInstance = providerConfig?.instances?.firstOrNull { it.id == firstEntry?.providerInstanceId }
-    val modelLine = listOfNotNull(firstInstance?.label, firstEntry?.model?.displayName).joinToString(" · ")
+    val modelLine = listOfNotNull(firstInstance?.let { io.github.nanomuse.models.ModelSlots.providerLabel(context, it) }, firstEntry?.model?.id).joinToString(" · ")
     Scaffold(
         containerColor = io.github.nanomuse.ui.home.MuseTones.canvas,
         topBar = {
@@ -170,19 +170,19 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onModelGroupsClick)
+                        .clickable(onClick = onModelsClick) // nanoMuse: the Models page, not the model groups
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            text = defaultGroup?.name ?: stringResource(R.string.nm_settings_no_model),
+                            text = stringResource(R.string.nm_models_title),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             text = if (defaultGroup == null) stringResource(R.string.nm_settings_no_model_sub)
-                                else modelLine.ifEmpty { stringResource(R.string.settings_model_groups) },
+                                else modelLine.ifEmpty { stringResource(R.string.nm_settings_no_model) },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 2.dp),
@@ -216,14 +216,7 @@ fun SettingsScreen(
                     onClick = onProvidersClick,
                 )
                 io.github.nanomuse.ui.muse.MuseRowDivider()
-                // nanoMuse: the image and video models, which Muse has built in and we set ourselves.
-                io.github.nanomuse.ui.muse.MuseRow(
-                    title = stringResource(R.string.nm_media_title),
-                    icon = Icons.Outlined.Movie,
-                    value = if (io.github.nanomuse.media.MediaModels.imageEndpoint(context) == null) stringResource(R.string.nm_media_not_set) else null,
-                    onClick = onMediaModelsClick,
-                )
-                io.github.nanomuse.ui.muse.MuseRowDivider()
+                // nanoMuse: the image and video models moved into the Models card above (0.1.41).
                 io.github.nanomuse.ui.muse.MuseRow(
                     title = stringResource(R.string.settings_token_usage),
                     icon = Icons.Outlined.BarChart,

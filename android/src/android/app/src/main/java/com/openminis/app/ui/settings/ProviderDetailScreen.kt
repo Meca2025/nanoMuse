@@ -88,6 +88,7 @@ fun ProviderDetailScreen(
     onModelEntryClick: (String) -> Unit = {},
     onAddCustomModel: () -> Unit = {},
     onVoiceServiceClick: (String) -> Unit = {},
+    onKeyAdded: (String) -> Unit = {}, // nanoMuse: a key where there was none → the "Use it for" card
 ) {
     val config by providerRepository.config.collectAsState()
     val instance = config.instances.find { it.id == instanceId }
@@ -208,6 +209,7 @@ fun ProviderDetailScreen(
                             keyVisible = false
                         },
                         onSave = {
+                            val nmFirstKey = storedKey.isBlank() && editKeyValue.isNotBlank() // nanoMuse
                             providerRepository.saveApiKey(instanceId, editKeyValue)
                             // [T-android-provider-apikey-save-stale] Reflect the
                             // just-saved value in UI state immediately rather than
@@ -217,6 +219,7 @@ fun ProviderDetailScreen(
                             isEditingKey = false
                             editKeyValue = ""
                             keyVisible = false
+                            if (nmFirstKey) onKeyAdded(instanceId) // nanoMuse
                         },
                     )
                 }

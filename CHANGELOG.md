@@ -52,6 +52,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The first conversation says where your messages go with sync on:** to the model, and — signed in — to your other devices through nanoMuse Cloud, which Data controls switches off.
 - **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one; without one, the app's own line for the moment as before. The title and the buttons stay the app's.
 - **Chinese copy writes 非营利** (not 非盈利) in the welcome and Cloud notices.
+- **Settings got a Models page** with four rows, Chat, Operating the screen, Making pictures and Making clips, each showing `<provider> · <model>` and opening a picker of nanoMuse Cloud's models (signed in, the recommended one first) and the models of your own providers that fit; the card at the top of Settings opens it, a chat pick there or in the chat's menu is the default for new chats, and Settings → Hands and the old Image & video models page use the same choices.
+- **Saving a provider of your own asks "Use it for":** one switch per thing the vendor can do, all on; Use it moves those rows to that provider on the catalogue's default model, Not now changes nothing. When you have not chosen, the screen, pictures and clips follow the chat provider when it is your own and can do the job, else nanoMuse Cloud when signed in, else the first provider of your own that can; and a failed turn on a model of your own no longer falls back on its own: the error card offers Use nanoMuse Cloud this time for that one turn.
 
 ### iOS
 

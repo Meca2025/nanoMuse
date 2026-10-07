@@ -1071,4 +1071,26 @@
     <string name="nm_ways_computer_title">Computerul tău</string>
     <string name="nm_ways_computer_body">Scrie @ și numele computerului în conversație; tura rulează acolo, cu furnizorii configurați pe el.</string>
     <string name="nm_ways_devices">Dispozitive</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">Modele</string>
+    <string name="nm_models_intro">Care model face ce. Fiecare rând deschide o listă de alegere; acolo apar nanoMuse Cloud și furnizorii adăugați de tine, cu modelele potrivite.</string>
+    <string name="nm_models_chat_title">Chat</string>
+    <string name="nm_models_chat_sub">Modelul care vorbește cu tine.</string>
+    <string name="nm_models_hands_title">Operarea ecranului</string>
+    <string name="nm_models_hands_sub">Se uită la ecran și acționează în locul tău. Are nevoie de un model care vede imagini.</string>
+    <string name="nm_models_image_title">Crearea de imagini</string>
+    <string name="nm_models_image_sub">Portrete ale Muzei tale și imaginile pe care le ceri.</string>
+    <string name="nm_models_video_title">Crearea de clipuri</string>
+    <string name="nm_models_video_sub">Clipuri scurte cu Muza ta.</string>
+    <string name="nm_models_new_chats">Se aplică la chaturile noi.</string>
+    <string name="nm_models_media_more">Mai multe opțiuni pentru imagini și clipuri</string>
+    <string name="nm_models_media_more_sub">Scrie numele unui model, vezi ce se oprește fără fiecare model sau verifică din nou ce modele video poate folosi o cheie.</string>
+    <string name="nm_useit_title">La ce să o folosești</string>
+    <string name="nm_useit_body">Alege de ce să se ocupe această cheie. De restul se ocupă în continuare nanoMuse Cloud.</string>
+    <string name="nm_useit_body_signed_out">Alege de ce să se ocupe această cheie.</string>
+    <string name="nm_useit_use">Folosește</string>
+    <string name="nm_useit_not_now">Nu acum</string>
+    <string name="nm_useit_footnote">Poți schimba asta oricând din Setări › Modele.</string>
+    <string name="nm_retry_on_cloud">Folosește nanoMuse Cloud de data aceasta</string>
+    <string name="nm_hands_why_chat_provider">implicitul mâinilor de la furnizorul tău de chat</string>
 </resources>
