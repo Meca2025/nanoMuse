@@ -26,8 +26,6 @@ import type { RenderSlot } from './MuseSidebar.tsx'
 import { REPO_URL } from './panels.ts'
 import { AppBehaviorRows, ConversationRows, DeveloperRows, HotkeyField } from './Sections.tsx'
 
-const SITE_URL = 'https://nanomuse.cn/'
-
 /** The pages that make up the everyday group, in Muse's order; the rest are Advanced. */
 export const COMPUTER_SECTION = 'nanomuse-computer'
 export const DATA_SECTION = 'nanomuse-data'
@@ -140,7 +138,7 @@ function SettingsPanel({ t, rows, renderSlot, activeId, onSelect, onClose }: Pan
     'aria-current': row.id === active ? 'true' : undefined,
     'data-modal-autofocus': row.id === active ? '' : undefined,
     onClick: () => onSelect(row.id),
-  }, navIcon(row.id), h('span', { className: 'nm-settings-cell-label' }, row.id === 'nanomuse-cloud' ? t('navAccount') : row.label))
+  }, navIcon(row.id), h('span', { className: 'nm-settings-cell-label' }, row.label))
 
   const [signOutError, setSignOutError] = useState<string | undefined>()
   const signOut = () => {
@@ -316,7 +314,6 @@ export function makeGeneralSection(t: Translate, version: string) {
               pool && !spent && (pool.warn || used >= 80)
                 ? h('button', { type: 'button', className: 'nm-usage-link', style: { background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit' }, onClick: () => { settingsBus.openSection?.('nanomuse-cloud') } }, t('gnNearlyOut'))
                 : null,
-              account.member ? null : h('a', { className: 'nm-usage-link', href: SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: (e: { preventDefault(): void }) => { e.preventDefault(); openLink(SITE_URL) } }, t('gnUpgrade')),
               // the pool is spent: the one ask the project makes
               spent
                 ? h(Fragment, null,
