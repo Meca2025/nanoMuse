@@ -106,6 +106,87 @@ async def test_validation_errors_are_400_with_a_plain_message():
     assert (await client.get("/v1/nudges")).json() == DEFAULT_NUDGES
 
 
+async def test_card_text_round_trips_trimmed_and_defaults_to_empty():
+    """After relay 0.22 the operator may also set the sentence on the card: ``star.text``
+    (English) and ``star.text_zh`` (简体中文), each at most 200 code points, empty by default."""
+    app, client, sender, up, cloud, settings = make()
+    # the defaults carry the two keys, empty, so an app knows to show its own sentence
+    policy = (await client.get("/v1/nudges")).json()
+    assert policy["star"]["text"] == "" and policy["star"]["text_zh"] == ""
+    # a PUT with the two set comes back trimmed, on the public endpoint and on /v1/me
+    body = {"star": {"text": "  A star on GitHub helps others find nanoMuse. ", "text_zh": "\u3000在 GitHub 点个 star，让更多人找到它。\n"}}
+    r = await client.put("/v1/admin/nudges", headers=ADMIN, json=body)
+    assert r.status_code == 200, r.text
+    star = r.json()["nudges"]["star"]
+    assert star["text"] == "A star on GitHub helps others find nanoMuse."
+    assert star["text_zh"] == "在 GitHub 点个 star，让更多人找到它。"
+    assert r.json()["nudges"]["version"] == 2
+    assert (await client.get("/v1/nudges")).json()["star"]["text_zh"] == star["text_zh"]
+    me_key = (await sign_up(client, sender, "13800138000", "pixel"))["api_key"]
+    me = (await client.get("/v1/me", headers=auth(me_key))).json()
+    assert me["nudges"]["star"]["text"] == star["text"]
+    events = (await client.get("/v1/admin/events?kind=nudges.changed", headers=ADMIN)).json()["events"]
+    assert len(events) == 1 and "card text/text_zh" in events[0]["detail"]
+    # a client that sends the whole policy without the two keys (an older console) clears
+    # them back to the default — like every other key that is left out
+    r = await client.put("/v1/admin/nudges", headers=ADMIN, json={"star": {"enabled": True}})
+    assert r.status_code == 200
+    assert r.json()["nudges"]["star"]["text"] == "" and r.json()["nudges"]["star"]["text_zh"] == ""
+    # one of the two alone is fine; null is empty
+    r = await client.put("/v1/admin/nudges", headers=ADMIN, json={"star": {"text_zh": "点个 star", "text": None}})
+    assert r.status_code == 200
+    assert r.json()["nudges"]["star"]["text_zh"] == "点个 star" and r.json()["nudges"]["star"]["text"] == ""
+
+
+async def test_card_text_limit_counts_code_points_and_rejects_non_strings():
+    app, client, sender, up, cloud, settings = make()
+    # 200 is accepted, 201 is not — in Latin letters and in CJK alike (code points, not bytes)
+    for ok in ("a" * 200, "星" * 200, "é" * 200):
+        r = await client.put("/v1/admin/nudges", headers=ADMIN, json={"star": {"text": ok, "text_zh": ok}})
+        assert r.status_code == 200, (len(ok), r.text)
+        assert len(r.json()["nudges"]["star"]["text"]) == 200
+    # whitespace around does not count: trimming happens before the limit
+    r = await client.put("/v1/admin/nudges", headers=ADMIN, json={"star": {"text": "  " + "a" * 200 + "  "}})
+    assert r.status_code == 200, r.text
+    for too_long, key in (("a" * 201, "text"), ("星" * 201, "text_zh"), ("星" * 100 + "a" * 101, "text")):
+        r = await client.put("/v1/admin/nudges", headers=ADMIN, json={"star": {key: too_long}})
+        assert r.status_code == 400, (key, r.text)
+        assert r.json()["error"]["code"] == "bad_request"
+        assert f"star.{key}" in r.json()["error"]["message"] and "200" in r.json()["error"]["message"]
+    for not_a_string in (7, True, ["a"], {"en": "a"}, 1.5):
+        for key in ("text", "text_zh"):
+            r = await client.put("/v1/admin/nudges", headers=ADMIN, json={"star": {key: not_a_string}})
+            assert r.status_code == 400, (key, not_a_string, r.text)
+            assert f"star.{key}" in r.json()["error"]["message"]
+    # the last good policy is what is served
+    assert (await client.get("/v1/nudges")).json()["star"]["text"] == "a" * 200
+
+
+def test_card_text_validate_directly_and_an_old_client_still_gets_a_whole_policy():
+    assert validate({})["star"]["text"] == "" and validate({})["star"]["text_zh"] == ""
+    assert validate({"star": {"text": " hi "}})["star"]["text"] == "hi"
+    assert validate({"star": {"text_zh": "\u3000你好\u3000"}})["star"]["text_zh"] == "你好"
+    with pytest.raises(BadNudges, match="star.text_zh"):
+        validate({"star": {"text_zh": "x" * 201}})
+    with pytest.raises(BadNudges, match="star.text "):
+        validate({"star": {"text": 3}})
+    # a row stored by relay 0.22 (no text keys) still parses and gains the empty defaults
+    stored_0_22 = {
+        "version": 4,
+        "star": {"enabled": True, "url": "https://example.org/r", "moments": {"tasks": [5]}, "cooldown_days": 3, "max_asks": 2},
+    }
+    out = merge(stored_0_22)
+    assert out["version"] == 4 and out["star"]["moments"]["tasks"] == [5]
+    assert out["star"]["text"] == "" and out["star"]["text_zh"] == ""
+    # every key a 0.22 app reads is still there, with the same types, when the text is set
+    out = validate({"star": {"text": "Please star.", "text_zh": "点个 star。"}})
+    for key in ("enabled", "url", "moments", "cooldown_days", "max_asks"):
+        assert type(out["star"][key]) is type(DEFAULT_NUDGES["star"][key]), key
+    assert set(out["star"]["moments"]) == set(DEFAULT_NUDGES["star"]["moments"])
+    # a stored row whose text went bad falls back to the defaults, never a 500
+    assert merge({"star": {"text": ["not", "a", "string"]}}) == DEFAULT_NUDGES
+
+
 def test_validate_and_merge_directly():
     assert validate({}) == DEFAULT_NUDGES
     assert validate({"star": {"moments": {"tasks": []}}})["star"]["moments"]["tasks"] == []

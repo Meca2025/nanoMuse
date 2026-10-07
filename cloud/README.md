@@ -308,7 +308,7 @@ reached:
 {"version": 1, "star": {"enabled": true, "url": "https://github.com/nano-muse/nanoMuse",
  "moments": {"signed_in": true, "tasks": [3, 10, 30], "new_look": true, "exhausted": true,
              "days_used": [7, 30], "goal_done": true},
- "cooldown_days": 7, "max_asks": 4}}
+ "cooldown_days": 7, "max_asks": 4, "text": "", "text_zh": ""}}
 ```
 
 `tasks` are the finished-task counts at which to ask (a task is a turn the
@@ -316,12 +316,19 @@ person started that ended in a reply; the naming conversation and background
 runs never count), `days_used` the n-th distinct day the app was opened, the
 named moments on or off, `cooldown_days` the least time between two asks,
 `max_asks` the lifetime cap per device ("Not now" counts; a device that went
-to GitHub is never asked again). The operator's page has a *Star asks* card
+to GitHub is never asked again). `text` and `text_zh` (after 0.22) are the
+sentence on the card in English and 简体中文, trimmed, at most 200 characters
+each (code points, so CJK counts the same as Latin), empty by default: an app
+in Chinese shows `text_zh` if set, else `text` if set, else its own sentence;
+any other language shows `text` if set, else its own; the card's title and
+buttons stay the app's. Apps built against 0.22 and earlier ignore both; a
+policy stored by 0.22 is served with the two empty. The operator's page has a *Star asks* card
 under *Settings*; `GET /v1/admin/nudges` returns the policy in force, the
 defaults, whether the page set it and `updated_at`; `PUT /v1/admin/nudges`
 takes the whole policy (unknown keys dropped, ints ≥ 1, lists of distinct
 positive ints sorted ascending, `url` http(s) ≤ 200 characters,
-`cooldown_days` 0–365, `max_asks` 0–50; a bad value is a 400 with a plain
+`cooldown_days` 0–365, `max_asks` 0–50, `text` / `text_zh` strings ≤ 200
+characters; a bad value is a 400 with a plain
 message), bumps `version` so clients can tell copies apart, and notes a
 `nudges.changed` event; `{"reset": true}` goes back to the defaults. The
 policy lives in the `settings` table under `nudges`.
@@ -655,7 +662,8 @@ curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' 
 # the whole policy; a key left out goes back to its default, not to what was stored
 curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://$CLOUD_DOMAIN/v1/admin/nudges
 curl -X PUT -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"star":{"moments":{"tasks":[5,20]},"cooldown_days":14}}' https://$CLOUD_DOMAIN/v1/admin/nudges
+  -d '{"star":{"moments":{"tasks":[5,20]},"cooldown_days":14,"text":"A star on GitHub helps others find nanoMuse.","text_zh":"在 GitHub 点个 star，让更多人找到 nanoMuse。"}}' \
+  https://$CLOUD_DOMAIN/v1/admin/nudges
 # the switches (0.22): what is on, flip one with a note for the audit log, read the log —
 # from the relay's own shell (the CLI reads CLOUD_ADMIN_TOKEN and PUBLIC_BASE from the
 # environment, or --token / --base; --actor names you in the log, else cli:<user>)

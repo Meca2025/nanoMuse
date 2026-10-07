@@ -1314,6 +1314,9 @@ class Cloud:
             f"v{policy['version']}: {'on' if star['enabled'] else 'off'}, tasks {star['moments']['tasks']}, "
             f"days {star['moments']['days_used']}, cooldown {star['cooldown_days']}d, max {star['max_asks']}"
         )
+        texts = [name for name in ("text", "text_zh") if star.get(name)]
+        if texts:
+            said += ", card " + "/".join(texts)
         log.warning("nudges policy changed from the page: %s", said)
         self.db.add_event("", "nudges.changed", said[:200])
         return self.admin_nudges()

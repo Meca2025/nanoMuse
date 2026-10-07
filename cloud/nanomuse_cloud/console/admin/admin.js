@@ -72,7 +72,8 @@
     ndTitle: "Star 提示（即时生效）", ndNote: "客户端什么时候可以请人去 GitHub 点个 star。所有客户端（Android、iPhone、桌面、网页）每天读一次这里的规则，连不上时用内置的默认值。在这里改，不用发版。「不再提醒」也算一次提示；点过「去 GitHub」的设备以后不再提示。",
     ndEnabled: "允许提示", ndEnabledOff: "关掉后一次都不提示；设置里常驻的「Star on GitHub」一行照旧。", ndMoments: "时机", ndSignedIn: "首次登录后（账号页一行）", ndNewLook: "画好新形象后", ndExhausted: "免费额度用完时（出路卡片里一行）", ndGoalDone: "标记目标完成时",
     ndTasks: "完成第几个任务时", ndTasksHint: "逗号分隔，比如 3, 10, 30。只算本人发起、模型答完的对话；起名的第一段对话和后台任务不算。", ndDays: "使用第几天时", ndDaysHint: "逗号分隔，比如 7, 30：打开应用的第 n 个不同日期。",
-    ndCooldown: "两次提示至少间隔（天）", ndMax: "每台设备最多提示（次）", ndUrl: "链接", ndSave: "保存", ndReset: "恢复默认", ndResetConfirm: "恢复内置默认规则？客户端在一天内跟上。", ndSaved: "已保存，客户端一天内跟上。", ndResetDone: "已恢复默认。",
+    ndCooldown: "两次提示至少间隔（天）", ndMax: "每台设备最多提示（次）", ndUrl: "链接",
+    ndTextEn: "卡片文字（英文）", ndTextZh: "卡片文字（中文）", ndTextHint: "留空时各端显示自己的句子。最多 200 字。", ndTextLeft: (n) => `还可输入 ${n} 字`, ndSave: "保存", ndReset: "恢复默认", ndResetConfirm: "恢复内置默认规则？客户端在一天内跟上。", ndSaved: "已保存，客户端一天内跟上。", ndResetDone: "已恢复默认。",
     ndVersion: (v, t) => (t ? `第 ${v} 版 · 保存于 ${t}` : `第 ${v} 版 · 内置默认值`), ndStored: "页面已设置", ndDefault: "内置默认值",
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `输入 ${p.per_m_input} / 输出 ${p.per_m_output} 每百万 tokens` : null,
       p.per_image ? `每张 ${p.per_image}${p.per_image_2k ? `（2k ${p.per_image_2k}）` : ""}` : null, p.per_second ? `每秒 ${p.per_second}` : null].filter(Boolean).join("；"),
@@ -192,7 +193,8 @@
     ndTitle: "Star asks (in force at once)", ndNote: "When the apps may ask for a star on GitHub. Every client (Android, iPhone, desktop, web) reads this once a day and falls back to the built-in defaults when the relay cannot be reached. Change it here; no release needed. “Not now” counts as an ask; a device that went to GitHub is never asked again.",
     ndEnabled: "Asks on", ndEnabledOff: "Off: no asks at all; the “Star on GitHub” rows in Settings stay.", ndMoments: "Moments", ndSignedIn: "First time seen signed in (a row on the account page)", ndNewLook: "After a new face is drawn", ndExhausted: "When the free allowance is used up (a row in the ways-on card)", ndGoalDone: "When a goal is marked done",
     ndTasks: "After task number", ndTasksHint: "Comma-separated, say 3, 10, 30. A task is a turn the person started that ended in a reply; the naming conversation and background runs do not count.", ndDays: "On day of use number", ndDaysHint: "Comma-separated, say 7, 30: the n-th distinct day the app was opened.",
-    ndCooldown: "Days between two asks, at least", ndMax: "Asks per device, at most", ndUrl: "Link", ndSave: "Save", ndReset: "Reset to defaults", ndResetConfirm: "Go back to the built-in defaults? Clients follow within a day.", ndSaved: "Saved; clients follow within a day.", ndResetDone: "Back to the defaults.",
+    ndCooldown: "Days between two asks, at least", ndMax: "Asks per device, at most", ndUrl: "Link",
+    ndTextEn: "Card text (English)", ndTextZh: "Card text (中文)", ndTextHint: "Empty: each app shows its own sentence. At most 200 characters.", ndTextLeft: (n) => `${n} characters left`, ndSave: "Save", ndReset: "Reset to defaults", ndResetConfirm: "Go back to the built-in defaults? Clients follow within a day.", ndSaved: "Saved; clients follow within a day.", ndResetDone: "Back to the defaults.",
     ndVersion: (v, t) => (t ? `version ${v} · saved ${t}` : `version ${v} · built-in defaults`), ndStored: "set here", ndDefault: "built-in defaults",
     priceLine: (p) => [p.per_m_input || p.per_m_output ? `${p.per_m_input} in / ${p.per_m_output} out per M tokens` : null,
       p.per_image ? `${p.per_image} a picture${p.per_image_2k ? ` (${p.per_image_2k} at 2k)` : ""}` : null, p.per_second ? `${p.per_second} a second` : null].filter(Boolean).join("; "),
@@ -1408,6 +1410,9 @@
       h("input", { type: type || "text", "data-focus": "nd-" + key, value, disabled: ndBusy ? "" : null, ...(attrs || {}), oninput: (e) => { set(e.target.value); draw(); } }),
       hint ? h("span", { class: "fine" }, hint) : null);
     const momentSw = (name, label, hint) => sw(!!m[name], (v) => { ndEdit(nv).star.moments[name] = v; }, label, hint);
+    // the card's sentence (after relay 0.22): counted in code points, as the server counts it
+    const left = (v) => T.ndTextLeft(Math.max(0, 200 - [...String(v ?? "").trim()].length));
+    const cardText = (name, hint) => text(name, star[name] || "", (v) => { ndEdit(nv).star[name] = v; }, hint ? [left(star[name]), " · ", hint] : left(star[name]), "text", { class: "wide" });
     return h("div", { class: "panel" },
       h("h2", {}, T.ndTitle, h("span", { class: "fine" }, T.ndVersion(d.version, nv.updated_at ? when(nv.updated_at) : "")), h("span", { class: "sp" }),
         h("button", { class: "btn quiet sm", disabled: ndBusy || !nv.stored ? "" : null, onclick: ndReset }, T.ndReset),
@@ -1421,7 +1426,9 @@
         h("b", {}, T.ndDays), text("days", listText(m.days_used), (v) => { ndEdit(nv).star.moments.days_used = v; }, T.ndDaysHint),
         h("b", {}, T.ndCooldown), text("cooldown", star.cooldown_days ?? "", (v) => { ndEdit(nv).star.cooldown_days = v; }, null, "number", { min: "0", max: "365", step: "1" }),
         h("b", {}, T.ndMax), text("max", star.max_asks ?? "", (v) => { ndEdit(nv).star.max_asks = v; }, null, "number", { min: "0", max: "50", step: "1" }),
-        h("b", {}, T.ndUrl), text("url", star.url || "", (v) => { ndEdit(nv).star.url = v; }, null, "url", { maxlength: "200", class: "wide" })),
+        h("b", {}, T.ndUrl), text("url", star.url || "", (v) => { ndEdit(nv).star.url = v; }, null, "url", { maxlength: "200", class: "wide" }),
+        h("b", {}, T.ndTextEn), cardText("text"),
+        h("b", {}, T.ndTextZh), cardText("text_zh", T.ndTextHint)),
       ndMsg ? h("div", { class: "fine", style: "padding:0 16px 12px" }, ndMsg) : null);
   }
   function settingsView() {
