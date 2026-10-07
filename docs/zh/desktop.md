@@ -173,6 +173,11 @@ CLI 自己的 `~/.dsh` 不会被碰。主目录下的 `nanomuse/hands.json`（�
 「这次改用 nanoMuse Cloud」：这一条消息再走一次账号，这一轮结束后对话回到原来的模型，模型页保持
 原样。不会自动回退。工作室一轮画失败、一组短视频失败后，也是同一个按钮。
 
+登录时，这一页最上面有一个开关「使用 nanoMuse Cloud 模型」。关掉之后，账号的模型从每个选择器和自动顺序里
+退出，Harness 的附带调用（对话标题、压缩上下文）改在对话那一行自己的模型上运行，还停在 nanoMuse Cloud 模型上的
+对话不会发出：一张卡片说明原因，给出换一个模型、新开对话，或「这次改用 nanoMuse Cloud」，后者是开关关着时唯一
+会消耗额度的东西。账号保持登录；同步、你的设备和「设置 → nanoMuse Cloud」照常工作。
+
 profile 里的 `node_modules/dsh-nanomuse` 是一个链接（Windows 上是 junction），指向已安装应用里的
 插件；每次启动时，只要安装目录和链接目标不一致，就重写它——一次挪动了应用位置的更新，比如从
 `Programs\nanoMuse\nanomuse-desktop` 挪到 `Programs\nanomuse-desktop`，会留下一个指向空处的链接，

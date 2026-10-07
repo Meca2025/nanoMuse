@@ -41,10 +41,12 @@ export type RefusalKind =
   | 'sync_paused'
   /** 503 `hub_paused` (relay 0.22): the device hub is off for now; each device works on its own. */
   | 'hub_paused'
+  /** Not the relay: the host refused the call itself, because Cloud models are switched off (Settings › Models) and the chat still sits on one. */
+  | 'cloud_off'
   /** Any other refusal: the relay's own sentence is shown. */
   | 'other'
 
-export const REFUSAL_KINDS: readonly RefusalKind[] = ['exhausted', 'allowance_paused', 'too_large', 'signed_out', 'disabled', 'daily_cap', 'busy', 'model', 'relay_down', 'unreachable', 'service_paused', 'sync_paused', 'hub_paused', 'other']
+export const REFUSAL_KINDS: readonly RefusalKind[] = ['exhausted', 'allowance_paused', 'too_large', 'signed_out', 'disabled', 'daily_cap', 'busy', 'model', 'relay_down', 'unreachable', 'service_paused', 'sync_paused', 'hub_paused', 'cloud_off', 'other']
 
 /** The operator's switches (relay 0.22, `docs/cloud.md` → Controls): the code is the kind. */
 const PAUSED_CODES: Record<string, RefusalKind> = { service_paused: 'service_paused', sync_paused: 'sync_paused', hub_paused: 'hub_paused' }
@@ -223,9 +225,17 @@ export function refusalSentence(refusal: RelayRefusal): string {
       return 'Conversation sync is paused on this relay for now; what is stored is kept and your devices keep working on their own.'
     case 'hub_paused':
       return 'The device hub is paused on this relay for now; each device keeps working on its own.'
+    case 'cloud_off':
+      return 'nanoMuse Cloud models are switched off under Settings → Models, and this chat still runs on one, so nothing was sent. Pick another model for the chat, start a new chat, or use nanoMuse Cloud this time.'
     case 'other':
       return refusal.message || 'nanoMuse Cloud could not complete the request.'
   }
+}
+
+/** The failure the host writes when it refuses a call itself because Cloud models are off: no HTTP status, our code, our sentence. */
+export function cloudOffFailure(): FailureLike {
+  const refusal: RelayRefusal = { kind: 'cloud_off', status: 0, code: 'cloud_off', message: '' }
+  return { message: refusalSentence(refusal), code: refusalCode('cloud_off') }
 }
 
 /** The shape of a finish chunk's failure, as far as this module reads and writes it. */
@@ -260,8 +270,8 @@ export function relayFailure(failure: FailureLike): { failure: FailureLike; refu
 
 // ---- what the card shows, by kind (the browser draws it; tested here as data) --------------------
 
-/** A button on a refusal card. */
-export type RefusalAction = 'ways' | 'sign-in' | 'retry' | 'new-chat' | 'settings'
+/** A button on a refusal card; `cloud-once` is *Use nanoMuse Cloud this time*, `models` opens Settings › Models. */
+export type RefusalAction = 'ways' | 'sign-in' | 'retry' | 'new-chat' | 'settings' | 'cloud-once' | 'models'
 
 /** The card for a kind: which actions it offers, in order, and whether the relay's own sentence is worth showing under ours. */
 export function refusalCard(kind: RefusalKind): { actions: RefusalAction[]; showRelayText: boolean } {
@@ -287,6 +297,8 @@ export function refusalCard(kind: RefusalKind): { actions: RefusalAction[]; show
     case 'sync_paused':
     case 'hub_paused':
       return { actions: ['retry'], showRelayText: false }
+    case 'cloud_off':
+      return { actions: ['cloud-once', 'new-chat', 'models'], showRelayText: false }
     case 'other':
       return { actions: ['retry', 'settings'], showRelayText: true }
   }

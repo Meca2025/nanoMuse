@@ -47,7 +47,7 @@ import { brief, REMOTE_ACTIONS, run as runAction, type RemoteAction } from './ac
 import { CODING_ACTIONS, CodingService, codingBrief, GATED_CODING_ACTIONS } from './coding.ts'
 import { HubClient, HubError, type Caller, type HubDevice } from './hub.ts'
 import { ProfileStore, type Profile } from './profile.ts'
-import { relayFailure, transportFailure, type RelayRefusal } from './refusals.ts'
+import { cloudOffFailure, relayFailure, transportFailure, type RelayRefusal } from './refusals.ts'
 import { Relay, RelayError, type Account, type Estimate, type Invite, type ProfileWrite, type RelayModel, type SignIn } from './relay.ts'
 import { TaskRunner, textOf } from './task.ts'
 import { Trajectory, type StepAction, type TrajectoryView } from './trajectory.ts'
@@ -332,6 +332,8 @@ export interface SlotView {
 /** `GET /models`: the page in one read. */
 export interface ModelsView {
   signedIn: boolean
+  /** Settings › Models › *Use nanoMuse Cloud models*: signed in and not switched off. */
+  cloudModels: boolean
   slots: Record<Slot, SlotView>
   /** Own rows with sighted models the hands cannot use: the runtime speaks OpenAI's shape only (their labels). */
   handsExcluded: string[]
@@ -384,6 +386,13 @@ interface State {
   chatgpt?: ChatGptState
   /** The pool size (yuan) the 80 % heads-up was shown for; it comes back only once the pool has grown. */
   warnedGrant?: number
+  /**
+   * Settings › Models › *Use nanoMuse Cloud models* switched off: the account's models leave
+   * every slot's order and list, no side call goes through the relay, and a chat that still
+   * sits on a Cloud model is refused with a card. The sign-in stays (sync, the hub, the
+   * account page). Only *Use nanoMuse Cloud this time* spends the allowance while this is set.
+   */
+  cloudModelsOff?: boolean
 }
 
 /** How often, at most, the account is re-read after a turn for the heads-up. */
@@ -851,10 +860,24 @@ export default class NanomuseCloud extends Service {
     // The relay's refusals, read on their way back (C12): a spent allowance, a request too large,
     // a retired key, a relay that did not answer — as a card in the chat, not the wire's text,
     // and not retried as if they were rate limits.
+    // The same hook is the one place that keeps a switched-off Cloud from spending (Settings ›
+    // Models › *Use nanoMuse Cloud models*): a side call of the harness (a chat's title, a
+    // compaction) is sent to the chat slot's own model instead, a turn is refused with a card,
+    // and only a session under *Use nanoMuse Cloud this time* (`cloudOnce`) goes through.
+    const cloud = this
     this.ctx.inject(['llm'], (ctx) => {
-      ctx.on('llm/stream', (options, next) => {
+      ctx.on('llm/stream', function (options, next) {
         if (options.provider !== PROVIDER_ID) return next()
-        return this.watchRelayStream(next())
+        if (!cloud.cloudModels() && !(options.sessionId && cloud.cloudOnce.has(String(options.sessionId)))) {
+          const own = options.purpose ? cloud.ownChatChoice() : undefined
+          if (own) {
+            cloud.ctx.logger.info('nanomuse cloud: %s sent to %s/%s, Cloud models are off', options.purpose, own.provider, own.model)
+            return this.stream({ ...options, provider: own.provider, model: own.model })
+          }
+          cloud.ctx.logger.info('nanomuse cloud: a call to %s refused, Cloud models are off%s', options.model, options.purpose ? ` (${options.purpose})` : '')
+          return cloud.refuseCloudOff()
+        }
+        return cloud.watchRelayStream(next())
       })
     })
     this.ctx.effect(() => () => {
@@ -939,6 +962,54 @@ export default class NanomuseCloud extends Service {
       this.refused(seen.refusal)
       yield { ...chunk, reason: { kind: 'error', failure: { ...chunk.reason.failure, ...seen.failure } } }
     }
+  }
+
+  /**
+   * Whether nanoMuse Cloud is one of the model sources: signed in and not switched off under
+   * Settings › Models. Every slot's order and list, the side calls and the studio read this one
+   * answer; the sign-in itself (`signedIn`) is a different question, and stays.
+   */
+  cloudModels(): boolean {
+    return this.signedInCache && Boolean(this.state.account) && !this.state.cloudModelsOff
+  }
+
+  /**
+   * Switch the account's models on or off as a source (the phones' *Use nanoMuse Cloud models*).
+   * Off while new chats answer through the account: the chat slot moves to the first own chat
+   * model, when there is one; the hands' environment follows.
+   */
+  async setCloudModels(on: boolean): Promise<void> {
+    if (on === !this.state.cloudModelsOff) return
+    const { cloudModelsOff: _off, ...rest } = this.state
+    this.state = on ? rest : { ...rest, cloudModelsOff: true }
+    if (!on && this.chatChoice().provider === PROVIDER_ID) {
+      const own = this.ownChatChoice()
+      if (own) await this.defaultModelService()?.saveSelection(own).catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: chat slot not moved off the account: %s', message(error)))
+    }
+    await this.writeState()
+    await this.writeHands().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: hands model not written: %s', message(error)))
+    this.broadcast()
+  }
+
+  /** The own chat model a side call runs on while Cloud models are off: the chat slot's own row (its catalogue default), else the first own row with a chat model. */
+  private ownChatChoice(): { provider: string; model: string } | undefined {
+    const chat = this.chatChoice()
+    const row = chat.provider && chat.provider !== PROVIDER_ID ? this.state.providers?.[chat.provider] : undefined
+    if (row && chat.model && row.models.some((m) => m.id === chat.model && m.kind === 'chat')) return { provider: chat.provider, model: chat.model }
+    if (row) {
+      const model = this.ownModelFor(row, 'chat')
+      if (model) return { provider: chat.provider, model }
+    }
+    for (const [id, own] of Object.entries(this.state.providers ?? {})) {
+      const model = this.ownModelFor(own, 'chat')
+      if (model) return { provider: id, model }
+    }
+    return undefined
+  }
+
+  /** The stream for a call refused because Cloud models are off: one finish chunk, our code, so the chat shows the card and the harness does not retry. */
+  private async *refuseCloudOff(): AsyncIterable<StreamChunk> {
+    yield { type: 'finish', reason: { kind: 'error', failure: cloudOffFailure() } }
   }
 
   /** What a refusal changes here, besides the card: the account re-read, or forgotten. */
@@ -1083,7 +1154,7 @@ export default class NanomuseCloud extends Service {
       const row = own[this.state.handsProvider]
       if (row && this.handsCapable(row) && row.models.some((m) => m.id === chosen && m.vision)) return { provider: this.state.handsProvider, model: chosen }
     }
-    const models = this.signedInCache && this.state.account ? (this.state.models ?? []) : []
+    const models = this.cloudModels() ? (this.state.models ?? []) : []
     if (chosen && !this.state.handsProvider && models.some((m) => m.id === chosen && modelFor(m).includes('gui'))) return { provider: PROVIDER_ID, model: chosen }
     const chat = this.chatOwnRow()
     if (chat && this.handsCapable(chat.row)) {
@@ -1135,7 +1206,7 @@ export default class NanomuseCloud extends Service {
   /** The sighted models the hands may use, the account's first (the recommended one marked), then each own row's (C11). */
   handsOptions(): ModelOption[] {
     const out: ModelOption[] = []
-    if (this.signedInCache && this.state.account) {
+    if (this.cloudModels()) {
       const models = this.state.models ?? []
       const pick = pickHandsModel(models)
       for (const m of models) if (modelFor(m).includes('gui')) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(pick && m.id === pick.id ? { recommended: true } : {}) })
@@ -1156,7 +1227,7 @@ export default class NanomuseCloud extends Service {
   /** The chat models new chats may answer through: the account's (the recommended one first and marked), then each own row's (C11). */
   chatOptions(): ModelOption[] {
     const out: ModelOption[] = []
-    if (this.signedInCache && this.state.account) {
+    if (this.cloudModels()) {
       const models = this.state.models ?? []
       const pick = pickChatModel(models)
       for (const m of models) if (modelFor(m).includes('chat')) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(pick && m.id === pick.id ? { recommended: true } : {}) })
@@ -1267,7 +1338,7 @@ export default class NanomuseCloud extends Service {
 
   /** What the account can do, as the relay's model list says: chat, the hands' `gui` models, image and video kinds. */
   private cloudCapabilities(): Capability[] {
-    if (!this.signedInCache || !this.state.account) return []
+    if (!this.cloudModels()) return []
     const models = this.state.models ?? []
     const out: Capability[] = []
     if (models.some((m) => modelFor(m).includes('chat'))) out.push('chat')
@@ -1610,6 +1681,7 @@ export default class NanomuseCloud extends Service {
     const videoChosen = Boolean(media.videoModel) && media.videoModel !== VIDEO_OFF && video?.model === media.videoModel && (!media.videoProvider || video?.instanceId === media.videoProvider)
     return {
       signedIn,
+      cloudModels: this.cloudModels(),
       slots: {
         chat: slot(chat.provider, chat.model, this.chatOptions(), Boolean(chat.provider)),
         hands: { ...slot(hands.provider, hands.model, this.handsOptions(), handsChosen), auto: auto(handsAuto.provider, handsAuto.model) },
@@ -1647,7 +1719,9 @@ export default class NanomuseCloud extends Service {
     await ctx.sessionController.selectModel({ sessionId: sessionId as SessionId, provider: PROVIDER_ID, model: pick.id })
     // dsh saves a session's selection as the default in the background; the slot stays what it was
     if (slot) await this.defaultModelService()?.saveSelection(slot).catch(() => undefined)
-    if (before && before.provider !== PROVIDER_ID) this.cloudOnce.set(sessionId, before)
+    // With Cloud models off the session is held too (the `llm/stream` hook lets a held session through), whatever it was on
+    if (before && (before.provider !== PROVIDER_ID || this.state.cloudModelsOff)) this.cloudOnce.set(sessionId, before)
+    else if (this.state.cloudModelsOff) this.cloudOnce.set(sessionId, { provider: PROVIDER_ID, model: pick.id, at: Date.now() })
     else this.cloudOnce.delete(sessionId)
     return { provider: PROVIDER_ID, model: pick.id }
   }
@@ -1833,7 +1907,7 @@ export default class NanomuseCloud extends Service {
 
   /** The account's image models, for the picker (the recommended one first and marked). */
   private cloudImageOptions(): ModelOption[] {
-    if (!this.signedInCache || !this.state.account) return []
+    if (!this.cloudModels()) return []
     const models = (this.state.models ?? []).filter((m) => m.kind === 'image')
     const pick = this.imageModel()
     return models.map((m) => ({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(m.id === pick ? { recommended: true } : {}) })).sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)))
@@ -1860,7 +1934,7 @@ export default class NanomuseCloud extends Service {
    */
   async imageEndpoint(opts: { cloud?: boolean; auto?: boolean } = {}): Promise<ImageEndpoint | undefined> {
     const cloud = async (model = this.imageModel()): Promise<ImageEndpoint | undefined> => {
-      const token = this.signedInCache && this.state.account ? await this.token() : undefined
+      const token = (opts.cloud ? this.signedInCache && this.state.account : this.cloudModels()) ? await this.token() : undefined
       if (!token || !model) return undefined
       return { shape: 'cloud', baseURL: this.relay.openaiBase, apiKey: token, model, label: 'nanoMuse Cloud', instanceId: PROVIDER_ID }
     }
@@ -1939,7 +2013,7 @@ export default class NanomuseCloud extends Service {
   /** The video models the clips may be drawn with: the account's (recommended first), then each own Model Studio row's known ones. */
   async videoOptions(): Promise<ModelOption[]> {
     const out: ModelOption[] = []
-    if (this.signedInCache && this.state.account) {
+    if (this.cloudModels()) {
       const cloud = this.cloudVideoModels()
       const pick = (cloud.find((m) => m.recommended) ?? cloud[0])?.id
       for (const m of cloud) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(m.id === pick ? { recommended: true } : {}) })
@@ -2032,7 +2106,7 @@ export default class NanomuseCloud extends Service {
   async videoEndpoint(opts: { cloud?: boolean; auto?: boolean } = {}): Promise<VideoEndpoint | undefined> {
     const media = this.state.media ?? {}
     if (media.videoModel === VIDEO_OFF && !opts.cloud && !opts.auto) return undefined
-    const token = this.signedInCache && this.state.account ? await this.token() : undefined
+    const token = (opts.cloud ? this.signedInCache && this.state.account : this.cloudModels()) ? await this.token() : undefined
     const cloudModels = this.cloudVideoModels()
     const cloud = (wanted?: string): VideoEndpoint | undefined => {
       if (!token || !cloudModels.length) return undefined
@@ -2117,7 +2191,7 @@ export default class NanomuseCloud extends Service {
   async media(): Promise<MediaView> {
     const media = this.state.media ?? {}
     const off = media.videoModel === VIDEO_OFF
-    const signedIn = this.signedInCache && Boolean(this.state.account)
+    const signedIn = this.cloudModels()
     const view: MediaView = {
       imageModel: signedIn ? this.imageModel() : '',
       image: { source: 'none', label: '', model: '', reason: 'no_image' },
@@ -2130,7 +2204,7 @@ export default class NanomuseCloud extends Service {
     const image = await this.imageEndpoint()
     if (image) view.image = { source: image.instanceId === PROVIDER_ID ? 'cloud' : 'provider', label: image.label, model: image.model, reason: '' }
     const video = off ? undefined : await this.videoEndpoint()
-    const source = video ?? (await this.videoEndpoint({ cloud: true })) ?? (await this.dashScopeProvider().then((own) => (own ? { instanceId: own.id, label: own.label, host: own.host } : undefined)))
+    const source = video ?? (signedIn ? await this.videoEndpoint({ cloud: true }) : undefined) ?? (await this.dashScopeProvider().then((own) => (own ? { instanceId: own.id, label: own.label, host: own.host } : undefined)))
     if (source) {
       const cloud = source.instanceId === PROVIDER_ID
       const known = cloud ? undefined : media.checked?.[source.host]
@@ -2430,6 +2504,7 @@ export default class NanomuseCloud extends Service {
     try {
       const current = svc.currentSelection()
       if (current.provider === PROVIDER_ID) return
+      if (this.state.cloudModelsOff) return // switched off under Settings › Models: a sign-in changes no slot
       if (current.provider !== 'deepseek-official' && current.provider !== 'deepseek-account') return
       if (await this.otherProviderReady()) return
       await svc.saveSelection({ provider: PROVIDER_ID, model: pick.id })
@@ -2709,6 +2784,7 @@ export default class NanomuseCloud extends Service {
         ...(typeof raw.handsProvider === 'string' && raw.handsProvider ? { handsProvider: raw.handsProvider } : {}),
         ...(raw.providers && typeof raw.providers === 'object' ? { providers: ownProvidersOf(raw.providers) } : {}),
         ...(raw.chatgpt && typeof raw.chatgpt === 'object' && typeof (raw.chatgpt as ChatGptState).label === 'string' ? { chatgpt: { label: (raw.chatgpt as ChatGptState).label, at: Number((raw.chatgpt as ChatGptState).at) || 0 } } : {}),
+        ...(raw.cloudModelsOff === true ? { cloudModelsOff: true } : {}),
       }
     } catch {
       return {}
@@ -3075,6 +3151,11 @@ export default class NanomuseCloud extends Service {
       }
       // Settings → Models (0.1.41): the four slots in one read, the two media slots' setters, the one-time Cloud retry.
       if (req.method === 'GET' && route === '/models') return send(res, 200, await this.modelsView())
+      if (req.method === 'POST' && route === '/cloud-models') {
+        const body = await json(req)
+        await this.setCloudModels(body.on !== false)
+        return send(res, 200, await this.modelsView())
+      }
       if (req.method === 'POST' && route === '/image-model') {
         const body = await json(req)
         await this.setImageModel(String(body.model ?? ''), typeof body.provider === 'string' && body.provider ? body.provider : PROVIDER_ID)
