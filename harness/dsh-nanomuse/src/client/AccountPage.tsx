@@ -9,7 +9,7 @@
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { allowanceInfo, AllowanceWays, type Guidance } from './AllowanceWays.tsx'
-import { call, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
+import { call, errorStyle, muted, row, type CloudStatus, type Translate, failureText } from './api.ts'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
 import { IconCopy, IconHeart } from './icons.tsx'
@@ -151,7 +151,7 @@ export function AccountPage({ t, status, locale, onEnded }: AccountPageProps): R
       setSheet(me)
       setSessions(s.sessions ?? [])
       setEvents(e.events ?? [])
-    }).catch((err: unknown) => { if (alive) setError(t('failed', { message: (err as Error).message })) })
+    }).catch((err: unknown) => { if (alive) setError(failureText(t, err)) })
     return () => { alive = false }
   }, [tick, status.account?.id, t])
 
@@ -274,7 +274,7 @@ function Password({ t, has, onChanged }: { t: Translate; has: boolean; onChanged
     setError(undefined)
     void call('password', { password: next, ...(has ? { current } : {}) })
       .then(() => { setOpen(false); setCurrent(''); setNext(''); setDone(next ? t('acPasswordSaved') : t('acPasswordRemoved')); onChanged() })
-      .catch((err: unknown) => setError(t('failed', { message: (err as Error).message })))
+      .catch((err: unknown) => setError(failureText(t, err)))
       .finally(() => setBusy(false))
   }
   if (!open) {
@@ -346,7 +346,7 @@ function Danger({ t, onEnded }: { t: Translate; onEnded(status: CloudStatus): vo
     if (!window.confirm(t('acDeleteConfirm2'))) return
     setBusy(true)
     setError(undefined)
-    void call<CloudStatus>('delete-account', {}).then(onEnded).catch((err: unknown) => setError(t('failed', { message: (err as Error).message }))).finally(() => setBusy(false))
+    void call<CloudStatus>('delete-account', {}).then(onEnded).catch((err: unknown) => setError(failureText(t, err))).finally(() => setBusy(false))
   }
   return h('div', { className: 'nm-card' },
     h('div', { className: 'nm-row' },

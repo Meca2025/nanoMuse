@@ -7,6 +7,7 @@
  * agent's own and go to the host's rooms store (the prompt reads them);
  * MEMORY.md writes back as memory lines; a Library file writes to disk.
  */
+import { failureText } from './api.ts'
 import { createElement as h, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconClose, IconCode, IconCopy, IconDownload, IconLayout, IconRefresh, IconTrash } from './icons.tsx'
@@ -73,7 +74,7 @@ function Editor({ t, toggleSidebar, doc }: DocEditorProps & { doc: OpenDoc }): R
       else await roomsCall('library/write', { id: doc.id, text: value })
       setSaved('saved')
     } catch (err: unknown) {
-      setError(t('failed', { message: (err as Error).message }))
+      setError(failureText(t, err))
       setSaved('dirty')
     }
   }, [doc, t])

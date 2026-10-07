@@ -26,10 +26,8 @@ const SAME_ON_PURPOSE = new Set([
   'fsMacTitle',
   'style_muse',
   'abVersionBundle',
-  'mdVideoCloud',
   'ownKeyKeyField',
   'ownKeyChatGptRow',
-  'ownKeyModelFrom',
   'nwProxyPlaceholder',
 ])
 
@@ -90,8 +88,6 @@ test('house style: no em or en dashes, no exclamation marks, in either language'
   assert.deepEqual(loud(zh), [], 'Chinese strings with an exclamation mark')
 })
 
-/** Keys defined for a page another change is still shaping (the model pickers, 0.1.41): kept while that lands. */
-const PENDING_KEYS = /^(md|ownKey|frModels)/
 /** Keys built at run time from a prefix (`t(\`style_${id}\`)`, `t(\`mood_${mood}\`)`). */
 const COMPUTED_PREFIXES = ['style_', 'mood_']
 
@@ -108,6 +104,6 @@ test('every key is used somewhere in the client or the host', async () => {
     }
   }
   await walk(src)
-  const dead = Object.keys(en).filter((k) => !PENDING_KEYS.test(k) && !COMPUTED_PREFIXES.some((p) => k.startsWith(p)) && !new RegExp(`\\b${k}\\b`).test(text))
+  const dead = Object.keys(en).filter((k) => !COMPUTED_PREFIXES.some((p) => k.startsWith(p)) && !new RegExp(`\\b${k}\\b`).test(text))
   assert.deepEqual(dead, [], 'locale keys nothing reads')
 })

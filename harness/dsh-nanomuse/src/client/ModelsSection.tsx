@@ -10,7 +10,7 @@
  */
 import { createElement as h, Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { ProviderEntry } from '../catalogue.ts'
-import { call, errorStyle, muted, type Translate } from './api.ts'
+import { call, errorStyle, muted, type Translate, failureText } from './api.ts'
 import { settingsBus } from './bus.ts'
 import { IconHand, IconImage, IconMessage, IconVideo } from './icons.tsx'
 import { useLive } from './live.ts'
@@ -159,7 +159,7 @@ export function makeModelsSection(t: Translate) {
           setSaid((prev) => ({ ...prev, [slot]: model === 'auto' ? undefined : slot === 'chat' ? t('mlAppliesNew') : slot === 'hands' ? t('mlHandsLive') : t('mlSaved') }))
           reload()
         })
-        .catch((err: unknown) => setFailed(t('failed', { message: (err as Error).message })))
+        .catch((err: unknown) => setFailed(failureText(t, err)))
         .finally(() => setBusy(null))
     }
     if (error) return h('div', { className: 'nm-section' }, h('div', { style: errorStyle }, error))

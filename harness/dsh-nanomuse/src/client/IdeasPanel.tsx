@@ -9,6 +9,7 @@
  * it daily at the idea's time in a chat of its own; Start goal opens the goal
  * conversation with the idea's words. ⋯ on a row hides it.
  */
+import { failureText } from './api.ts'
 import { createElement as h, useMemo, useState, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { prefillComposer } from './composer.ts'
@@ -40,7 +41,7 @@ export function makeIdeasPanel(t: Translate) {
       return order.map((key) => ({ name: key, ideas: byGroup.get(key)! }))
     }, [items])
 
-    const fail = (err: unknown) => setError(t('failed', { message: (err as Error).message }))
+    const fail = (err: unknown) => setError(failureText(t, err))
     const say = (text: string) => {
       setToast(text)
       window.setTimeout(() => setToast((current) => (current === text ? undefined : current)), 3500)

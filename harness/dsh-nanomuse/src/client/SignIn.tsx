@@ -7,7 +7,7 @@
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useState, type FormEvent, type ReactNode } from 'react'
 import { useCloudConfig } from './AccountPage.tsx'
-import { call, column, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
+import { call, column, errorStyle, muted, row, type CloudStatus, type Translate, failureText } from './api.ts'
 
 export interface SignInProps {
   t: Translate
@@ -38,7 +38,7 @@ export function SignIn({ t, onSignedIn, footer, wide = false }: SignInProps): Re
     try {
       await work()
     } catch (err: unknown) {
-      setError(t('failed', { message: (err as Error).message }))
+      setError(failureText(t, err))
     } finally {
       setBusy(false)
     }

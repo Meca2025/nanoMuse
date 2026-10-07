@@ -144,6 +144,18 @@ The pieces are `src/refusals.ts` (the host reads the relay's reply on the `llm/s
 waterfall and rewrites the failure to `nanomuse/<kind>`) and the chat's `turn-error` seat in
 `src/client/RefusalCard.tsx`.
 
+The pages outside the chat that talk to the relay (sign-in, the models list, the account
+sheet, the avatar studio, the connectors, the devices) follow the same rule for the common
+cases: the relay out of reach says *nanoMuse Cloud could not be reached. Check the connection
+and try again.*, a deadline passed *nanoMuse Cloud did not answer in time. Try again in a
+moment.*, a `429` *Too many requests just now. Wait a moment and try again.*, a `401` *Not
+signed in to nanoMuse Cloud, or the sign-in has expired. Sign in again.*, a `5xx` *nanoMuse
+Cloud ran into a problem (503). Try again in a minute.* with the status; and when the
+desktop's own host on loopback does not answer at all, *This computer's nanoMuse is not
+answering. Restart the app and try again.* Anything else reads *That did not work:* with the
+message as it came (`failureText` in `src/client/api.ts`; the host turns a `fetch failed` or
+a timeout on its side into the codes `unreachable` 503 and `timeout` 504).
+
 **The 80 % heads-up.** After a turn on the account's model the host re-reads the account
 (once a minute at most); when the relay says the pool is at 80 %, one dismissible line
 shows above the composer — what is left, the invite bonus, *See the ways* — once per pool

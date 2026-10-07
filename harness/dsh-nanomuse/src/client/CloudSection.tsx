@@ -6,7 +6,7 @@
  */
 import { Button, Input, StateDot, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement as h, useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { call, column, errorStyle, muted, row, type CloudStatus, type Translate } from './api.ts'
+import { call, column, errorStyle, muted, row, type CloudStatus, type Translate, failureText } from './api.ts'
 import { AccountPage } from './AccountPage.tsx'
 import { Avatar } from './Avatar.tsx'
 import { settingsBus } from './bus.ts'
@@ -64,7 +64,7 @@ export function SyncControls({ t }: { t: Translate }): ReactNode {
       setView(await work())
       if (said) setNotice(said)
     } catch (err: unknown) {
-      setError(t('failed', { message: (err as Error).message }))
+      setError(failureText(t, err))
     } finally {
       setBusy(false)
     }
@@ -113,14 +113,14 @@ export function makeCloudSection(t: Translate, part: 'account' | 'data' = 'accou
     const apply = useCallback((next: CloudStatus) => {
       setStatus(next)
       setPhase(next.signedIn ? 'signedIn' : 'signedOut')
-      setError(next.error ? t('failed', { message: next.error.message }) : undefined)
+      setError(next.error ? failureText(t, next.error) : undefined)
     }, [])
 
     useEffect(() => {
       let alive = true
       call<CloudStatus>('status')
         .then((next) => { if (alive) apply(next) })
-        .catch((err: unknown) => { if (alive) { setPhase('signedOut'); setError(t('failed', { message: String((err as Error).message) })) } })
+        .catch((err: unknown) => { if (alive) { setPhase('signedOut'); setError(failureText(t, err)) } })
       return () => { alive = false }
     }, [apply])
 
@@ -130,7 +130,7 @@ export function makeCloudSection(t: Translate, part: 'account' | 'data' = 'accou
       try {
         await work()
       } catch (err: unknown) {
-        setError(t('failed', { message: (err as Error).message }))
+        setError(failureText(t, err))
       } finally {
         setBusy(false)
       }

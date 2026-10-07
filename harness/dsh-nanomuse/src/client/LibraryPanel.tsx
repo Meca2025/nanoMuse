@@ -7,6 +7,7 @@
  * Markdown rendered and editable in place, pictures, video and audio played,
  * a web page framed — with Open (the system app) and Reveal.
  */
+import { failureText } from './api.ts'
 import { createElement as h, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { Translate } from './api.ts'
 import { IconCheck, IconChevronLeft, IconDoc, IconExternal, IconFile, IconFilter, IconFolder, IconGlobe, IconImage, IconPencil, IconPlus, IconSearch, IconShapes, IconTrash, IconVideo, IconWave } from './icons.tsx'
@@ -60,7 +61,7 @@ export function makeLibraryPanel(t: Translate) {
       return sort === 'name' ? [...list].sort((a, b) => a.name.localeCompare(b.name)) : list
     }, [rooms.library, shelf, query, sort])
 
-    const fail = (err: unknown) => setError(t('failed', { message: (err as Error).message }))
+    const fail = (err: unknown) => setError(failureText(t, err))
     const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
     const removeSelected = () => {
       const ids = [...selected]
