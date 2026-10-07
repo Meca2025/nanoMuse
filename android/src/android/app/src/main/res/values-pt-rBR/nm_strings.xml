@@ -1067,4 +1067,26 @@
     <string name="nm_ways_computer_title">Seu computador</string>
     <string name="nm_ways_computer_body">Escreva @ e o nome do computador no chat; o turno roda lá, com os provedores configurados nele.</string>
     <string name="nm_ways_devices">Dispositivos</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">Modelos</string>
+    <string name="nm_models_intro">Qual modelo faz o quê. Cada linha abre um seletor; ali aparecem o nanoMuse Cloud e os provedores que você adicionou, com os modelos que servem.</string>
+    <string name="nm_models_chat_title">Chat</string>
+    <string name="nm_models_chat_sub">O modelo que conversa com você.</string>
+    <string name="nm_models_hands_title">Operar a tela</string>
+    <string name="nm_models_hands_sub">Olha a tela e age por você. Precisa de um modelo que veja imagens.</string>
+    <string name="nm_models_image_title">Criar imagens</string>
+    <string name="nm_models_image_sub">Retratos da sua Musa e as imagens que você pedir.</string>
+    <string name="nm_models_video_title">Criar clipes</string>
+    <string name="nm_models_video_sub">Clipes curtos da sua Musa.</string>
+    <string name="nm_models_new_chats">Vale para novos chats.</string>
+    <string name="nm_models_media_more">Mais opções de imagens e clipes</string>
+    <string name="nm_models_media_more_sub">Digite o nome de um modelo, veja o que para sem cada modelo ou confira de novo quais modelos de vídeo uma chave pode usar.</string>
+    <string name="nm_useit_title">Usar para</string>
+    <string name="nm_useit_body">Escolha do que esta chave deve cuidar. O nanoMuse Cloud continua com o resto.</string>
+    <string name="nm_useit_body_signed_out">Escolha do que esta chave deve cuidar.</string>
+    <string name="nm_useit_use">Usar</string>
+    <string name="nm_useit_not_now">Agora não</string>
+    <string name="nm_useit_footnote">Você pode mudar isso a qualquer momento em Configurações › Modelos.</string>
+    <string name="nm_retry_on_cloud">Usar o nanoMuse Cloud desta vez</string>
+    <string name="nm_hands_why_chat_provider">o padrão das mãos do seu provedor de chat</string>
 </resources>

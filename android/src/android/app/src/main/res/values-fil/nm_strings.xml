@@ -1067,4 +1067,26 @@
     <string name="nm_ways_computer_title">Ang iyong computer</string>
     <string name="nm_ways_computer_body">Isulat ang @ at ang pangalan ng computer sa chat; doon tatakbo ang turn, gamit ang mga provider na naka-set up dito.</string>
     <string name="nm_ways_devices">Mga device</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">Mga modelo</string>
+    <string name="nm_models_intro">Aling modelo ang gumagawa ng ano. Bawat hilera ay nagbubukas ng pipilian; lalabas doon ang nanoMuse Cloud at ang mga provider na idinagdag mo, kasama ang mga modelong akma.</string>
+    <string name="nm_models_chat_title">Chat</string>
+    <string name="nm_models_chat_sub">Ang modelong kumakausap sa iyo.</string>
+    <string name="nm_models_hands_title">Paggamit ng screen</string>
+    <string name="nm_models_hands_sub">Tumitingin sa screen at kumikilos para sa iyo. Kailangan ng modelong nakakakita ng larawan.</string>
+    <string name="nm_models_image_title">Paggawa ng larawan</string>
+    <string name="nm_models_image_sub">Mga larawan ng iyong Muse at ang mga larawang hinihingi mo.</string>
+    <string name="nm_models_video_title">Paggawa ng clip</string>
+    <string name="nm_models_video_sub">Maiikling clip ng iyong Muse.</string>
+    <string name="nm_models_new_chats">Para sa mga bagong chat.</string>
+    <string name="nm_models_media_more">Higit pang opsyon sa larawan at clip</string>
+    <string name="nm_models_media_more_sub">Mag-type ng pangalan ng modelo, tingnan kung ano ang hihinto kung wala ang bawat modelo, o suriin muli kung aling mga video model ang magagamit ng isang key.</string>
+    <string name="nm_useit_title">Gamitin ito para sa</string>
+    <string name="nm_useit_body">Piliin kung ano ang dapat asikasuhin ng key na ito. Ang iba ay nasa nanoMuse Cloud pa rin.</string>
+    <string name="nm_useit_body_signed_out">Piliin kung ano ang dapat asikasuhin ng key na ito.</string>
+    <string name="nm_useit_use">Gamitin</string>
+    <string name="nm_useit_not_now">Hindi muna</string>
+    <string name="nm_useit_footnote">Puwede mo itong baguhin anumang oras sa Mga setting › Mga modelo.</string>
+    <string name="nm_retry_on_cloud">Gamitin ang nanoMuse Cloud sa pagkakataong ito</string>
+    <string name="nm_hands_why_chat_provider">ang default ng mga kamay ng iyong chat provider</string>
 </resources>

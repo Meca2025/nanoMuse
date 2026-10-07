@@ -644,6 +644,37 @@ fun AppNavigation(
                 onOpenMediaModels = { navController.safeNavigate(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) },
             )
         }
+        // nanoMuse: Settings → Models — the four slots (chat, the screen, pictures, clips), each
+        // row a picker; and the "Use it for" card after a provider of the person's own is saved.
+        composable(io.github.nanomuse.ui.models.ROUTE_MODELS) {
+            io.github.nanomuse.ui.models.ModelsScreen(
+                onBack = { navController.safePopBackStack() },
+                onPick = { slot -> navController.safeNavigate(io.github.nanomuse.ui.models.modelPickRoute(slot)) },
+                onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+                onOpenMedia = { navController.safeNavigate(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) },
+            )
+        }
+        composable(
+            route = io.github.nanomuse.ui.models.ROUTE_MODEL_PICK,
+            arguments = listOf(navArgument("slot") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val slot = io.github.nanomuse.models.ModelSlots.Slot.byKey(backStackEntry.arguments?.getString("slot")) ?: return@composable
+            io.github.nanomuse.ui.models.SlotPickerScreen(
+                slot = slot,
+                onBack = { navController.safePopBackStack() },
+                onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+            )
+        }
+        composable(
+            route = io.github.nanomuse.ui.models.ROUTE_USE_IT_FOR,
+            arguments = listOf(navArgument("instanceId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val instanceId = backStackEntry.arguments?.getString("instanceId") ?: return@composable
+            io.github.nanomuse.ui.models.UseItForScreen(
+                instanceId = instanceId,
+                onDone = { navController.safePopBackStack() },
+            )
+        }
         // nanoMuse: the three models — chat, image, video — and what stops without each.
         composable(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) {
             io.github.nanomuse.ui.media.MediaModelsScreen(
@@ -687,6 +718,7 @@ fun AppNavigation(
             io.github.nanomuse.ui.hands.HandsScreen(
                 onBack = { navController.safePopBackStack() },
                 onOpenProviders = { navController.safeNavigate(Routes.PROVIDER_LIST) },
+                onOpenHandsModel = { navController.safeNavigate(io.github.nanomuse.ui.models.modelPickRoute(io.github.nanomuse.models.ModelSlots.Slot.HANDS)) },
             )
         }
         // nanoMuse: the account's computers, and how one joins.
@@ -789,7 +821,7 @@ fun AppNavigation(
                 onSoulClick = { navController.safeNavigate(Routes.SOUL) },
                 onSystemFilesClick = { navController.safeNavigate(io.github.nanomuse.ui.sysfiles.ROUTE_SYSTEM_FILES) }, // nanoMuse
                 onAvatarClick = { navController.safeNavigate(io.github.nanomuse.ui.avatar.ROUTE_AVATAR_STUDIO) }, // nanoMuse
-                onMediaModelsClick = { navController.safeNavigate(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) }, // nanoMuse
+                onModelsClick = { navController.safeNavigate(io.github.nanomuse.ui.models.ROUTE_MODELS) }, // nanoMuse
                 onCloudClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) }, // nanoMuse
                 onHandsClick = { navController.safeNavigate(io.github.nanomuse.ui.hands.ROUTE_HANDS) }, // nanoMuse
                 onDataControlsClick = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_DATA_CONTROLS) }, // nanoMuse
@@ -1070,10 +1102,12 @@ fun AppNavigation(
             route = Routes.ADD_PROVIDER_PATTERN, // nanoMuse: optional ?preset=…; plain ADD_PROVIDER still matches
             arguments = listOf(navArgument("preset") { type = NavType.StringType; nullable = true; defaultValue = null }),
         ) { backStackEntry ->
+            // nanoMuse: the instances before the form, so the save can open "Use it for" on the new one
+            val nmBefore = remember { providerRepository.config.value.instances.map { it.id }.toSet() }
             AddProviderScreen(
                 providerRepository = providerRepository,
                 onBack = { navController.safePopBackStack() },
-                onSaved = { navController.safePopBackStack() },
+                onSaved = { io.github.nanomuse.ui.models.UseItFor.afterProviderSaved(navController, providerRepository, nmBefore) }, // nanoMuse
                 preset = backStackEntry.arguments?.getString("preset"), // nanoMuse
             )
         }
@@ -1096,6 +1130,7 @@ fun AppNavigation(
                 onVoiceServiceClick = { id ->
                     navController.safeNavigate(Routes.shadowVoiceDetail(id))
                 },
+                onKeyAdded = { id -> io.github.nanomuse.ui.models.UseItFor.open(navController, id) }, // nanoMuse: the "Use it for" card
             )
         }
 

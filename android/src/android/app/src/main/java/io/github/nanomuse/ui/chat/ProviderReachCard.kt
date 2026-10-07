@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Public
@@ -65,9 +66,11 @@ const val NETWORK_DEEP_LINK = "minis://settings/network"
  * be reached — DNS, connect, TLS, a timeout, an interception page — or OpenAI refusing the
  * region, the sign-in having run out or the plan having nothing left, a card that says what
  * happened and what helps ([ProviderReachCard]); every other error keeps upstream's [banner].
+ * [onRetryOnCloud], when given (signed in, and the turn ran on a model of the person's own),
+ * adds *Use nanoMuse Cloud this time* under either: one turn on the relay, no slot changed.
  */
 @Composable
-fun NmProviderErrorOrBanner(error: String, onRetry: () -> Unit, banner: @Composable () -> Unit) {
+fun NmProviderErrorOrBanner(error: String, onRetry: () -> Unit, onRetryOnCloud: (() -> Unit)? = null, banner: @Composable () -> Unit) {
     // the relay's refusals (413 too large, busy, the operator's switches …): one sentence and a button
     val refusal = remember(error) { io.github.nanomuse.cloud.RelayRefusal.fromCanonical(error) }
     if (refusal != null) {
@@ -75,7 +78,24 @@ fun NmProviderErrorOrBanner(error: String, onRetry: () -> Unit, banner: @Composa
         return
     }
     val reach = remember(error) { ProviderReach.classify(error) }
-    if (reach == null) banner() else ProviderReachCard(reach, onRetry)
+    if (reach != null) {
+        ProviderReachCard(reach, onRetry, onRetryOnCloud = onRetryOnCloud)
+        return
+    }
+    Column {
+        banner()
+        if (onRetryOnCloud != null) CloudThisTimeButton(onRetryOnCloud, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/** *Use nanoMuse Cloud this time*: the text button the rejection cards share. */
+@Composable
+fun CloudThisTimeButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(onClick = onClick, modifier = modifier) {
+        Icon(Icons.Outlined.CloudQueue, contentDescription = null, modifier = Modifier.size(15.dp), tint = MuseTones.action)
+        Spacer(Modifier.width(5.dp))
+        Text(stringResource(R.string.nm_retry_on_cloud), fontSize = 13.sp, color = MuseTones.action)
+    }
 }
 
 /**
@@ -85,7 +105,7 @@ fun NmProviderErrorOrBanner(error: String, onRetry: () -> Unit, banner: @Composa
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun ProviderReachCard(reach: ProviderReach.Reach, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+fun ProviderReachCard(reach: ProviderReach.Reach, onRetry: () -> Unit, modifier: Modifier = Modifier, onRetryOnCloud: (() -> Unit)? = null) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var details by remember { mutableStateOf(false) }
@@ -218,6 +238,8 @@ fun ProviderReachCard(reach: ProviderReach.Reach, onRetry: () -> Unit, modifier:
                         }
                     }
                 }
+                // one turn on the relay, the slots untouched (0.1.41): never automatic
+                if (onRetryOnCloud != null) CloudThisTimeButton(onRetryOnCloud)
             }
 
             // the raw line, for a bug report

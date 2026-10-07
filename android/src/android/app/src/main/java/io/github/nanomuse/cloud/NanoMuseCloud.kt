@@ -101,6 +101,8 @@ object NanoMuseCloud {
     private const val KEY_CATALOG_IDS = "cloud.catalog_ids"
     private const val KEY_RECOMMENDED = "cloud.recommended"
     private const val KEY_SIGHTED = "cloud.sighted"
+    private const val KEY_CHAT_IDS = "cloud.chat_ids"
+    private const val KEY_GUI_IDS = "cloud.gui_ids"
     private const val KEY_MODELS_AT = "cloud.models_at"
     /** The two lanes' defaults (contract C4), for a relay that does not mark `for` itself. */
     const val DEFAULT_CHAT_MODEL = "deepseek-v4.1-flash"
@@ -565,7 +567,7 @@ object NanoMuseCloud {
     /**
      * A key from the relay (a code or a password sign-in) becomes a usable provider: instance,
      * key, models, a default group with the recommended chat model (only if the user has none
-     * yet), and the image model for the avatar (only if none is set).
+     * yet); the image and video models follow the Models page's order with nothing written.
      */
     private suspend fun adopt(context: Context, reply: JSONObject): Account {
         val repo = repo(context) ?: throw CloudException("no_repository", "Provider storage is not ready")
@@ -732,16 +734,15 @@ object NanoMuseCloud {
         (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
 
     /**
-     * After the key: a default group if the user has none, and the image model for the avatar
-     * if none is set. Nothing of the user's own is replaced — someone who already has a key
-     * and a group keeps them and gets the relay as one more provider.
+     * After the key: a default group if the user has none. Nothing of the user's own is
+     * replaced — someone who already has a key and a group keeps them and gets the relay as
+     * one more provider.
      */
     private fun provisionDefaults(context: Context, repo: ProviderRepository, inst: ProviderInstance, models: JSONArray?) {
         val offered = (0 until (models?.length() ?: 0)).mapNotNull { models?.optJSONObject(it) }
         // the group opens on the chat default (deepseek-v4.1-flash, contract C4); the hands
         // model (qwen3.8-27b) is a setting of its own, read by Hands.screenModel
         val recommendedChat = recommendedChat(offered.filter { !drawsOnly(it) })?.optString("id")
-        val imageModel = offered.firstOrNull { drawsOnly(it) }?.optString("id")
 
         var config = repo.config.value
         var entries = config.modelEntries.filter { it.providerInstanceId == inst.id && !it.isHidden }
@@ -781,10 +782,10 @@ object NanoMuseCloud {
                 repo.defaultPrimaryGroupId = (groups.firstOrNull { chatEntry.id in it.memberEntryIds } ?: groups.firstOrNull { it.name == LABEL && it.memberEntryIds.isNotEmpty() })?.id
             }
         }
-        if (imageModel != null) {
-            val current = ImageGen.endpoint(context)
-            if (current == null || current.instanceId == inst.id) ImageGen.save(context, inst.id, imageModel)
-        }
+        // The image model is not written here any more (0.1.41): with nothing chosen,
+        // ImageGen.endpoint resolves it in the contract's order (the chat provider's own
+        // image model, else the relay's, else the first own provider that draws), so a pick
+        // of the person's own is never shadowed by a choice made for them at sign-in.
     }
 
     private fun drawsOnly(model: JSONObject): Boolean {
@@ -852,12 +853,19 @@ object NanoMuseCloud {
         val sighted = (chats.firstOrNull { lanes(it)?.contains("gui") == true }
             ?: chats.firstOrNull { it.optString("id") == DEFAULT_GUI_MODEL }
             ?: chats.firstOrNull { sees(it) })?.optString("id")
+        // the menu by lane (0.1.41, the Models page): `for` contains `chat` / `gui`; a relay
+        // from before `for` puts every chat model in the chat lane and the sighted one in gui
+        val chatLane = chats.filter { lanes(it)?.contains("chat") != false }.map { it.optString("id") }.filter { it.isNotBlank() }
+        val guiLane = chats.filter { lanes(it)?.contains("gui") == true }.map { it.optString("id") }.filter { it.isNotBlank() }
+            .ifEmpty { listOfNotNull(sighted) }
         prefs(context).edit().apply {
             putString(KEY_MENU_IDS, menu.joinToString(","))
             // the list sent with the key is the menu alone: it must not erase a catalog we know
             if (stamp || catalog.isNotEmpty()) putString(KEY_CATALOG_IDS, catalog.joinToString(","))
             putString(KEY_RECOMMENDED, recommended?.optString("id") ?: "")
             putString(KEY_SIGHTED, sighted ?: "")
+            putString(KEY_CHAT_IDS, chatLane.joinToString(","))
+            putString(KEY_GUI_IDS, guiLane.joinToString(","))
             if (stamp) putLong(KEY_MODELS_AT, System.currentTimeMillis())
         }.apply()
     }
@@ -878,32 +886,24 @@ object NanoMuseCloud {
     /** The menu's model for looking at the screen: the recommended one when it sees pictures, else the first that does. */
     fun sightedModelId(context: Context): String? = prefs(context).getString(KEY_SIGHTED, null)?.takeIf { it.isNotBlank() }
 
+    /** The menu's chat lane (`for` contains `chat`), in the menu's order; the whole menu's chat models when the relay did not say. */
+    fun chatLaneIds(context: Context): List<String> =
+        prefs(context).getString(KEY_CHAT_IDS, null)?.split(',')?.filter { it.isNotBlank() } ?: emptyList()
+
+    /** The menu's lane for the screen (`for` contains `gui`), in the menu's order; the sighted model alone on an older relay. */
+    fun guiLaneIds(context: Context): List<String> =
+        prefs(context).getString(KEY_GUI_IDS, null)?.split(',')?.filter { it.isNotBlank() }?.ifEmpty { null }
+            ?: listOfNotNull(sightedModelId(context))
+
     /** Is this entry served by the relay? (Null when the person is not signed in.) */
     fun owns(context: Context, entry: ModelEntry): Boolean = instance(context)?.id == entry.providerInstanceId
 
-    /**
-     * The person picked one of our models in the chat's picker: the next chats follow it. The
-     * picker's own binding is per chat, and a new chat starts from the default group — ours,
-     * with the recommended model first — so a choice made in the picker was undone by the
-     * next "New chat" (a member who chose deepseek-v4.1-flash found every new chat back on
-     * qwen3.8-27b). Moving the pick to the front of our group is what makes it stick; a
-     * group of the person's own is never touched. True when new chats will follow the pick.
-     */
-    fun followPick(context: Context, entryId: String): Boolean {
-        val repo = repo(context) ?: return false
-        val inst = instance(context) ?: return false
-        val config = repo.config.value
-        val entry = config.modelEntries.firstOrNull { it.id == entryId && it.providerInstanceId == inst.id } ?: return false
-        if (drawsOrFilms(entry.model) || ImageGen.looksLikeImageModel(entry.model.id)) return false
-        val group = config.modelGroups.firstOrNull { it.id == repo.defaultPrimaryGroupId && it.name == LABEL } ?: return false
-        if (group.memberEntryIds.firstOrNull() == entryId) return true
-        val members = (listOf(entryId) + group.memberEntryIds.filter { it != entryId }).toMutableList()
-        repo.updateGroup(group.copy(memberEntryIds = members))
-        return true
-    }
+    // The person picked a model in the chat's picker: the next chats follow it. That used to
+    // live here for the relay's models alone; since 0.1.41 it holds for every provider and is
+    // io.github.nanomuse.models.ModelSlots.followPick.
 
     /** A picture or video model is no chat model, whatever its name says. */
-    private fun drawsOrFilms(model: LLMModel): Boolean {
+    fun drawsOrFilms(model: LLMModel): Boolean {
         val out = model.outputModalities?.map { it.lowercase() } ?: return false
         return "text" !in out && ("image" in out || "video" in out)
     }
@@ -1046,7 +1046,7 @@ object NanoMuseCloud {
             .remove(KEY_ACCOUNT_ID).remove(KEY_CREATED_AT).remove(KEY_HAS_PASSWORD).remove(KEY_SESSIONS).remove(KEY_VIA).remove(KEY_REGION).remove(KEY_USAGE)
             .remove(KEY_INVITE_CODE).remove(KEY_INVITE_URL).remove(KEY_INVITES).remove(KEY_INVITE_BONUS).remove(KEY_INVITE_EARNED)
             .remove(KEY_CONTRIBUTE).remove(KEY_SAMPLES).remove(KEY_CONTRIBUTE_DEFAULT).remove(KEY_PRIVACY_URL).remove(KEY_FRESH).remove(KEY_WARNED_GRANT)
-            .remove(KEY_MENU_IDS).remove(KEY_CATALOG_IDS).remove(KEY_RECOMMENDED).remove(KEY_SIGHTED).remove(KEY_MODELS_AT)
+            .remove(KEY_MENU_IDS).remove(KEY_CATALOG_IDS).remove(KEY_RECOMMENDED).remove(KEY_SIGHTED).remove(KEY_CHAT_IDS).remove(KEY_GUI_IDS).remove(KEY_MODELS_AT)
             .apply()
         ProfileSync.forget(context)
         io.github.nanomuse.sync.ConversationSync.forget(context) // the next account starts with its own ids and cursor

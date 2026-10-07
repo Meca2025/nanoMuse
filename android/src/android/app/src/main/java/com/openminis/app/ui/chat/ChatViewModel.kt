@@ -3806,7 +3806,7 @@ class ChatViewModel(
                 // nanoMuse: a chat pinned to one of the Cloud's models (the picker in the
                 // chat's menu) follows the Cloud group once that model leaves it. The group
                 // is where Settings chooses the model, and a pick in the picker already
-                // moves the group (NanoMuseCloud.followPick), so the two never disagree
+                // moves the group (ModelSlots.followPick), so the two never disagree
                 // for long; a pin on a group of the person's own is left alone, as upstream.
                 val pinned = if (currentProvider != null && groupBound == null && activeEntry != null) {
                     config.modelEntries.firstOrNull { it.id == activeEntry }
@@ -7279,6 +7279,16 @@ class ChatViewModel(
      *   - Sync the DB: if we popped a trailing assistant, drop just its
      *     persisted row so a re-load doesn't resurrect the failed turn.
      */
+    // nanoMuse: "Use nanoMuse Cloud this time" — a turn on a model of the person's own that
+    // failed is retried once on the relay's chat model; the chat's binding and every slot of
+    // Settings → Models stay as they are (io.github.nanomuse.chat.CloudRetry).
+    private var nmOneTurnProvider: LLMProvider? = null
+    fun nmOffersCloudRetry(): Boolean = io.github.nanomuse.chat.CloudRetry.offered(context, _activeEntryId.value)
+    fun nmRetryLastOnCloud() {
+        nmOneTurnProvider = io.github.nanomuse.chat.CloudRetry.provider(context) ?: return
+        retryLast()
+    }
+
     fun retryLast() {
         if (_isStreaming.value) return
         // T-streaming-side-channel: belt-and-suspenders flush in case any
@@ -7342,7 +7352,8 @@ class ChatViewModel(
             }
         }
 
-        val initialProvider = currentProvider ?: return
+        // nanoMuse: one turn on the relay when the card asked for it; currentProvider is untouched
+        val initialProvider = nmOneTurnProvider?.also { nmOneTurnProvider = null } ?: currentProvider ?: return
         var provider: LLMProvider = initialProvider
         _error.value = null
 

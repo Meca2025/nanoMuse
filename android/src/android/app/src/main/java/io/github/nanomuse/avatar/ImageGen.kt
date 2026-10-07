@@ -125,11 +125,19 @@ object ImageGen {
         val ids = imageEntries(context, instance).map { it.model.id }.distinct()
         val undated = ids.filterNot { DATED.containsMatchIn(it) }.toSet()
         val shown = ids.filter { id -> !DATED.containsMatchIn(id) || DATED.replace(id, "") !in undated }
-        val rec = recommendedModel(instance)
+        val rec = recommendedModel(context, instance)
         return if (rec in shown) listOf(rec) + shown.filterNot { it == rec } else shown
     }
 
     private val DATED = Regex("-\\d{4}-\\d{2}-\\d{2}$")
+
+    /**
+     * The model nanoMuse would pick for [instance]: the catalogue's `defaults.image` for its
+     * vendor (0.1.41), else the host's known default. Empty when neither knows the host.
+     */
+    fun recommendedModel(context: Context, instance: ProviderInstance): String =
+        io.github.nanomuse.models.ModelSlots.defaultOf(context, instance, io.github.nanomuse.models.ModelSlots.Slot.IMAGE)
+            ?: recommendedModel(instance)
 
     /** The model nanoMuse would pick on this host, list or no list. Empty when the host is unknown. */
     fun recommendedModel(instance: ProviderInstance): String {
@@ -151,7 +159,7 @@ object ImageGen {
      */
     fun suggestedModel(context: Context, instance: ProviderInstance): String {
         val available = availableModels(context, instance)
-        val rec = recommendedModel(instance)
+        val rec = recommendedModel(context, instance)
         return when {
             available.isEmpty() -> rec
             rec in available -> rec
@@ -168,13 +176,27 @@ object ImageGen {
             else -> "https://api.openai.com/v1"
         }
 
+    /**
+     * The image model: the one chosen (Settings → Models, or → Image & video models); with
+     * nothing chosen, in the Models page's order (0.1.41, [io.github.nanomuse.models.SlotOrder]):
+     * the chat provider's own image model when the chat provider is the person's own and
+     * draws, else nanoMuse Cloud's when signed in, else the first own provider that draws.
+     */
     fun endpoint(context: Context): Endpoint? {
         val app = context.applicationContext as? MinisApp ?: return null
         val repo = app.providerRepositoryOrNull ?: return null
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val eligible = eligibleInstances(context)
         val savedId = prefs.getString(KEY_INSTANCE, null)
-        val inst = eligible.firstOrNull { it.id == savedId } ?: eligible.firstOrNull() ?: return null
+        val cloudId = io.github.nanomuse.cloud.NanoMuseCloud.instance(context)?.id
+        val inst = eligible.firstOrNull { it.id == savedId }
+            ?: io.github.nanomuse.models.SlotOrder.resolve(
+                chosen = null,
+                chatProvider = io.github.nanomuse.models.ModelSlots.ownChatInstance(context)?.takeIf { own -> eligible.any { it.id == own.id } },
+                cloud = eligible.firstOrNull { it.id == cloudId },
+                firstOwn = eligible.firstOrNull { it.id != cloudId },
+            )?.value
+            ?: return null
         val model = prefs.getString(KEY_MODEL, null)?.takeIf { it.isNotBlank() && inst.id == savedId }
             ?: suggestedModel(context, inst)
         val key = repo.usableApiKey(inst) ?: return null

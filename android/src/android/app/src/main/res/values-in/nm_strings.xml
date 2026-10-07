@@ -1063,4 +1063,26 @@
     <string name="nm_ways_computer_title">Komputer Anda</string>
     <string name="nm_ways_computer_body">Tulis @ dan nama komputer di obrolan; giliran dijalankan di sana, dengan penyedia yang disiapkan di komputer itu.</string>
     <string name="nm_ways_devices">Perangkat</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">Model</string>
+    <string name="nm_models_intro">Model mana mengerjakan apa. Setiap baris membuka pemilih; nanoMuse Cloud dan penyedia yang kamu tambahkan muncul di sana bersama model yang cocok.</string>
+    <string name="nm_models_chat_title">Chat</string>
+    <string name="nm_models_chat_sub">Model yang berbicara denganmu.</string>
+    <string name="nm_models_hands_title">Mengoperasikan layar</string>
+    <string name="nm_models_hands_sub">Melihat layar dan bertindak untukmu. Perlu model yang bisa melihat gambar.</string>
+    <string name="nm_models_image_title">Membuat gambar</string>
+    <string name="nm_models_image_sub">Potret Muse-mu dan gambar yang kamu minta.</string>
+    <string name="nm_models_video_title">Membuat klip</string>
+    <string name="nm_models_video_sub">Klip pendek Muse-mu.</string>
+    <string name="nm_models_new_chats">Berlaku untuk chat baru.</string>
+    <string name="nm_models_media_more">Opsi gambar dan klip lainnya</string>
+    <string name="nm_models_media_more_sub">Ketik nama model, lihat apa yang berhenti tanpa tiap model, atau periksa lagi model video mana yang bisa dipakai sebuah kunci.</string>
+    <string name="nm_useit_title">Pakai untuk</string>
+    <string name="nm_useit_body">Pilih apa yang ditangani kunci ini. Sisanya tetap ditangani nanoMuse Cloud.</string>
+    <string name="nm_useit_body_signed_out">Pilih apa yang ditangani kunci ini.</string>
+    <string name="nm_useit_use">Pakai</string>
+    <string name="nm_useit_not_now">Nanti saja</string>
+    <string name="nm_useit_footnote">Kamu bisa mengubahnya kapan saja di Setelan › Model.</string>
+    <string name="nm_retry_on_cloud">Pakai nanoMuse Cloud kali ini</string>
+    <string name="nm_hands_why_chat_provider">bawaan tangan dari penyedia chat-mu</string>
 </resources>
