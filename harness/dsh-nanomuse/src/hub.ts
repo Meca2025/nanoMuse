@@ -167,6 +167,12 @@ export class HubClient {
     if (!this.running) return this.start()
     this.clearReconnect()
     this.closeSocket(1000, 'restart')
+    // The old socket's close event is ignored once it is replaced, so its work ends here:
+    // calls in flight fail now rather than at their timeout, and `connected` is false
+    // until the new `welcome`, so a call made meanwhile is refused as offline instead of
+    // being written into a socket that is not open yet.
+    this.failPending(new HubError('disconnected', 'The hub connection is being restarted'))
+    this.setConnected(false)
     this.attempt = 0
     void this.connect()
   }

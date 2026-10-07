@@ -11,6 +11,7 @@ import { defaultHelperPath, HELPER_NAME, MacHelper } from "./mac-helper";
 import * as macPermissions from "./mac-permissions";
 import { Operator, SCREEN_PERMISSION_TEXT, type Marker } from "./operator";
 import { startOperatorServer, type OperatorServer } from "./operator-server";
+import { EXTERNAL_URL, navigationVerdict, sameOrigin } from "./navigation";
 import { relink } from "./profile-link";
 import { maskProxyUrl, proxyEnv, validProxyUrl } from "./proxy";
 
@@ -41,7 +42,7 @@ const BUNDLE = "dsh-nanomuse";
 const READY_TIMEOUT_MS = 120_000;
 const RELEASES_PAGE = "https://github.com/nano-muse/nanoMuse/releases/latest";
 const ISSUES_PAGE = "https://github.com/nano-muse/nanoMuse/issues";
-const DOCS_PAGE = "https://github.com/nano-muse/nanoMuse/blob/main/docs/desktop.md";
+const DOCS_PAGE = "https://nanomuse.cn/docs/desktop";
 const HARNESS_PAGE = "https://github.com/deepseek-ai/deepseek-harness";
 
 const zh = (app.getLocale() || "").toLowerCase().startsWith("zh");
@@ -610,8 +611,6 @@ function permissionTarget(): string {
   return macPermissions.helperInUse() ? HELPER_NAME : "nanoMuse Desktop";
 }
 
-/** The only links that leave the app: http(s) with a host. */
-const EXTERNAL_URL = /^https?:\/\/[^/]/;
 let awakeBlocker: number | null = null;
 
 function releaseAwake(): void {
@@ -1667,15 +1666,16 @@ function createWindow(): BrowserWindow {
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (e, url) => {
-    if (hostUrl && url.startsWith(new URL(hostUrl).origin)) return;
-    // our own pages (the loading page) and nothing else from disk
-    if (url.startsWith("file:") && url.startsWith(pathToFileURL(ownResources()).href)) return;
+    // the Host's origin (compared as parsed URLs, not a prefix) and our own pages from disk
+    // (the loading page) stay in the window; http(s) goes to the browser; the rest is dropped
+    const verdict = navigationVerdict(url, hostUrl, pathToFileURL(ownResources()).href);
+    if (verdict === "allow") return;
     e.preventDefault();
-    if (EXTERNAL_URL.test(url)) void shell.openExternal(url);
+    if (verdict === "external") void shell.openExternal(url);
   });
-  win.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => {
-    // the microphone for voice input; nothing else is asked for
-    callback(permission === "media");
+  win.webContents.session.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    // the microphone for voice input, for the Host's page alone; nothing else is asked for
+    callback(permission === "media" && sameOrigin(details.requestingUrl, hostUrl));
   });
   win.on("closed", mainWindowClosed);
   // the splash: the logo in a loading ring and the wordmark (resources/loading.html) — no face
