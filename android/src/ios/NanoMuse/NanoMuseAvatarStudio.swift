@@ -163,7 +163,7 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
 
     /// Whether a picture can be drawn at all right now; the reason when not.
     var cannotDrawReason: String? {
-        if usesOwnKey || NanoMuseCloud.isSignedIn { return nil }
+        if usesOwnKey || NanoMuseCloud.modelsOn { return nil }
         return AppLocalized("Sign in to nanoMuse Cloud, or add an Alibaba Cloud Bailian key under Providers; the pictures are drawn with one of the two.")
     }
 
@@ -200,7 +200,7 @@ final class NanoMuseAvatarStudioModel: ObservableObject {
     // MARK: Cost
 
     func refreshEstimate() {
-        guard NanoMuseCloud.isSignedIn, !usesOwnKey else { return }
+        guard NanoMuseCloud.modelsOn, !usesOwnKey else { return }
         estimating = true
         estimateError = nil
         Task { @MainActor [self] in

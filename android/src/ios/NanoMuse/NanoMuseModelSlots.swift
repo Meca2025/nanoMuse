@@ -309,9 +309,10 @@ enum NanoMuseModelSlots {
     }
 
     /// nanoMuse Cloud as a slot provider, from the kept menu (or, until one is kept, from the
-    /// relay instance's own model list); nil when the phone is not signed in.
+    /// relay instance's own model list); nil when the phone is not signed in or *Use nanoMuse
+    /// Cloud models* is off.
     static func cloudProvider() -> NanoMuseSlotProvider? {
-        guard NanoMuseCloud.isSignedIn, let inst = NanoMuseCloud.instance else { return nil }
+        guard NanoMuseCloud.modelsOn, let inst = NanoMuseCloud.instance else { return nil }
         let menu = NanoMuseRelayMenu.cached
         var models: [NanoMuseSlot: [String]] = [:]
         var defaults: [String: String] = [:]
@@ -481,7 +482,8 @@ enum NanoMuseModelSlots {
 
     /// The Cloud model a chat falls back to for one turn (NanoMuseCloudOnce): the relay's
     /// recommended chat model as an entry, else the Cloud group's first member, else the first
-    /// Cloud model that chats.
+    /// Cloud model that chats. Asks for the sign-in alone, not the switch: the button that leads
+    /// here is the consent, so it works while *Use nanoMuse Cloud models* is off.
     static func cloudChatEntry() -> ModelEntry? {
         guard NanoMuseCloud.isSignedIn, let inst = NanoMuseCloud.instance else { return nil }
         let store = ProviderConfigStore.shared
@@ -497,7 +499,7 @@ enum NanoMuseModelSlots {
     /// The image slot as the person set it (nil when nothing was chosen): nanoMuse Cloud when
     /// they picked it, else the key they picked while it is still on the phone.
     static func imageChoice() -> NanoMuseSlotChoice? {
-        if NanoMuseImageGen.preferRelay, let cloud = NanoMuseCloud.instance, NanoMuseCloud.isSignedIn {
+        if NanoMuseImageGen.preferRelay, let cloud = NanoMuseCloud.instance, NanoMuseCloud.modelsOn {
             return NanoMuseSlotChoice(providerId: cloud.id, model: NanoMuseImageGen.relayModel ?? "")
         }
         guard let saved = UserDefaults.standard.string(forKey: NanoMuseImageGen.defaultsInstanceKey), !saved.isEmpty else { return nil }

@@ -291,12 +291,16 @@ extension AIChatViewModel {
         if let sid = sessionId, let binding = store.binding(for: sid) {
             switch binding.primarySource {
             case .directEntry(let entryId, _):
-                if let entry = store.entry(for: entryId) {
+                // nanoMuse: a pinned entry whose provider is switched off (nanoMuse Cloud with
+                // *Use nanoMuse Cloud models* off, or any disabled provider) falls through to the
+                // default group like a deleted one, so the switch is honoured by old chats too.
+                if let entry = store.entry(for: entryId),
+                   store.instance(for: entry.providerInstanceId)?.isEnabled ?? false {
                     logger.info("🔀RESOLVE directEntry=\(entryId) model=\(entry.model.id)")
                     return entry
                 }
                 // Entry was deleted (e.g. provider removed) — fall through to default group
-                logger.warning("🔀RESOLVE directEntry=\(entryId) missing, falling back to default group")
+                logger.warning("🔀RESOLVE directEntry=\(entryId) missing or its provider off, falling back to default group")
             case .group(let groupId, let resolvedEntryId):
                 // [T-ios-disabled-provider-still-selectable-via-group #34] Only
                 // honor the cached resolvedEntryId when its provider instance is
@@ -473,7 +477,10 @@ extension AIChatViewModel {
             // Explicit user pick: honor it as long as the entry still exists
             // (deleted → nil so the caller can fall through, mirroring the
             // historical auto-path behavior).
-            return store.entry(for: entryId)
+            // nanoMuse: and its provider is still switched on (see resolveCurrentEntryUncached).
+            guard let entry = store.entry(for: entryId),
+                  store.instance(for: entry.providerInstanceId)?.isEnabled ?? false else { return nil }
+            return entry
         case .group(let groupId, let resolvedEntryId):
             if let group = store.group(for: groupId),
                let freshEntryId = ModelGroupRouter.resolve(group: group, sessionId: sessionId, store: store),

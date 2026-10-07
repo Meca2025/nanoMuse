@@ -148718,6 +148718,301 @@
           }
         }
       }
+    },
+    "Use your own API key instead" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use your own API key instead"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "改用自己的 API key"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "改用自己的 API key"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代わりに自分の API キーを使う"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대신 내 API 키 사용"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stattdessen eigenen API-Schlüssel verwenden"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser plutôt ma propre clé API"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar mi propia clave API en su lugar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вместо этого использовать свой ключ API"
+          }
+        }
+      }
+    },
+    "Use nanoMuse Cloud models" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use nanoMuse Cloud models"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 nanoMuse Cloud 模型"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 nanoMuse Cloud 模型"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud のモデルを使う"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud 모델 사용"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud-Modelle verwenden"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser les modèles nanoMuse Cloud"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar los modelos de nanoMuse Cloud"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать модели nanoMuse Cloud"
+          }
+        }
+      }
+    },
+    "nanoMuse Cloud is one of the sources for the chat, pictures and clips; what runs on it comes off your allowance." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud is one of the sources for the chat, pictures and clips; what runs on it comes off your allowance."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud 是聊天、图片和短片的来源之一；在它上面运行的内容会消耗你的额度。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud 是聊天、圖片和短片的來源之一；在它上面執行的內容會消耗你的額度。"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud はチャット、画像、動画の提供元のひとつです。そこで実行されたものは利用枠から差し引かれます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud는 채팅, 그림, 클립의 출처 중 하나입니다. 여기서 실행되는 것은 사용 한도에서 차감됩니다."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud ist eine der Quellen für Chat, Bilder und Clips; was darauf läuft, geht von deinem Kontingent ab."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud est l'une des sources pour le chat, les images et les clips ; ce qui y tourne est décompté de votre quota."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud es una de las fuentes para el chat, las imágenes y los clips; lo que se ejecuta en él se descuenta de tu cuota."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nanoMuse Cloud один из источников для чата, картинок и роликов; всё, что выполняется там, списывается с вашего лимита."
+          }
+        }
+      }
+    },
+    "Off: nothing runs on nanoMuse Cloud unless you choose it yourself. You stay signed in for sync and your devices." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off: nothing runs on nanoMuse Cloud unless you choose it yourself. You stay signed in for sync and your devices."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已关闭：除非你自己选择，否则不会有任何内容在 nanoMuse Cloud 上运行。账号保持登录，用于同步和你的设备。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已關閉：除非你自己選擇，否則不會有任何內容在 nanoMuse Cloud 上執行。帳號保持登入，用於同步和你的裝置。"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オフ：自分で選ばないかぎり nanoMuse Cloud では何も実行されません。同期とデバイスのためにサインインは維持されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "꺼짐: 직접 선택하지 않는 한 nanoMuse Cloud에서는 아무것도 실행되지 않습니다. 동기화와 기기를 위해 로그인은 유지됩니다."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus: Auf nanoMuse Cloud läuft nichts, außer du wählst es selbst. Du bleibst für die Synchronisierung und deine Geräte angemeldet."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé : rien ne tourne sur nanoMuse Cloud sauf si vous le choisissez vous-même. Vous restez connecté pour la synchronisation et vos appareils."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivado: nada se ejecuta en nanoMuse Cloud a menos que lo elijas tú. Sigues con la sesión iniciada para la sincronización y tus dispositivos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключено: на nanoMuse Cloud ничего не выполняется, пока вы сами этого не выберете. Вы остаётесь в системе для синхронизации и своих устройств."
+          }
+        }
+      }
+    },
+    "This provider is your nanoMuse Cloud account and cannot be deleted. To stop using its models, switch off Use nanoMuse Cloud models under Models; you stay signed in for sync." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This provider is your nanoMuse Cloud account and cannot be deleted. To stop using its models, switch off Use nanoMuse Cloud models under Models; you stay signed in for sync."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个服务商就是你的 nanoMuse Cloud 账号，不能删除。不想用它的模型，请在「模型」里关掉「使用 nanoMuse Cloud 模型」；账号保持登录，用于同步。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這個服務商就是你的 nanoMuse Cloud 帳號，不能刪除。不想用它的模型，請在「模型」裡關掉「使用 nanoMuse Cloud 模型」；帳號保持登入，用於同步。"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このプロバイダーはあなたの nanoMuse Cloud アカウントなので削除できません。モデルを使いたくない場合は「モデル」で「nanoMuse Cloud のモデルを使う」をオフにしてください。同期のためにサインインは維持されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 제공자는 내 nanoMuse Cloud 계정이므로 삭제할 수 없습니다. 모델 사용을 멈추려면 모델에서 nanoMuse Cloud 모델 사용을 끄세요. 동기화를 위해 로그인은 유지됩니다."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Anbieter ist dein nanoMuse Cloud-Konto und kann nicht gelöscht werden. Um seine Modelle nicht mehr zu nutzen, schalte unter Modelle „nanoMuse Cloud-Modelle verwenden“ aus; du bleibst für die Synchronisierung angemeldet."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fournisseur est votre compte nanoMuse Cloud et ne peut pas être supprimé. Pour ne plus utiliser ses modèles, désactivez « Utiliser les modèles nanoMuse Cloud » dans Modèles ; vous restez connecté pour la synchronisation."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este proveedor es tu cuenta de nanoMuse Cloud y no se puede eliminar. Para dejar de usar sus modelos, desactiva «Usar los modelos de nanoMuse Cloud» en Modelos; sigues con la sesión iniciada para la sincronización."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот провайдер и есть ваш аккаунт nanoMuse Cloud, удалить его нельзя. Чтобы не использовать его модели, выключите «Использовать модели nanoMuse Cloud» в разделе «Модели»; вы остаётесь в системе для синхронизации."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
