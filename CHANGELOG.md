@@ -66,6 +66,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - The *Manage permissions* row of the profile drawer opens with Enter and Space; the Help page's *Docs* row opens the desktop page of the docs site instead of a developer page on GitHub.
 - **The desktop's sentences lost their dashes.** 66 English and 49 Chinese strings, the refusal card's two sentences, the first run's greeting, the video model's activation note and the Linear connector's line now read with commas, colons and full stops; a test keeps dashes and exclamation marks out of both dictionaries from here on.
 - **87 locale strings nobody read are gone**: the old onboarding slides, the first profile drawer, the first About and leftovers of the feed, ideas and library pages, in both languages; a test now fails on a key the client never uses.
+- **Windows workspaces read back from the coding agents' folders.** The desktop turned a Cursor or Claude Code project folder name back into the workspace path by reading `-` as `/`, which fits `/home/me/app` and not `C:\Users\me\app`: on Windows the coding panel's sessions of an IDE chat (no `cwd` on record) showed a workspace of `:\Users\me\app`, and the plugin's tests failed on the Windows runner, which broke the 0.1.41 desktop build. Cursor's `C-Users-me-app` and Claude Code's `C--Users-me-app` now both read as `C:\Users\me\app`; Unix paths read as before.
 
 ### Android
 
