@@ -71,6 +71,50 @@ Guidelines that still apply there: everything that acts goes through the Sentine
 
 nanoMuse is used in more than one country, so a user-visible string is never added in one language. Write it in English first, then in 简体中文, then in every other locale the file already has — `res/values-*/nm_strings.xml` on Android (keys start with `nm_`; upstream's `strings.xml` is not ours to edit), `Localizable.xcstrings` on iOS, `en` and `zh` in `harness/dsh-nanomuse/src/client/locales.ts` on the desktop, the console and e-mail templates in `cloud/`. Dates, numbers and currency use the person's locale. Do not assume a +86 phone number, a Chinese app or Beijing time: SMS codes reach mainland-China numbers only, so a sign-in screen says that and offers e-mail. The voice is the same in every language — plain, specific, no marketing words, no exclamation marks — and Meta's own UI text is never copied verbatim.
 
+## Translating the docs
+
+The docs site (nanomuse.cn/docs, built by `website/` from `docs/`) is in English and 简体中文. The Chinese pages live in `docs/zh/` with the **same file names** as the English ones — `docs/zh/android.md` is the twin of `docs/android.md` — and `website/.vitepress/config.mts` holds the Chinese nav and sidebar. A change to an English page updates its Chinese twin in the same pull request; a new English page gets a Chinese page and a line in both sidebars. `cd website && npm run docs:build` is the dead-link check for both languages.
+
+Rules for a Chinese page:
+
+- Facts are identical to the English page: version numbers, paths, commands, config keys, URLs, code blocks, table shapes and link targets. Nothing is added, softened or inflated.
+- Every heading below the title keeps the English anchor: `## 安装 {#install}`. Links between pages (`android.md`, `configuration.md#connectors`) then work in both languages, and so do the sidebar's anchors.
+- Paths: pages link to pages by bare name (`android.md`); images and other files under `docs/` are one level up (`../screenshots/feed.png`); the repository is two levels up (`../../nanomuse/config.py`).
+- Voice as everywhere else: plain, specific, human; Chinese idiom, never a word-for-word rendering of the English sentence; no exclamation marks, no marketing words. Second person 你, the agent is 它; menu paths as 设置 → 账号 → 设备, button and switch names in 「」.
+- Things are called what the apps' Chinese screens call them. The glossary below is derived from `res/values-zh/nm_strings.xml`, the `zh` block of `locales.ts`, `Localizable.xcstrings` (zh-Hans), `web/src/i18n/zh-CN.ts` and the relay console; when a screen and the glossary disagree, the screen wins and the glossary is corrected.
+
+| English | 简体中文 | English | 简体中文 |
+|---|---|---|---|
+| agent | 智能体 | the relay / nanoMuse Cloud | 中继 / nanoMuse Cloud |
+| free, open-source, non-profit | 免费、开源、非营利 | allowance, free allowance | 额度，免费额度 |
+| sign in / sign out | 登录 / 退出登录 | one-time code | 验证码 |
+| your own key | 自己的 key | provider | 服务商 |
+| a plan you already pay for | 你已经在付费的套餐 | model group | 模型组 |
+| Data controls | 数据控制 | sync conversations across my devices | 在我的设备之间同步对话 |
+| the hub | hub（设备互联） | Devices | 设备 |
+| remote control | 远程控制 | trusted (ask-free) devices | 免询问的设备 |
+| Reach | Reach | Hands / the hands | 「手」/ 手；动手 |
+| the hands' model | 手的模型 | the operator | 操作器 |
+| computer use | 电脑操作 | the capsule | 胶囊 |
+| the stage / the glow / the marker | 舞台 / 光晕 / 标记 | the trajectory | 轨迹 |
+| accessibility service / overlay | 无障碍服务 / 悬浮窗权限 | Accessibility / Screen Recording (macOS) | 辅助功能 / 录屏 |
+| Sentinel | 哨兵（Sentinel） | approval, approval card | 审批，审批卡片 |
+| Allow once / for this session / always / Deny | 允许一次 / 本次对话都允许 / 总是允许 / 拒绝 | destructive / outbound / money / install | 删除 / 发送 / 付款 / 安装 |
+| Permissions | 权限 | workspace / shared folders | 工作区 / 共享文件夹 |
+| the vault | 保险库 | taint, tainted | 污染，已污染 |
+| Feed / Ideas / Goals / Library | 动态 / 点子 / 目标 / 资源库 | Artifacts / Media | 构件 / 影音内容 |
+| Routines / goal check | 例程 / 目标检查 | the rail / the rooms | 侧栏 / 房间 |
+| main chat | 主要聊天 | side chats | 旁聊 |
+| memory / daily log | 记忆 / 日记 | SOUL, IDENTITY.md, MEMORY.md | unchanged |
+| avatar / the avatar studio | 形象 / 形象工作室 | moods (idle, working, waiting, happy, error) | 状态（待命、干活中、等你回复、搞定、出了点问题） |
+| picture model / video model | 图像模型 / 视频模型 | skills / MCP server | 技能 / MCP 服务器 |
+| connectors | 连接器 | coding agents | 编程助手 |
+| channels (Feishu, DingTalk, WeCom, Telegram) | 聊天入口 | deliver here | 推送到这里 |
+| the web console / the web app | 网页控制台 / 网页版 | the desktop app | 桌面版 |
+| the phone app | 手机 App | the runtime / the local runtime | 运行时 / 本地运行时 |
+| the showcase | 展示站 | self-hosting | 自己部署 |
+| quick chat / dictation | 快速唤起 / 听写 | roadmap / changelog / release notes | 路线图 / 更新日志 / 发布说明 |
+
 ## Commits and pull requests
 
 - The subject line follows [Conventional Commits](https://www.conventionalcommits.org): `type(scope): what changed`, in the imperative, no full stop — `feat(android): hands capsule shows the model's thought`, `fix(relay): keep the face a device drew when another renames`, `docs(readme): move the translations to docs/readme/`, `test(gateway): sighted model for the operator lane`. Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`; the scope is the part of the tree (`runtime`, `android`, `web`, `desktop`, `relay`, `showcase`, `mobilegym`, `harness`, `docs`, `deps`…). The body says why, in plain words. The *Commits* check on a pull request fails on a subject that does not fit; merge commits are exempt.

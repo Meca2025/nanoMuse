@@ -1,0 +1,194 @@
+# Android App
+
+`android/` 是手机上的 nanoMuse：[OpenMinis](https://github.com/OpenMinis/OpenMinis)
+1.13（GPL-3.0）——一个原生 App，智能体**在手机上**运行，Linux shell、浏览器、MCP 服务器、
+技能和定时任务都装在 APK 里——再加上 nanoMuse 自己的身份、设计和功能。属于 nanoMuse 的一切
+都在 `io.github.nanomuse.*` 下；OpenMinis 文件里的改动用 `// nanoMuse:` 标出。这个选择的来龙去脉
+在 [roadmap.md](roadmap.md)；它之前的方案（包着一个 Python 服务器的 WebView，两个 APK 变体）
+作为设计记录保留在 [archive/android-python-line.md](../archive/android-python-line.md)，不是你今天
+下载到的东西。
+
+一个 APK，一种架构：`nanoMuse-<version>-arm64.apk`（arm64-v8a，Android 8.0 / API 26 及以上，
+`targetSdk` 35）。每个版本都用同一把签名密钥，所以新 APK 直接覆盖旧的，数据保留。没有上架
+Play 商店：「设置 → 版本」把已安装的构建和最新版本并排显示（先查 `nanomuse.cn/dl/index.json`，
+再查这个仓库的 GitHub Releases——「最新 0.1.x——你已经是了」/「0.1.x 已发布——点一下更新」），
+并提供下载。
+
+## 安装 {#install}
+
+1. 从[最新版本](https://github.com/nano-muse/nanoMuse/releases/latest)下载
+   `nanoMuse-<version>-arm64.apk`。想核对的话，运行
+   `sha256sum -c nanoMuse-<version>-arm64.apk.sha256`。
+2. 打开它。Android 会问一次，是否允许从你的浏览器或文件管理器安装。
+3. **登录。** 第一屏就是账号：手机号或邮箱，一个验证码——设过密码之后也可以用密码。账号让
+   你的设备能连成一体（[hub.md](hub.md)），也带来一个起步用的模型（[cloud.md](cloud.md)：每个
+   账号一份免费额度——写这页时是 ¥10——每邀请一位朋友，你和对方都再得一些；App 会显示中继
+   当前的数字；之后可以[换自己的 key](own-key.md)）。然后选哪个模型来回答：账号自带的，或者
+   你自己的 key（任何 OpenAI 兼容端点，或 App 内置的那几种 OAuth 登录）。设的是两个模型，
+   不是一个：**聊天模型**（账号的菜单默认停在 `deepseek-v4.1-flash`；在 Cloud 组里选另一个，
+   新聊天就跟着用它）和「设置 → Hands」下的**手的模型**，也就是看屏幕的那个
+   （`qwen3.8-27b`——账号的，或者你自己 key 下的同一个模型；也可以固定为任何一个能看图的
+   模型）。完全不要账号、一切自己跑，是运行时的 `cloud.required = false`；手机 App 则要求
+   有账号。
+4. 可选：让智能体能使用你手机上其他 App 的那两个权限（可跳过、可撤销），以及
+   「设置 → 图像与视频模型」，让形象能变、能动。
+
+**自己的中继。** 登录屏默认连 nanoMuse Cloud，除非你另有指定：登录表单下方的「使用其他服务器」
+接受你自己运行的中继地址（[cloud.md](cloud.md)，`cloud/docker-compose.yml`），「检查」会请求它的
+`/healthz` 并显示它回答的版本，「使用这个服务器」把地址记住，下次启动仍然有效。自己网络之外的
+地址必须是 `https://`；私有地址（`10.x`、`172.16–31.x`、`192.168.x`、`localhost`、`.local` 或
+`.ts.net` 名字）可以用明文 `http://`。「设置 → 账号」显示「服务器：`<host>`」和「更改」，更改会先把
+手机退出登录——它持有的 key 属于签发它的那台服务器。App 对账号做的一切（登录、hub、同步、
+用量、模型菜单）都发往这个地址。
+
+## 手机能做什么 {#what-the-phone-does}
+
+| | |
+| --- | --- |
+| **智能体，在手机上** | 一个沙箱里的 Alpine Linux、一个真正的 shell、文件、浏览器、MCP 服务器、Agent Skills 格式的技能、记忆、定时任务；删除、发送、付款之前先审批。模型是账号的或你自己的；用自己的 key 时，你说的话一个字都不经过项目的中继。 |
+| **手（Hands）**（`hands/`） | 打开「Hands」并启用无障碍服务之后，智能体会看手机的屏幕，在各个 App 里点、输入、滑动——这是 API、抓取和浏览器之后的最后一级。盖在 App 上的舞台显示它即将点哪里，一个胶囊显示当前步骤和**停止**；当一次点击会发送、发布或删除时，胶囊自己就会问——**允许** / **拒绝**，和聊天卡片、通知显示的是同一个请求——所以你不用被拉回 nanoMuse（付款在聊天卡片里用锁屏确认；对这一种，胶囊提供「打开」）。密码和验证码永远由你自己输。[gui.md](gui.md) 是设计记录；App 自己的手在 `io.github.nanomuse.hands`。 |
+| **Reach**（`reach/`） | 从手机使用你的电脑：「手机上说一句，电脑上执行」——一条 shell 命令、一个文件、电脑的屏幕，或者把整个任务交给那边运行的 nanoMuse。入口是 hub（下一行）：在电脑上装 nanoMuse 桌面版，用同一个账号登录，几秒钟内它就出现在「账号 → 设备」下，不限网络——从 0.1.24 起这是唯一的方式（局域网的 host 脚本已经去掉）。「设置 → 电脑」列出账号下的电脑，并说明手机用的是哪个账号，因为电脑不见了，几乎总是因为它登的是另一个账号。审批在手机上决定之后，才会发出任何东西。[every-device.md](every-device.md)。 |
+| **hub**（`hub/`） | 账号下每台登录的设备都在中继的 hub 上相遇：手机看得到你的电脑，能拜托它们做事，把它们的审批当作卡片收到，也能被它们拜托。一个前台服务让它在后台也保持可达（Android 13 及以上为此会请求通知权限）。[hub.md](hub.md)。 |
+| **编程助手**（`ui/coding/`） | 你电脑上的 Cursor、Codex 和 Claude Code 会话，在手机上看、在手机上指挥。[coding-agents.md](coding-agents.md)。 |
+| **账号**（`ui/cloud/`） | 谁登录了、密码、每台持有 key 的设备、按类别和按模型的用量、退出的方式。免费额度用完或超过 80 % 时，账号页和被拒绝的那一轮都会显示接下来的路：自己的 key——目录里的服务商，所在地区的排前面（中国大陆的人看到阿里云百炼：判断依据是界面语言为简体中文、用手机号登录，或者中继这么说；其他地方是 OpenRouter 和 OpenAI），每一家都写明它覆盖什么——你已经在付费的套餐（ChatGPT、Claude、Kimi、OpenRouter 用登录代替 key），还有邀请。见下面的[自己的 key](#your-own-key)。手机只显示、只同步当前登录账号的对话——从 0.1.40 起每个聊天都有一个归属者，同步与否都是；退出登录时会问「在这台设备上保留这个账号的聊天」（默认关：这个账号的聊天、记忆、动态、目标、例程和形象都离开手机；开：先收起来，等它回来）；删除账号会把这些全部删除；中继拒绝的 key（`401 bad_key`）会像「保留」那样把账号的数据收起来，登录页会一直说明，直到下次登录——只有 `401 account_deleted` 会删除；退出登录状态下，只显示退出后产生的聊天（[sync.md](sync.md)）。 |
+| **交到你手里的浏览器**（`browser/`） | 需要你亲自处理的页面——登录、验证码、付款、人机验证——会直接交到你手里，而不是用文字描述：`browser_use` 的 `hand_over` 动作把智能体自己的标签页（同一个 WebView、同一个会话）在浏览器面板里打开，智能体松手；输入框上方的**轮到你了**卡片说明页面要你做什么，带「打开页面」和「完成，继续」，面板上是同一句话和同一个按钮，工具调用会等到「完成」（最多十五分钟），然后智能体从页面当前的样子接着往下做。`io.github.nanomuse.browser.BrowserHandOver`。 |
+| **连接器**（`connectors/`、`ui/connectors/`） | 智能体可以被放进去的那些服务——桌面版那份 75 个远程 MCP 服务器的目录（Notion、Linear、GitHub、GitLab、Slack、Stripe、Miro……），以 `assets/nanomuse/connectors.json` 随 App 发布。设置里管这一切的只有一行：「连接器」；上游的 MCP 编辑器（按地址、按命令、导入 JSON）是页面末尾的「你自己的服务器」。开放的服务点一下就加上；要 key 的服务填 key；OAuth 服务走 MCP 授权流程（发现、动态客户端注册、在 Custom Tab 里做 PKCE），令牌进入该条目的 `Authorization` 头，供沙箱内的 MCP 客户端使用，App 启动时刷新；授权服务器不接受注册客户端的服务（`clientIdRequired`——GitHub、Slack、Discord、HubSpot、Render、Bitrise、PagerDuty、Box）会要你在厂商的开发者页面用 App 的回调地址创建一对 OAuth client id 和 secret，面板会显示并复制这个回调地址。连接好的服务就是同一个 id 下的一个 MCP 服务器条目——「你自己的服务器」也能管它。连接了什么，会通过中继的 profile 分享给账号的其他设备——只有条目（id、名称、地址、认证方式、哪台设备、何时），从不包含令牌——所以页面还会列出「在你的其他设备上」：在桌面上连接的服务显示为「已在 <device> 上连接——在这里登录即可在这台手机上使用」，点一下进入同一个面板。 |
+| **聊天，不花哨** | 智能体工作时，形象下面那一行写的是正在进行的步骤——「nanoMuse 正在用 Shell」「正在写回复」「在做了：订餐桌」——从不写心情。工具小标签、「电脑」面板和浮动的步骤条**默认关闭**；「设置 → 外观 → 显示智能体的步骤」打开它们。打开后，完成的步骤显示为「nanoMuse 用过 Shell · 完成」，它的面板点 ×、滑动或返回键都能关。 |
+
+同一个账号的网页控制台在中继上（`/app`），桌面版见 [desktop.md](desktop.md)；手机、桌面和网页共用
+[brand.md](brand.md) 里描述的设计语言。
+
+## 自己的 key {#your-own-key}
+
+App 认识的厂商在一个文件里，`assets/nanomuse/providers.json`——运行时的
+`nanomuse/llm/providers.json` 的一份拷贝，由 `node scripts/providers-json.mjs` 写出，每个客户端读的
+都是这同一份目录（[own-key.md](own-key.md)）。每个条目写明端点在哪、在哪里创建 key、有哪些登录方式、
+在哪里接受注册（`cn`、`global`），以及它的模型能做什么：`chat`、`vision`（手看屏幕）、`image`（图片）、
+`video`（短视频）。
+
+**卡片。** 额度用完或快用完时，「使用自己的模型 key」列出目录，所在地区的厂商在前——大陆是
+阿里云百炼（一把 key 覆盖全部四项；它只接受中国大陆的账号注册），其他地方是 OpenRouter 和
+OpenAI——然后是其余的，每次三家，收在「更多服务商」后面。每一行都写明这家覆盖什么
+（「聊天 · 屏幕 · 图片 · 短视频」）；「添加」打开服务商表单，预填好它的名字、端点和 `/v1` 设置
+（`minis://settings/providers/add?preset=<id>`），「获取 key」打开厂商的 key 页面。不推荐任何一家。
+「你已经在付费的套餐」列出用套餐登录、不用 key 的厂商——ChatGPT（OpenAI 的 Codex OAuth）、
+Claude、Kimi（设备码）和 OpenRouter；「登录」打开同一个表单并停在登录按钮上（`?preset=<id>:oauth`），
+走的是 OpenMinis 自己的 `OpenAIOAuthManager`、`ClaudeOAuthManager`、`KimiOAuthManager` 或
+`OpenRouterOAuthManager`。ChatGPT 那一行附一句话：OpenAI 的条款只允许 ChatGPT 套餐在 OpenAI
+自己的 Codex 里使用，别的 App 曾被切断过这种访问（OpenCode，2026 年 1 月），如果停了，API key
+照样能用。Anthropic 和 Gemini 打开的是 OpenMinis 为它们准备的服务商类型；其他都走 OpenAI
+兼容表单。
+
+**列表从哪来。** 中继的 `/v1/me` 带着 `spend.guidance`（中继 0.21，[cloud.md](cloud.md)）：这个人所在
+地区的服务商，按中继的顺序，每家覆盖什么、可以登录的套餐以及它们面向哪些客户端、本地服务器、
+文档链接，还有关于 ChatGPT 登录的那句实话。`cloud/Guidance.kt` 解析它，`Ways.resolve` 优先用它，
+卡片和「设置 → nanoMuse Cloud」只在中继没发（旧中继）时才读内置目录——所以中继上新加的厂商
+不用等 App 更新就能出现，中继不再列出的服务商当天就消失。`429 allowance_exhausted` 在数字旁边
+带着同一块内容。
+
+**各家覆盖什么。** 能力决定 App 提供什么（`cloud/Capabilities.kt`）：图片（「设置 → 图像与视频模型」、
+形象工作室、`nanomuse-media image`）只在厂商有 `image` 的服务商里挑；短视频只在有 `video` 且 App
+能驱动的里面挑（百炼的视频 API）；手的屏幕模型和它的选择器只列出有 `vision` 的厂商的模型。通过
+Codex 登录的 ChatGPT 套餐只有聊天和视觉——Codex 后端没有图片或视频端点——所以从不会被拿来
+画图。目录不认识的厂商（一个网关、你自己的中继、nanoMuse Cloud）按它模型自己的说法算，和以前
+一样。没有任何已配置的服务商具备某项能力时，页面用一句话说明——「图片需要有图像模型的
+服务商——百炼、OpenAI、Gemini 或 OpenRouter。」——而不是报错。
+
+**连不上服务商的时候**（`net/ProviderReach.kt`、`ui/chat/ProviderReachCard.kt`）。失败的一轮，如果
+错误来自传输层——OkHttp 的「failed to connect to chatgpt.com/…（port 443）」「Unable to resolve host」、
+一条 TLS 或超时信息——或者是 OpenAI 的「region not supported」，就显示为一张卡片而不是红色横幅：
+发生了什么、什么有用（这台手机上的 VPN、「设置 → 网络」下的代理、另一家用你自己 key 的服务商）、
+「重试」，以及收在「详情」后面的原始信息。上游的 `mapHttpError` 会丢掉 401/403/429 的响应体，
+`ReachSignal`（`OpenAIProvider` 里一处 `// nanoMuse:` 改动）把它们留几秒钟，以规范的 `nm_reach:` 行
+写进消息，所以过期的 ChatGPT 登录显示「重新登录」，用完的套餐窗口显示「ChatGPT 套餐暂时没有
+剩余了」，附 OpenAI 自己的那句话和重置时间；key 服务商上普通的「Invalid API key」则保持上游的
+样子。中继的 `daily_cap` 429 现在和 `allowance_exhausted` 一样读取，卡片会说今天的份额用完了，
+隔天回来。额度卡片还列出你自己的模型（你自己电脑上的 Ollama、LM Studio、vLLM），以及对登录
+账号而言，你的电脑——聊天里打「@」加它的名字，这一轮就在那边跑。
+
+**中继拒绝一轮的时候**（`cloud/RelayRefusal.kt`、`ui/chat/RelayRefusalCard.kt`）。nanoMuse Cloud 发来的
+每一种拒绝都是手机语言的一句大白话，加上一个合适的按钮——从不显示状态码、中继的 JSON 或上游的
+「Rate limited」。回复在响应体还完整时读取（`AllowanceSignal.noteHttpError`，经由 `OpenAIProvider` 里
+同一处 `// nanoMuse:` 改动），以规范的 `nm_relay:` 行存进消息，由卡片绘制：`413 too_large`（也包括
+中继主机上的代理返回的普通 413）→「这条消息对模型来说太大了。缩短一点、去掉一些附件，或者开
+一个新聊天。」加「新聊天」；`401 bad_key` / `account_deleted` →「登录」；`403 not_invited` /
+`account_disabled` / `signup_closed` →「打开设置」；`429 too_many_in_flight` / `locked` /
+`rate_limited` 和 `provider_busy`（附 `retry_after` 的等待时间）→「重试」；`404
+model_not_offered` →「打开设置」；`503 service_paused`、`sync_paused`、`hub_paused` 以及任何 5xx
+或空响应 →「重试」。`429 allowance_exhausted` 和 `daily_cap` 保留额度卡片；带 `paused: true`
+（中继 0.22）时，卡片开头说额度「在这个中继上暂停了——不是用完了」，剩下的保持不变。这些句子
+来自 `NanoMuseCloud.describe`，和登录页、账号页用的是同一批，17 种语言都有（`nm_cloud_err_*`）。
+单元测试：`RelayRefusalTest`、`GuidanceTest`。
+
+**设置 → 网络**（`net/OwnProviderProxy.kt`、`ui/net/NetworkScreen.kt`、`minis://settings/network`）。
+给自己的服务商用的 HTTP 代理：主机、端口、可选的用户名和密码，默认关闭，只存在这台手机的
+`SharedPreferences` 里。它在 `MinisApp.onCreate` 中被装为进程默认的 `ProxySelector`，所以每个 OkHttp
+客户端每次请求都会问它；对目录里的主机、`chatgpt.com`、`auth.openai.com` 和服务商实例的自定义
+base URL（从不包括中继的，从不包括局域网地址）它回答代理，对其他所有主机回答系统的设置——hub、
+中继、沙箱镜像都不受影响。服务商客户端带着 `OwnProviderProxy.authenticator`，应付要密码的代理。
+「测试」按填写的代理抓取 `https://chatgpt.com/`，报告状态码和毫秒数。单元测试：`ProviderReachTest`、
+`OwnProviderProxyTest`。
+
+## 隐私与权限 {#privacy-and-permissions}
+
+中继保存账号 id、一个打码的标识、用量计数，以及智能体的名字和外观（让你的设备保持一致）——
+从不保存消息内容（[privacy.md](privacy.md)）。在手机上，API key、账号 key 和 Reach 配对令牌放在
+`EncryptedSharedPreferences` 里；从 0.1.40 起 App 完全不参与设备备份（`allowBackup="false"`——
+聊天、记忆和 key 从不上传到 Google，重装后从空白开始，账号的聊天通过同步回来；`res/xml/` 下的
+两个规则文件留着，等哪天开关再打开时用）。手需要无障碍服务和悬浮窗权限，两者都可选、都能在
+同一屏撤销；会发送东西的步骤——点「发送」，或在聊天软件的消息框里按回车——一次一次地审批，
+「本次对话」的答复也只对当初授权的那个 App 或地址有效。账号下的另一台设备想在手机上运行、读取
+或写入什么（hub 的 `shell`、`files`、`open`、`screen`……），要先经拿着手机的人批准——「一次」或
+「对这台设备总是允许」，可在「权限」里撤销。App 只对你自己网络内的地址（`10.x`、`172.16–31.x`、
+`192.168.x`、`.local` 名字）——一台模型服务器或你自己的电脑——允许明文 `http://`，其他地址在
+服务商 URL 字段里一律拒绝（`io.github.nanomuse.net.LanOnly`）；中继和 hub 只走 TLS。App 内的
+web view 不对其他 App 导出。
+
+## 自己构建 {#building-it-yourself}
+
+JDK 17 和 Android SDK（Android Studio 会把两个都装上）；`scripts/android/env.sh` 在一台空机器上
+设好环境。工程在 `android/src/android` 下：
+
+```bash
+cd android/src/android
+./gradlew :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease      # signed with android/keystore.properties when present
+```
+
+`scripts/rebrand.py` 带着版本号（`VERSION_NAME`、`VERSION_CODE`），把 nanoMuse 的命名套到
+OpenMinis 树上；`android/BUILDING.md` 讲原生部分。没有签名密钥时，release 构建用 debug 密钥签名，
+能安装，但不能升级一个正式签名的构建。要签名，先创建一次密钥，放在仓库之外：
+
+```bash
+keytool -genkeypair -keystore ~/.nanomuse-release/nanomuse.jks -alias nanomuse \
+        -keyalg RSA -keysize 4096 -validity 10950
+```
+
+然后把它的四个值填进 `android/keystore.properties`（已 git-ignore：`storeFile`、
+`storePassword`、`keyAlias`、`keyPassword`）。
+
+## 发布 {#releases}
+
+`.github/workflows/android.yml` 在 `android/` 下每有改动就构建 debug APK（「debug APK · arm64-v8a」
+这项检查）。版本由 `scripts/release-apk.sh <version>` 从一个标签做出来：它核对版本号与 `rebrand.py`
+和 Gradle 是否一致，用 release 密钥构建 `:app:assembleRelease`，写出
+`dist/nanoMuse-<version>-arm64.apk` 和它的 `.sha256`，加 `--publish` 时打上 `v<version>` 标签，
+并把两者连同 `docs/releases/v<version>.md` 里的说明一起附到 GitHub release 上。debug 签名的 APK
+永远不进 release，因为正式签名的版本无法覆盖它。`versionName` 必须和标签一致，就像 Python 包的
+版本号那样。
+
+## 东西都在哪 {#where-things-are}
+
+| 路径（`android/src/android/app/src/main/java/io/github/nanomuse/`） | 作用 |
+| --- | --- |
+| `cloud/NanoMuseCloud.kt` | 账号：用验证码或密码登录、加密存储里的 key、`/v1/me`、用量、会话、本地化的错误句子；中继的菜单和它的两个默认值（`for: chat` / `for: gui`） |
+| `cloud/Region.kt`、`cloud/ProviderCatalogue.kt`、`cloud/Capabilities.kt`、`cloud/OwnKeyPresets.kt`、`cloud/ProfileSync.kt` | 哪个地区的厂商排前面（大陆 → 百炼，否则 OpenRouter 和 OpenAI）；从 `assets/nanomuse/providers.json` 读出的自带 key 目录，以及某个已配置的服务商对应哪家厂商；一个服务商覆盖什么和那些一句话的「不可用」提示；预填的服务商表单（`?preset=<id>[:oauth]`）；拉取和推送的中继 profile（名字、外观、连接器） |
+| `sync/` | 对话同步（契约 C7–C10）：`SyncEngine`（什么上传、什么下载；每个映射带 `owner`，只有本账号的）、`ConversationSync`（何时同步；`hidden`——另一个账号的聊天，从 `ChatRepository.observeSessions()` 里排除）、`LocalChats`、Room 存储 `nanomuse_sync.db`（含 C12 的 `session_owners` 表） |
+| `account/` | 契约 C12（0.1.40，[sync.md](sync.md)）：`AccountScope`（规则——一个会话是谁的聊天、账号的 key、列表排除什么、被拒绝的 key 保留什么（`keepOnRefusedKey`：全部保留，除非中继说 `account_deleted`）；有单元测试）、`AccountData`（执行规则：每个聊天一行归属记录，`leave` 把账号的聊天、记忆、动态、目标、例程、形象和偏好收起来或删掉，`enter` 把一个账号的东西带回来） |
+| `hub/` | `Hub`（状态、设备身份、设置）、`HubClient`（带退避的 socket；中继拒绝 key 时停止）、`HubService`（前台服务）、`HubActions`（其他设备可以让这台手机做什么）、`HubErrors`（用文字描述的失败） |
+| `reach/` | `Computers`（已配对的电脑，令牌在加密存储里）、把工作转交给电脑的处理器 |
+| `hands/` | 作为手的无障碍服务、舞台和胶囊、屏幕读取器；`Hands.screenModel` 选手的模型（已选的 → Cloud 的 `qwen3.8-27b` → 你自己 key 下的同一个 → 一个能看图的聊天模型 → Vision Group） |
+| `ui/coding/` | 你电脑上的编程助手 |
+| `connectors/`、`ui/connectors/` | 连接器目录（`ConnectorsCatalogue` 读取资源文件）、MCP 授权发现与注册（`McpAuthDiscovery`）、连接和令牌刷新（`Connectors`）、这台手机连接了什么并发布到 profile、其他设备连接了什么（`SharedConnectors`）、「设置 → 连接器」页面 |
+| `ui/cloud/` | 登录、账号屏、设备部分 |
+| `res/values*/nm_strings.xml` | nanoMuse 的全部字符串，App 支持的十七种语言各一份（英语、简体中文、繁體中文、德语、西班牙语、菲律宾语、法语、印尼语、日语、韩语、马来语、波兰语、巴西葡萄牙语、罗马尼亚语、俄语、泰语、土耳其语）；每个文件的键相同，缺的回落到英语 |
