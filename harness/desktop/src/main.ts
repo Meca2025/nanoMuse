@@ -814,7 +814,8 @@ async function reportBug(): Promise<{ screenshot: string; url: string }> {
 
 /** The requests the preload bridge forwards from the web client (see preload.ts). */
 function registerBridge(): void {
-  ipcMain.handle("nanomuse:info", () => ({ version: app.getVersion(), platform: process.platform, arch: process.arch }));
+  // appImage: the Linux build runs from an AppImage (the runtime sets APPIMAGE), so About offers the AppImage of a newer version, not the .deb
+  ipcMain.handle("nanomuse:info", () => ({ version: app.getVersion(), platform: process.platform, arch: process.arch, appImage: Boolean(process.env.APPIMAGE) }));
   ipcMain.handle("nanomuse:permissions", async () => {
     // the helper's grants, fresh, when it runs — started again when it went away (the
     // "Quit & Reopen" the Screen Recording switch offers ends it); `helper` tells the page

@@ -64,7 +64,6 @@ const RUN_TIMEOUT_MS = 8 * 60_000
 export const ASSETS_DIR = packageAssetsDir(import.meta.url)
 /** A new feed batch is due this long after the last one. */
 const FEED_EVERY_MS = 20 * 3600_000
-/** Ideas go stale after a week. */
 /** A failed batch is not retried before this. */
 const RETRY_AFTER_MS = 2 * 3600_000
 const FEED_KEEP = 120
@@ -2305,7 +2304,6 @@ function parseArgs(raw: string): Record<string, unknown> {
   }
 }
 
-/** The step's title as the Activity view shows it: the tool's verb and its object, from the arguments. */
 /** The model's own words for a step, where the tool takes them: dsh's bash, pwsh and run_code
  * (`description`), the runtime's tools over MCP (`step`). Empty when it gave none. */
 export function ownWords(raw: string): string {

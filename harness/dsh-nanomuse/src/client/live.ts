@@ -231,7 +231,10 @@ function open(): void {
     // EventSource reconnects on its own; a closed one (readyState 2) is reopened.
     if (es.readyState === 2) {
       source = undefined
-      setTimeout(open, 3000)
+      // only while someone still listens: the last unsubscribe may land inside these 3 s
+      setTimeout(() => {
+        if (listeners.size > 0) open()
+      }, 3000)
     }
   }
 }

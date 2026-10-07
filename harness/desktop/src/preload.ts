@@ -19,8 +19,8 @@ export type PermissionState = "granted" | "denied" | "not-determined" | "not-nee
 const bridge = {
   /** `darwin`, `win32`, `linux`. */
   platform: process.platform,
-  /** The app's version, its platform and arch. */
-  info: (): Promise<{ version: string; platform: string; arch: string }> => ipcRenderer.invoke("nanomuse:info"),
+  /** The app's version, its platform and arch; `appImage` when the Linux build runs from an AppImage (so an update is offered as one). */
+  info: (): Promise<{ version: string; platform: string; arch: string; appImage: boolean }> => ipcRenderer.invoke("nanomuse:info"),
   /** Where every permission the hands use stands right now; `helper` (0.1.38) when "nanoMuse Computer Use" holds them — the rows to switch on are its, and a grant needs no app restart. */
   permissions: (): Promise<Record<PermissionKind, PermissionState> & { helper?: boolean }> => ipcRenderer.invoke("nanomuse:permissions"),
   /** Ask the system for one permission (its own dialog, or the Settings pane); the new state. */

@@ -200,3 +200,29 @@ test('putConnectors writes this device’s connections alone — never the look 
   assert.equal('name' in last.body, false)
   assert.equal('avatar' in last.body, false)
 })
+
+test('every call has a deadline: a relay that never answers is given up; a caller signal still cancels; the images get the long budget', async () => {
+  const seen = []
+  const hang = (url, init) =>
+    new Promise((_resolve, reject) => {
+      seen.push(init)
+      init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true })
+    })
+  const relay = new Relay('https://relay.test', hang, 20)
+  const started = Date.now()
+  await assert.rejects(relay.config(), (error) => error.name === 'TimeoutError')
+  assert.ok(Date.now() - started < 2000)
+
+  const controller = new AbortController()
+  const pending = relay.meSheet('nm_key', controller.signal)
+  controller.abort(new Error('stopped'))
+  await assert.rejects(pending, /stopped/)
+
+  // the image routes carry their own, longer budget: with the default at 20 ms a hang is still there after 60 ms
+  const image = relay.generateImage('nm_key', 'm', 'a cat')
+  let settled = false
+  image.then(() => (settled = true), () => (settled = true))
+  await new Promise((r) => setTimeout(r, 60))
+  assert.equal(settled, false)
+  assert.equal(seen.at(-1).timeoutMs, undefined, 'the budget is taken off the init before fetch sees it')
+})

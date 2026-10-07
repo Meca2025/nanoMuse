@@ -21,6 +21,8 @@ interface AppInfo {
   version: string
   platform: string
   arch: string
+  /** The Linux build runs from an AppImage (shell 0.1.42); absent from older shells. */
+  appImage?: boolean
 }
 
 let appInfo: AppInfo | undefined
@@ -73,7 +75,7 @@ let autoChecked = false
 export function UpdateRow({ t, bundle }: { t: Translate; bundle: string }): ReactNode {
   const app = useAppInfo()
   const { info, checking, check } = useUpdateCheck()
-  const asset = info && app ? pickAsset(info.assets, app.platform, app.arch) : undefined
+  const asset = info && app ? pickAsset(info.assets, app.platform, app.arch, app.appImage === true) : undefined
   // nothing known yet (the host's daily check has not run): one check per window, on sight
   useEffect(() => { if (!info && !checking && !autoChecked) { autoChecked = true; check() } }, [info === null])
   const installed = app ? t('vrInstalled', { app: app.version || '—', bundle: bundle || '—' }) : t('abVersionBundle', { bundle: bundle || '—' })

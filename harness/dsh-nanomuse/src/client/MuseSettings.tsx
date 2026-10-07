@@ -35,7 +35,6 @@ export const WALLET_SECTION = 'nanomuse-wallet'
 export const STORAGE_SECTION = 'nanomuse-storage'
 export const CHANNELS_SECTION = 'nanomuse-channels'
 export const HARNESS_SECTION = 'nanomuse-harness'
-/** Muse's nav, in its order; the account page, models and presets are Advanced (the account card on General opens the first). */
 /** Desk-B's Media page (image and video models), as registered in `index.ts`. */
 const MEDIA_SECTION = 'nanomuse-media'
 /** Settings → Models (0.1.41): the four slots, right after General. */
