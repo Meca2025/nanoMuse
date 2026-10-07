@@ -4,7 +4,7 @@
 // the English pair. Each of these was a slip once ('kwai is working…', 'online', “始终允许”).
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
@@ -77,4 +77,37 @@ test('no string names this computer', () => {
   // the presence line once read 'kwai is working…' — a developer's host name baked into both dictionaries
   for (const [k, v] of Object.entries(en)) assert.ok(!/\bkwai\b/i.test(v), `${k}: ${v}`)
   for (const [k, v] of Object.entries(zh)) assert.ok(!/\bkwai\b/i.test(v), `${k}: ${v}`)
+})
+
+test('house style: no em or en dashes, no exclamation marks, in either language', () => {
+  // the voice rule (AGENTS.md): plain sentences with commas, colons and full stops; the
+  // 0.1.41 dictionaries carried 66 English and 49 Chinese strings with a dash
+  const dashed = (dict) => Object.keys(dict).filter((k) => /[—–]/.test(dict[k]))
+  const loud = (dict) => Object.keys(dict).filter((k) => /[!！]/.test(dict[k]))
+  assert.deepEqual(dashed(en), [], 'English strings with a dash')
+  assert.deepEqual(dashed(zh), [], 'Chinese strings with a dash')
+  assert.deepEqual(loud(en), [], 'English strings with an exclamation mark')
+  assert.deepEqual(loud(zh), [], 'Chinese strings with an exclamation mark')
+})
+
+/** Keys defined for a page another change is still shaping (the model pickers, 0.1.41): kept while that lands. */
+const PENDING_KEYS = /^(md|ownKey|frModels)/
+/** Keys built at run time from a prefix (`t(\`style_${id}\`)`, `t(\`mood_${mood}\`)`). */
+const COMPUTED_PREFIXES = ['style_', 'mood_']
+
+test('every key is used somewhere in the client or the host', async () => {
+  // 102 keys of 0.1.41 were used nowhere (old onboarding slides, the first profile drawer, the
+  // first About); a key nobody reads is a string nobody reviews
+  const src = join(here, '..', 'src')
+  let text = ''
+  const walk = async (d) => {
+    for (const entry of await readdir(d, { withFileTypes: true })) {
+      const p = join(d, entry.name)
+      if (entry.isDirectory()) await walk(p)
+      else if (/\.(ts|tsx)$/.test(entry.name) && !p.endsWith(join('client', 'locales.ts'))) text += (await readFile(p, 'utf8')) + '\n'
+    }
+  }
+  await walk(src)
+  const dead = Object.keys(en).filter((k) => !PENDING_KEYS.test(k) && !COMPUTED_PREFIXES.some((p) => k.startsWith(p)) && !new RegExp(`\\b${k}\\b`).test(text))
+  assert.deepEqual(dead, [], 'locale keys nothing reads')
 })

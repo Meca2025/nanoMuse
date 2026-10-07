@@ -176,9 +176,9 @@ export function parseRelayFailure(message: string, code?: string): RelayRefusal 
 export function refusalSentence(refusal: RelayRefusal): string {
   switch (refusal.kind) {
     case 'exhausted':
-      return 'The free allowance is used up. Add a key of your own, sign in with a plan you already pay for, or invite a friend — under Settings → nanoMuse Cloud. Your sign-in and your devices keep working.'
+      return 'The free allowance is used up. Add a key of your own, sign in with a plan you already pay for, or invite a friend, all under Settings → nanoMuse Cloud. Your sign-in and your devices keep working.'
     case 'allowance_paused':
-      return 'The free allowance is paused on this relay for now, not used up. Add a key of your own or sign in with a plan you already pay for — under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are.'
+      return 'The free allowance is paused on this relay for now, not used up. Add a key of your own or sign in with a plan you already pay for, both under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are.'
     case 'too_large':
       return 'That message is too large for the model. Shorten it, leave out some attachments, or start a new chat.'
     case 'signed_out':
