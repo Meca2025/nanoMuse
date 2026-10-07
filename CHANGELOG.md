@@ -147,6 +147,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### iOS
 
+- **A task handed to a computer answers in the phone's language.** The `task` hub call now carries the screen's BCP-47 language; a runtime of 0.1.42 or later replies in it, an older one as before.
 - **A task on the iPhone can be stopped from the desktop.** The desktop ends a task it started with `stop {call}`, the id of the task frame; the iPhone only knew `stop {conversation}` and answered *not stopped*. Both forms work now, only the device that asked can stop its run, and the task answers `cancelled` as the hub protocol says.
 - **The Devices row no longer shows a relay sentence while connected.** A relay `error` frame about one frame (`too_large`, `rate_limited`, `bad_frame`) left the row showing the relay's words until the next reconnect although the hub was fine; it is logged and the row keeps saying *Connected*.
 - **One rule for "on your own network".** The sign-in sheet's *Use a different server* judged a relay address by string prefixes (`10.foo.example.com` passed as private; a Tailscale `100.x`, link-local or IPv6 ULA address was refused) and the Network proxy's bypass used a second list. Both use one rule now: the address is parsed before it is judged, and the private, carrier-grade, loopback, link-local and ULA ranges, a name without a dot and the local suffixes (`.ts.net` among them) count as one's own.

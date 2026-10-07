@@ -463,9 +463,14 @@ enum NanoMuseTones {
 
 /// Whether the UI runs in Chinese right now (the in-app override wins).
 enum NanoMuseLocale {
-    static var isChinese: Bool {
-        let lang = AppBundle.current.preferredLocalizations.first
+    /// The BCP-47 tag of the language the screens show right now (`zh-Hans`, `en`, `ja`): the
+    /// in-app override wins, else the system's first preferred language.
+    static var tag: String {
+        AppBundle.current.preferredLocalizations.first
             ?? Locale.preferredLanguages.first ?? "en"
-        return lang.lowercased().hasPrefix("zh")
+    }
+
+    static var isChinese: Bool {
+        tag.lowercased().hasPrefix("zh")
     }
 }
