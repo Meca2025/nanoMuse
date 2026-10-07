@@ -888,6 +888,41 @@ async def test_operator_handles_bad_replies_step_limits_and_loops(settings: Sett
     assert "taken three times" in drifting.calls[3]["messages"][1].content
 
 
+async def test_operator_gives_up_after_steps_that_act_on_nothing(settings: Settings):
+    """With no step cap (the default) a model that keeps naming the wrong function, or an
+    action the dialect refuses, used to run until Stop; six such steps in a row end it."""
+    from nanomuse.phone.operator import MAX_IDLE_STEPS
+
+    shots = settings.agent.workspace / "screenshots"
+    phone = FakePhone(PhoneLink(shots_dir=shots), [HOME_SCREEN])
+    ui = AutoApproveUI()
+    call = {"name": "computer_use", "arguments": {"action": "click", "coordinate": [10, 10]}}
+    wrong = [
+        LLMResponse(
+            content=f"Thought: I see it.\nAction: Click\n<tool_call>\n{json.dumps(call)}\n</tool_call>"
+        )
+        for _ in range(20)
+    ]
+    llm = MockLLM(wrong)
+    operator, _ = make_operator(settings, phone.link, llm, ui, max_steps=0)
+    outcome = await operator.run("tap")
+    assert outcome.status == "failed" and "no usable move" in outcome.message
+    assert outcome.steps == MAX_IDLE_STEPS and len(llm.calls) == MAX_IDLE_STEPS
+    assert phone.acts == []
+
+    # an action that lands in between resets the count: the run goes on
+    phone = FakePhone(PhoneLink(shots_dir=shots), [HOME_SCREEN])
+    mixed = [
+        *wrong[:4],
+        labelled("Go back", "system_button", button="Back"),
+        *wrong[:4],
+        labelled("Done", "terminate", status="success", text="ok"),
+    ]
+    operator, _ = make_operator(settings, phone.link, MockLLM(mixed), ui, max_steps=0)
+    outcome = await operator.run("tap")
+    assert outcome.status == "done" and len(phone.acts) == 1
+
+
 async def test_operator_starts_in_the_app_and_needs_pictures(settings: Settings):
     link = PhoneLink(shots_dir=settings.agent.workspace / "screenshots")
     phone = FakePhone(link, [HOME_SCREEN, PAY_SCREEN])

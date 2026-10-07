@@ -1022,17 +1022,23 @@ class MuseService:
         source: str = "user",
         label: str = "",
         files: list[str] | None = None,
+        language: str = "",
     ) -> dict[str, Any]:
         """Queue a message for a thread. Returns the timeline event that was created.
 
         ``files`` are workspace paths of attachments (uploaded first with ``save_upload``);
-        a message may be attachments alone."""
+        a message may be attachments alone. ``language`` is the BCP-47 tag of the client's
+        screens when the client said; the agent answers in it (see MuseAgent.run)."""
         text = text.strip()
+        language = language.strip()
         attachments = [self.attachment(path) for path in files or []]
         if not text and not attachments:
             raise ValueError("empty message")
         thread = self.threads.get(thread_id) or self._make_thread(thread_id, thread_id)
         thread.updated_at = now_iso()
+        if language:
+            # remembered on the conversation: a chat addressed to another device passes it on
+            thread.agent.ui_language = language
         if thread.device:
             # a chat addressed to another device: the text runs there, not here
             if thread.busy:
@@ -1092,7 +1098,9 @@ class MuseService:
             )
             if label:
                 thread.purposes[text] = label
-        thread.inbox.put_nowait(Incoming(text, attachments) if attachments else text)
+        thread.inbox.put_nowait(
+            Incoming(text, attachments, language) if attachments or language else text
+        )
         self._ensure_worker(thread)
         return event
 
@@ -1157,7 +1165,9 @@ class MuseService:
                         None if purpose else self._firstrun_addendum_for(thread.id)
                     )
                     self.ui.begin_run(thread.id, background=purpose)
-                    final = await thread.agent.run(text, purpose=purpose, files=incoming.files)
+                    final = await thread.agent.run(
+                        text, purpose=purpose, files=incoming.files, language=incoming.language
+                    )
                     quiet, final = (
                         prompts.split_quiet(final or "") if purpose else (False, final or "")
                     )

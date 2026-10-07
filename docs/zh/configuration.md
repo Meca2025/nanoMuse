@@ -165,7 +165,7 @@ user_profile         = ""              # free text injected into the system prom
 instructions         = ""              # extra rules appended to the system prompt
 ```
 
-`language = "auto"` 时，系统提示词会点明最近一条用户消息的语言（按文字书写系统判断），并告诉模型用这种语言回答。笼统的一句「用用户的语言回复」在某些模型上不可靠；点名就管用。
+`language = "auto"` 时，系统提示词会点明回复语言并告诉模型用它回答：客户端随消息送来了界面语言（网页控制台会送，即 `POST /api/threads/{id}/send` 的 `language`；hub 上的 `task` 也可以带）就用界面语言，否则按最近一条用户消息的文字书写系统判断。笼统的一句「用用户的语言回复」在某些模型上不可靠；点名就管用。固定的 `language` 优先于两者。
 
 `max_context_images` 是给手用的。在屏幕上跑一次任务，每一步都会追加一张截图，而整段对话每一步都要重新上传，所以十几张全尺寸图片曾经超过中继的请求体上限（413 `too_large`，0.1.37）。现在只带最新的四张，每张缩到最多两百万像素；更早的换成一行说明，模型仍然知道那里有过一张截图。桌面版的 harness 在它那一侧守着同样的预算。
 

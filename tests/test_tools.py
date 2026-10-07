@@ -99,6 +99,23 @@ async def test_shell_and_python(tmp_path: Path):
     assert not list(tmp_path.glob("nanomuse_*.py"))  # temp script cleaned up
 
 
+async def test_shell_output_is_capped_in_memory(tmp_path: Path, monkeypatch):
+    """A command that prints without end is not the runtime's memory: the first bytes are
+    kept, the rest drained and counted, and the note says how much went."""
+    from nanomuse.tools import shell as shell_mod
+
+    monkeypatch.setattr(shell_mod, "MAX_OUTPUT_BYTES", 4096)
+    shell = Shell(workspace=tmp_path)
+    code = "import sys; sys.stdout.write('x' * 100_000); sys.stderr.write('e' * 10_000)"
+    r = await shell.execute(command=f'{sys.executable} -c "{code}"')
+    assert r.ok
+    assert "[stdout cut: 100000 bytes in all, the first 4096 kept]" in r.output
+    assert "[stderr cut: 10000 bytes in all, the first 4096 kept]" in r.output
+    assert r.output.startswith("x" * 4096 + "\n[stdout cut") and r.output.count("e" * 4096) == 1
+    r = await shell.execute(command="echo small")
+    assert r.ok and "cut" not in r.output
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="process groups are POSIX")
 async def test_shell_timeout_stops_the_whole_tree(tmp_path: Path):
     """A timed-out command used to lose only the shell: `sleep` in a pipeline, a server put

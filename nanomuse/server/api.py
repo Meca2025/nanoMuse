@@ -104,6 +104,9 @@ class SendBody(BaseModel):
     text: str = Field("", max_length=20_000)
     # workspace paths from POST /api/files/upload; a message may be attachments alone
     files: list[str] = Field(default_factory=list, max_length=10)
+    # the language of the client's screens (a BCP-47 tag such as "en" or "zh-CN"); the reply
+    # is written in it unless Settings fixes one. Optional: without it the message's script decides.
+    language: str = Field("", max_length=20)
 
 
 class ThreadBody(BaseModel):
@@ -562,7 +565,7 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
     async def send_message(thread_id: str, body: SendBody) -> dict[str, Any]:
         thread = _thread_or_404(thread_id)
         try:
-            event = svc.send(thread.id, body.text, files=body.files)
+            event = svc.send(thread.id, body.text, files=body.files, language=body.language)
         except (ValueError, PermissionError) as exc:
             raise HTTPException(400, str(exc)) from exc
         return {"event": event, "thread": thread.meta()}
@@ -793,10 +796,18 @@ def create_app(settings: Settings, service: MuseService | None = None) -> FastAP
         wrong id or key is a 404 either way. The body (up to 64 KB, JSON or text) is what
         the agent gets as context."""
         key = request.query_params.get("key") or request.headers.get("x-hook-key") or ""
-        raw = await request.body()
-        if len(raw) > 64 * 1024:
+        limit = 64 * 1024
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > limit:
             raise HTTPException(413, "body too large (64 KB max)")
-        body = raw.decode("utf-8", errors="replace")
+        chunks: list[bytes] = []
+        total = 0
+        async for chunk in request.stream():
+            total += len(chunk)
+            if total > limit:
+                raise HTTPException(413, "body too large (64 KB max)")
+            chunks.append(chunk)
+        body = b"".join(chunks).decode("utf-8", errors="replace")
         try:
             item = svc.deliver_hook(trigger_id, key, body, request.headers.get("content-type", ""))
         except KeyError as exc:
@@ -1964,8 +1975,9 @@ async def _handle_ws_message(
             files = data.get("files")
             svc.send(
                 str(data.get("thread") or MAIN_THREAD),
-                str(data.get("text", "")),
+                str(data.get("text", ""))[:20_000],
                 files=[str(f) for f in files][:10] if isinstance(files, list) else None,
+                language=str(data.get("language") or "")[:20],
             )
         elif kind == "approval":
             approval_id = str(data.get("id", ""))

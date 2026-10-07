@@ -176,8 +176,13 @@ class HubClient:
             except ConnectionClosed as exc:
                 self.last_error = str(exc)
                 code = exc.rcvd.code if exc.rcvd else None
+                reason = (exc.rcvd.reason if exc.rcvd else "") or ""
                 if code in (4001, 4002):  # bad key, bad device: no point retrying quickly
-                    self._set_state("refused", (exc.rcvd.reason if exc.rcvd else "") or str(code))
+                    self._set_state("refused", reason or str(code))
+                    delay = 60.0
+                elif code == 4003 and reason == "hub_paused":
+                    # the operator switched the hub off (docs/hub.md): wait, do not hammer
+                    self._set_state("disconnected", "the relay's hub is paused")
                     delay = 60.0
                 else:
                     self._set_state("disconnected", str(exc))

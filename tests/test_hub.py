@@ -437,6 +437,41 @@ def test_client_refuses_to_hammer_on_bad_key(relay: FakeRelay) -> None:
     asyncio.run(scenario())
 
 
+def test_a_paused_hub_is_waited_out_not_hammered(monkeypatch: pytest.MonkeyPatch) -> None:
+    """4003 with the reason `hub_paused` (docs/hub.md): the client waits a minute before the
+    next try instead of reconnecting on the 1 s backoff; a plain 4003 keeps the backoff."""
+    from websockets.exceptions import ConnectionClosed
+    from websockets.frames import Close
+
+    async def scenario(reason: str) -> tuple[str, str, float]:
+        client = HubClient("wss://relay.test/v1/hub", "k", "pc-1", "Desk", actions=["info"])
+        seen: list[tuple[str, str, float]] = []
+
+        async def paused() -> None:
+            raise ConnectionClosed(Close(4003, reason), None)
+
+        async def spy(aw, timeout):  # noqa: ANN001
+            # the back-off wait: note how long it would be and end the loop instead
+            seen.append((client.state, client.state_detail, timeout))
+            client._stop.set()
+            aw.close()
+
+        monkeypatch.setattr(client, "_session", paused)
+        monkeypatch.setattr("nanomuse.hub.client.asyncio.wait_for", spy)
+        client.start()
+        for _ in range(100):
+            if seen:
+                break
+            await asyncio.sleep(0.02)
+        await client.stop()
+        return seen[0]
+
+    state, detail, wait = asyncio.run(scenario("hub_paused"))
+    assert state == "disconnected" and "paused" in detail and wait == 60.0
+    state, _, wait = asyncio.run(scenario("replaced"))
+    assert state == "disconnected" and wait == 1.0
+
+
 def test_a_certificate_failure_is_a_disconnect_not_a_refusal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

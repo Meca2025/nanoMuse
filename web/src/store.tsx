@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, AuthError, connectWs, getToken } from "./api";
-import { t } from "./i18n";
+import { getLocale, t } from "./i18n";
 import { liveWorking } from "./presence";
 import { registerWorker, setAppBadge } from "./push";
 import { useTheme } from "./theme";
@@ -765,10 +765,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dispatch,
       send: async (thread, text, files = []) => {
         if (!text.trim() && files.length === 0) return;
+        // the locale of these screens rides along: the agent answers in it rather than
+        // guessing from the script of one message
+        const language = getLocale();
         try {
           // attachments go over REST so a failure (a path gone, a full disk) comes back as an error
-          if (files.length > 0 || !wsRef.current?.send({ kind: "send", thread, text })) {
-            await api.send(thread, text, files);
+          if (files.length > 0 || !wsRef.current?.send({ kind: "send", thread, text, language })) {
+            await api.send(thread, text, files, language);
           }
         } catch (e) {
           if (e instanceof AuthError) dispatch({ type: "authError" });
