@@ -30,11 +30,9 @@
 *nano* berarti satu paket lengkap yang cukup kecil untuk kamu jalankan dan pasang sendiri: aplikasi ponsel, aplikasi desktop, konsol web, dan relay yang menghubungkan semuanya ada di repositori ini, di bawah GPL-3.0-or-later. **[Gratis, sumber terbuka, nirlaba — mari bangun bersama.](../../CONTRIBUTING.md)** Masuk dan kamu mendapat jatah gratis pemakaian model di relay komunitas — pengembang yang membayarnya; kalau habis, [pakai kunci sendiri](../own-key.md). Relay yang sama bisa berjalan di servermu, jadi tidak ada data yang harus keluar dari rumahmu. Versi terbaru: **0.1.40 Clear** — [catatan rilis](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [coba di browser](https://demo.nanomuse.dev/).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Obrolan: sebelum menghapus di ruang kerja, agen berhenti dan bertanya — sekali, obrolan ini, selalu untuk ruang kerja, atau tolak">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="Feed: tulisan yang dibuat untukmu pagi ini">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Tujuan: dipantau sesuai jadwal, dengan rutinitas">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: gambarkan rupanya, model gambarmu melukisnya, pilih yang kamu suka">
+  <a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-en.png" alt="The nanoMuse film, 74 seconds"></a>
 </p>
+<p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ Kabar
 

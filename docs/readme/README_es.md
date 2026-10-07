@@ -30,11 +30,9 @@
 *nano* significa el conjunto completo, lo bastante pequeño para que lo ejecutes y lo despliegues tú mismo: la app del teléfono, la de escritorio, la consola web y el relay que las une están en este repositorio, bajo GPL-3.0-or-later. **[Gratuito, de código abierto y sin ánimo de lucro — construyámoslo juntos.](../../CONTRIBUTING.md)** Al iniciar sesión recibes un crédito gratuito de uso de modelos en el relay de la comunidad — lo paga el desarrollador; cuando se agota, [usa tu propia clave](../own-key.md). El mismo relay funciona en un servidor tuyo, así que nada tiene que salir de casa. Última versión: **0.1.40 Clear** — [notas de la versión](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [pruébalo en el navegador](https://demo.nanomuse.dev/).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Chat: antes de borrar en el espacio de trabajo, el agente se detiene y pregunta — una vez, este chat, siempre para el espacio de trabajo, o denegar">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="Feed: publicaciones escritas para ti esta mañana">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Metas: seguidas según un horario, con rutinas">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: describe un aspecto, tu modelo de imagen lo dibuja, eliges el que te gusta">
+  <a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-en.png" alt="The nanoMuse film, 74 seconds"></a>
 </p>
+<p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ Novedades
 

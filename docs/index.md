@@ -38,6 +38,14 @@ Every download is on the [latest release](https://github.com/nano-muse/nanoMuse/
 
 [What changed in 0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [What each client can do](/parity) · [Where to start contributing](/roadmap) · [What the relay keeps](/privacy) · [What stays on a phone, and whose it is](/sync)
 
+## The film
+
+<video controls playsinline preload="metadata" poster="https://nanomuse.cn/media/film/poster-en.png" style="width:100%;max-width:960px;border-radius:12px;display:block;margin:0 auto">
+  <source src="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4" type="video/mp4">
+</video>
+
+74 seconds: what nanoMuse does on your phone, your computer and the web. Also in [Chinese](https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4).
+
 ## Citation
 
 The report *nanoMuse: An Open-Source Personal Agent for Every Device You Own* is on arXiv as [2610.08699](https://arxiv.org/abs/2610.08699): what a personal agent is, how Muse is built, and how nanoMuse answers it in the open. If you find nanoMuse useful, please cite the paper.

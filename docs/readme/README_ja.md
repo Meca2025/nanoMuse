@@ -30,11 +30,9 @@
 *nano* は、自分で動かして自分でデプロイできるほど小さな、ひとそろいのセットという意味です。スマホアプリ、デスクトップアプリ、ウェブコンソール、そしてそれらをつなぐリレーが、すべてこのリポジトリに GPL-3.0-or-later で入っています。**[無料、オープンソース、非営利——いっしょに作っていきましょう。](../../CONTRIBUTING.md)** サインインするとコミュニティのリレーでモデルを使える無料枠がもらえます。費用は開発者が負担しています。使い切ったら[自分のキーに切り替えて](../own-key.md)ください。同じリレーは自分のサーバーでも動くので、データを外に出さないこともできます。最新版は **0.1.40 Clear** — [リリースノート](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [ブラウザで試す](https://demo.nanomuse.dev/)。
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="チャット: ワークスペース内を削除する前にエージェントが立ち止まって尋ねる — 一度だけ、このチャット、ワークスペースでは常に許可、または拒否">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="フィード: 今朝あなたのために書かれた投稿">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="目標: スケジュールどおりに確認され、ルーティンもある">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="アバター: 姿を言葉で描写すると画像モデルが描き、気に入ったものを選ぶ">
+  <a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-en.png" alt="The nanoMuse film, 74 seconds"></a>
 </p>
+<p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ ニュース
 

@@ -30,11 +30,9 @@
 *nano* means the whole set, small enough to run and deploy yourself: the phone app, the desktop app, the web console and the relay that joins them are all in this repository, under GPL-3.0-or-later. **[Free, open source, non-profit — let's build it together.](CONTRIBUTING.md)** Sign in and you get a free allowance of model use on the community relay — the developer pays for it; when it is gone, [use your own key](docs/own-key.md). The same relay runs on a server of yours, so nothing has to leave your house. Latest: **0.1.40 Clear** — [release notes](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [try it in the browser](https://demo.nanomuse.dev/).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/chat-approval.png" width="23%" alt="Chat: before deleting in the workspace, the agent stops and asks — once, this chat, always for the workspace, or deny">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/feed.png" width="23%" alt="Feed: posts written for you this morning">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/goals.png" width="23%" alt="Goals: tracked on a schedule, with routines">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/avatar.png" width="23%" alt="Avatar: describe a look, your image model draws it, pick the one you like">
+  <a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-en.png" alt="The nanoMuse film, 74 seconds"></a>
 </p>
+<p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ News
 

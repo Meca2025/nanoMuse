@@ -63,6 +63,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Project
 
+- **The README opens with the film:** a poster that plays the 74 s film (English or Chinese) replaces the four screenshots in the README and its nine translations; nanomuse.cn and the docs home play it inline.
 - **The paper is on arXiv** ([2610.08699](https://arxiv.org/abs/2610.08699), *nanoMuse: An Open-Source Personal Agent for Every Device You Own*). The README and its nine translations carry an arXiv badge, a *News* list of milestones (the paper, the latest version, the first release; a release now replaces one line instead of shifting three) and a *Citation* section with the BibTeX; `CITATION.cff` names the paper as the preferred citation, so GitHub's *Cite this repository* gives it; the docs site's home pages have a *Paper* button and the citation, and nanomuse.cn links the paper.
 - **nanomuse.cn has a 404 page** of its own, with the site's bar and theme.
 - **The showcase has an embed mode** (`https://demo.nanomuse.dev/?embed=1`), for the frame on the homepage: no header of its own, the phone waits for the visitor's tap instead of turning itself on, the site's language and theme are followed, and links leave the frame.
