@@ -28,7 +28,7 @@
 
 静态图穿上之后，只要接口有视频模型，工作室就会像手机上那样，从这几张图做出四段短视频——待命、
 干活中、等你回复、搞定；动作是固定的那几套：中继的（`wan2.2-i2v-flash`）或百炼上的通义万相，走异步
-视频 API（上传、建任务、轮询、拿 MP4）；`[llm] video_model` 覆盖模型的选择，`[llm] video_base_url`
+视频 API（上传、建任务、轮询、拿 MP4）；`[video]` 一节（或旧的 `[llm] video_model`，见 [configuration.md](configuration.md#image-and-video)）覆盖模型的选择，`[llm] video_base_url`
 在那个 API 的主机不是对话模型的主机时指明它（像展示站网关这样的中转主机会替它的运行时设好）。它们落在
 `avatar/<face>/<mood>.mp4`；短视频生成期间卡片显示 `animating` 阶段，费用卡片把它们算在内，失败的
 一段保留它的静态图。没有视频 API 的 OpenAI 兼容服务商只给静态图。网页版和桌面版在 44 px 及以上播放

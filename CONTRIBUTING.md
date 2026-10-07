@@ -109,6 +109,8 @@ Rules for a Chinese page:
 | memory / daily log | 记忆 / 日记 | SOUL, IDENTITY.md, MEMORY.md | unchanged |
 | avatar / the avatar studio | 形象 / 形象工作室 | moods (idle, working, waiting, happy, error) | 状态（待命、干活中、等你回复、搞定、出了点问题） |
 | picture model / video model | 图像模型 / 视频模型 | skills / MCP server | 技能 / MCP 服务器 |
+| Models (Chat / Operating the screen / Making pictures / Making clips) | 模型（对话 / 操作屏幕 / 生成图片 / 生成视频） | Automatic | 自动 |
+| Use it for | 用它来做什么 | Use nanoMuse Cloud this time | 这次改用 nanoMuse Cloud |
 | connectors | 连接器 | coding agents | 编程助手 |
 | channels (Feishu, DingTalk, WeCom, Telegram) | 聊天入口 | deliver here | 推送到这里 |
 | the web console / the web app | 网页控制台 / 网页版 | the desktop app | 桌面版 |

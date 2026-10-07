@@ -24,6 +24,9 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Project
 
+- Rewrote the docs page *One account, all your devices* (`docs/trial.md`, 简体中文 twin too) from the private trial's runbook into a walkthrough of what ships: sign-in on the phone, nanoMuse Desktop, the web console, remote control and its approvals, what follows you, your own relay.
+- Brought the docs up to 0.1.41: the troubleshooting item for a desktop that does not start now describes nanoMuse Desktop and its `desktop.log`; `hub.md` names the desktop's and the iPhone's hub code and the *Remote control without asking* switch instead of the retired terminal commands; `every-device.md` says the iPhone answers `task` and has had the shape since 0.1.34; `cloud.md` gives *Data controls*, *Conversation sync* and *Allowance* their own sections; `ios.md` says build 14 is the one on TestFlight. The glossary in CONTRIBUTING gained the Models page's terms.
+
 ## [0.1.41] - 2026-10-07 · Choice
 
 Choice: a person with a key of their own now picks which model does each of four jobs, on every client. *Settings › Models* has one row each for *Chat*, *Operating the screen*, *Making pictures* and *Making clips* on Android, the iPhone and the desktop, and the web console's *Connections* page has the same four slots; after a key is saved a *Use it for* card asks what it should handle, a row nobody set follows one order under an *Automatic* entry (the chat model's provider when it can, then nanoMuse Cloud, then the first key that can), and a model of your own that fails never falls back on its own: the card offers *Use nanoMuse Cloud this time* for that one turn. The desktop draws pictures through your own key and picks up a new hands model without a restart, the runtime gained `PUT /api/connections/image` and `/video`, the README opens with the film, the paper is on arXiv, and the docs site has a 简体中文 edition.

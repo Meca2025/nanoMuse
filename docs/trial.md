@@ -1,127 +1,84 @@
-# Trial runbook: one account, all your devices
+# One account, all your devices
 
-What it takes to run the private trial end to end — relay, phone, computers,
-web — from a clean VPS to "the phone tells the Mac to build the project".
-Everything here is in the private `nanomuse-trial` repository (branch `trial`)
-until it ships in the public one.
+Sign in with the same account on your phone, your computers and the web console, and
+they work as one: say it on one device and it gets done on another, approvals come back to
+the device where you typed, and the main conversation follows you. This page walks
+through it on the public relay, `cloud.nanomuse.cn`, from a fresh phone to "the phone tells
+the Mac to build the project". The protocol is [hub.md](hub.md); how the account and the
+free pool work is [cloud.md](cloud.md); a relay of your own is [self-hosting.md](self-hosting.md).
 
-## 0. What you need
+## 1. The phone
 
-| | for |
-|---|---|
-| A small Linux VPS with Docker (1 vCPU / 1 GB is plenty) and a domain name pointed at it, e.g. `cloud.example.com` | the relay + hub + web console |
-| An OpenAI-compatible model key — Alibaba Model Studio (百炼) by default; the same key serves pictures | what the Muses think with |
-| A way to send codes: SMTP credentials (e-mail sign-in) and/or Aliyun SMS (mainland numbers) — or `CODE_SENDER=log` and read codes from the server log while it is only you | sign-in |
-| Android phone: the arm64 debug APK from `./gradlew :app:assembleDebug` (sideload) | the phone's Muse |
-| Computers: the installer for each from the `desktop` workflow artifacts — *Actions → desktop → Run workflow* builds all four (Windows `-setup.exe`, macOS `.pkg` for Apple silicon and Intel, Linux `.deb`); a `desktop-v*` tag also publishes them as a release | the computers' Muses |
-| iPhone (optional): TestFlight through the `ios-testflight` workflow — needs an Apple Developer account and App Store Connect API key in the repo secrets; run *iOS · build check* first, it needs neither | the iPhone on the hub (it answers `info`, `open`, `notify`; shell, files and tasks on the iPhone are still to come) |
+Install the app ([android.md](android.md), [ios.md](ios.md)). The first screen is the
+account: a phone number or an e-mail address and a code, or a password once you have set
+one. That single sign-in sets up the nanoMuse Cloud provider, the four rows of *Settings →
+Models* and the connection to the other devices.
 
-## 1. The relay
+*Settings → nanoMuse Cloud → Devices* is where the phone's side lives: *Reachable from your
+devices* keeps the phone connected so the others can ask it for things (a quiet
+notification shows while it is on); *Let other devices operate this phone* decides whether
+they may run a shell command, read files, take a screenshot or hand over a task here, and
+off, the phone still sees and drives the others; *This phone's name* is what you will say
+out loud, so make it short: "pixel", "小米". The list under it is every device of the
+account, online or when it was last seen.
 
-```bash
-git clone git@github.com:nano-muse/nanomuse-trial.git && cd nanomuse-trial/cloud
-cp .env.example .env
-```
+The iPhone takes part with what iOS allows: it answers `info`, `open`, `notify` and `task`;
+shell, files and the screen are not available on iOS.
 
-Fill `.env`:
+## 2. The computer
 
-```
-CLOUD_DOMAIN=cloud.example.com
-PUBLIC_BASE=https://cloud.example.com
-CLOUD_SECRET=<openssl rand -hex 32>        # back it up with data/: rotating it orphans accounts
-CLOUD_ADMIN_TOKEN=<openssl rand -hex 32>
-UPSTREAM_BASE=…/compatible-mode/v1          # your Model Studio endpoint
-UPSTREAM_KEY=sk-…
-DASHSCOPE_BASE=…/api/v1
-SIGNUP_OPEN=0                               # members only while you try it; 1 opens sign-up
-ALLOWED_IDENTIFIERS=139xxxxxxxx, you@example.com   # members: no daily cap
-DAILY_CAP_CNY=25                            # yuan a day for everyone else once sign-up is open
-CODE_SENDER=smtp                            # or aliyun / both / log
-SMTP_HOST=… SMTP_PORT=465 SMTP_USER=… SMTP_PASSWORD=… SMTP_FROM=nanoMuse <no-reply@example.com>
-HUB_ENABLED=true
-```
+Install nanoMuse Desktop from the [latest release](https://github.com/nano-muse/nanoMuse/releases/latest)
+([desktop.md](desktop.md): one installer per platform, the runtime for the hands inside)
+and sign in with the same account. Within seconds the computer is in the phone's Devices
+list and the phone in the desktop's *Devices* page in the rail. Name the computer in
+*Settings → Devices* ("mac", "desk").
 
-```bash
-docker compose up -d            # relay on :8787 behind Caddy, which fetches the certificate
-docker compose logs -f relay    # codes appear here when CODE_SENDER=log
-curl https://cloud.example.com/healthz
-```
+The computer asks before another device operates it: a card on its screen, *once* or
+*always for that device*. *Remote control without asking* in *Settings → Devices* turns the
+card off for every device of the account.
 
-The web console is at `https://cloud.example.com/app/`, the operator's page at
-`/app/admin/` (asks for `CLOUD_ADMIN_TOKEN`: who signed in, usage, devices,
-grant / disable / delete). Data (SQLite) lives in `cloud/data/`; back it up
-together with `CLOUD_SECRET`. Tokens have no ceiling by default; the daily
-money cap (`DAILY_CAP_CNY`) is what limits an account, and members escape it.
+A computer that runs only the Python runtime (`nanomuse serve`, with its web app signed in
+to the same account) joins the same way ([app.md](app.md), [cli.md](cli.md)).
 
-The production relay, `https://cloud.nanomuse.cn`, is this same code on the box
-that serves nanomuse.cn, behind the showcase's Caddy;
-[`cloud/deploy/nanomuse-hk/`](../cloud/deploy/nanomuse-hk/README.md) has the
-compose file, the Caddy site, the backup timer and the deploy script.
+## 3. The web console
 
-## 2. The phone
-
-Install the APK. On the first screen, *接入模型* → your number or address →
-the code → done: the nanoMuse Cloud provider, a default model group, and the
-hub connection are set up in one go. (A debug build shows the *中转服务器*
-field; type your relay's address there. Release builds use the default relay.)
-
-*Settings → nanoMuse Cloud* now has a **Devices** section: the two switches
-(reachable · operable), the phone's name (rename it to something you will say
-out loud — "pixel", "小米"), the other devices, and the console link. A quiet
-notification shows while the phone is on the hub.
-
-## 3. The computers
-
-Install the package. Then, in a terminal:
-
-```
-nanomuse-desktop
-```
-
-Server → number or address → code. Name the computer (`nanomuse-desktop rename mac`).
-`nanomuse-desktop run --open` chats in the terminal and opens the console;
-`nanomuse-desktop serve` keeps it reachable without a chat (put it in a login
-item / systemd user service / Task Scheduler if you want it always on).
+`https://cloud.nanomuse.cn/app/`, the same sign-in. It shows the account's devices and
+conversations; pick a device, type, and approvals show as cards. A relay of your own serves
+the same console at its `/app/`.
 
 ## 4. Try it
 
 On the phone: 「在 mac 上列一下下载文件夹」 「让 desk 把 ~/proj 编译一遍，把最后二十行日志发我」
 「电脑截个图给我看」 「给电脑发个通知：该睡了」
 
-On the computer: "on the phone, take a screenshot", "tell pixel's Muse to read
-me the last notification", "send pixel a notification: build finished".
+On the computer: "on the phone, take a screenshot", "tell pixel's Muse to read me the last
+notification", "send pixel a notification: build finished".
 
-In the console: pick a device, type; approvals show as cards.
+In the console: pick a device, type.
 
-Anything that deletes, sends, pays or touches the system asks first — on the
-device where you typed it. A remote Muse's approval question comes back to you
-the same way.
+A whole job in words ("compile the project and send me the log") runs as a task in the
+other device's own Muse, in a conversation of its own, and may take minutes; the steps
+show in your chat as they happen.
 
-## 5. Operating
+## 5. Approvals
 
-```bash
-# accounts (hints only, never identifiers) and allowance
-curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" https://cloud.example.com/v1/admin/accounts
-# top up
-curl -H "X-Admin-Token: $CLOUD_ADMIN_TOKEN" -X POST https://cloud.example.com/v1/admin/grant \
-     -H 'content-type: application/json' -d '{"identifier":"139…","tokens":1000000}'
-# who is on the hub (with a device's own key)
-curl -H "Authorization: Bearer nm_…" https://cloud.example.com/v1/devices
-```
+Anything that deletes, sends, pays or touches the system asks first, on the device where
+you typed it, and a remote Muse's approval question travels back to you the same way.
+Operating a device from another one is a second question, asked of the person holding that
+device (section 1 and 2 above). Nobody there, and the caller hears that it was not allowed.
 
-Letting someone else in: `SIGNUP_OPEN=1` and `docker compose up -d` again lets
-anyone register with the daily cap; *设为成员* on the admin page, or a line in
-`ALLOWED_IDENTIFIERS`, lifts the cap for one person.
+## 6. What follows you
 
-## 6. Where it stands
+Signed in, the main conversation and the side chats follow you to your other devices; *Data
+controls* on each device switches that off ([sync.md](sync.md)). The agent's name and face
+are the account's. A connector signed in on one device shows on the others as *Connected
+on 〈device〉*, one tap to sign in there too ([hub.md](hub.md)). Models are chosen per device:
+each one's *Settings → Models* is its own.
 
-Verified on the development machine: relay + hub, Linux desktop, Android
-emulator and the web console on one account — phone→PC (`devices`, `run`,
-`ls`, `notify`, `task`), PC→phone (`info`, `notify`, `task`, natural-language
-notify + delegate), web→phone and web→PC (tasks, approval cards), rename and
-forget (also from the console). The macOS and Windows packages come out of CI
-(the `desktop` workflow, all four targets green) and were not run on real
-machines here. The iOS side — sign-in and the hub client — is written without
-a Mac; the `ios-check` workflow is the compile test, the `ios-testflight`
-workflow the delivery. Shell and files on the phone use the Linux sandbox,
-which exists on arm64 phones (the emulator build has none).
+## 7. Your own relay
+
+[self-hosting.md](self-hosting.md) runs the same relay on a small VPS. The phones take its
+address under *Use a different server* on the sign-in screen; nanoMuse Desktop takes it in
+the desktop profile's `cordis.patch.yml`; the console is whatever relay serves it at `/app/`.
+Every device of one account must point at the same relay, since the devices and the
+conversations live there.
