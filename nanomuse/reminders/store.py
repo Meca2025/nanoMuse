@@ -91,7 +91,7 @@ class Reminder:
         }
 
     def render(self) -> str:
-        when = self.repeat or (self.next_at and _local(self.next_at)) or "—"
+        when = self.repeat or (self.next_at and _local(self.next_at)) or "(no time)"
         what = "remind" if self.kind == "remind" else "do"
         return f"[{self.id}] {when} · {what}: {self.text} ({self.status})"
 
@@ -161,7 +161,7 @@ class ReminderStore:
             if parsed <= _now() - timedelta(minutes=1):
                 # the model often works from a time quoted earlier in the conversation
                 now_local = _now().astimezone().strftime("%Y-%m-%d %H:%M")
-                raise ValueError(f"{at} is in the past — it is now {now_local}")
+                raise ValueError(f"{at} is in the past; it is now {now_local}")
             first = parsed
         rid = "r_" + uuid.uuid4().hex[:6]
         self._conn.execute(

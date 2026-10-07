@@ -106,7 +106,7 @@ def test_providers_signed_out_with_the_default_model(server):
     # the language and the region of the sentence
     zh = client.get("/api/providers?lang=zh&region=cn").json()
     assert zh["region"] == "cn"
-    assert zh["unavailable"]["image"].startswith("生成图片需要有图像模型的服务商——阿里云百炼")
+    assert zh["unavailable"]["image"].startswith("生成图片需要有图像模型的服务商：阿里云百炼")
     en_cn = client.get("/api/providers?region=cn").json()["unavailable"]["image"]
     assert "Alibaba Cloud Bailian" in en_cn and "OpenRouter" not in en_cn
 

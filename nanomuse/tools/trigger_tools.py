@@ -13,11 +13,11 @@ from nanomuse.triggers.store import TriggerStore
 class Triggers(BaseTool):
     name: str = "triggers"
     description: str = (
-        "Do something whenever an event happens, on the user's behalf — the other half of "
-        "`reminders`, which fire at a time. Kinds: kind=`mail` — a new mail whose sender or "
-        "subject contains every word of `match` arrives (empty match: any mail); kind=`event` — "
+        "Do something whenever an event happens, on the user's behalf, the other half of "
+        "`reminders`, which fire at a time. Kinds: kind=`mail`, a new mail whose sender or "
+        "subject contains every word of `match` arrives (empty match: any mail); kind=`event`, "
         "a calendar event whose title or place contains every word of `match` is `lead_minutes` "
-        "(default 30) from starting; kind=`hook` — a program calls the trigger's webhook URL "
+        "(default 30) from starting; kind=`hook`, a program calls the trigger's webhook URL "
         "(`match` is just a name for it; the URL with its key is in the result and in the app). "
         "`text` is the standing instruction: what to do each time, in the user's words; when it "
         "fires you get the mail, event or request as context and you do that work. Actions: "
@@ -63,7 +63,7 @@ class Triggers(BaseTool):
         a = super().assess(args)
         action = str(args.get("action") or "?")
         if action == "create":
-            detail = f"{args.get('kind') or '?'} “{args.get('match') or '*'}” — {str(args.get('text') or '')[:60]}"
+            detail = f"{args.get('kind') or '?'} “{args.get('match') or '*'}”: {str(args.get('text') or '')[:60]}"
         elif action == "cancel":
             detail = str(args.get("trigger_id") or "")
         else:
@@ -90,11 +90,11 @@ class Triggers(BaseTool):
                 have = self.available()
                 if kind == "mail" and not have.get("mail", False):
                     return ToolResult.fail(
-                        "the email connector is not set up — the user connects a mailbox under Connections first"
+                        "the email connector is not set up; the user connects a mailbox under Connections first"
                     )
                 if kind == "event" and not have.get("event", False):
                     return ToolResult.fail(
-                        "the calendar connector is not set up — the user adds a calendar under Connections first"
+                        "the calendar connector is not set up; the user adds a calendar under Connections first"
                     )
                 item = self.store.create(
                     kind,

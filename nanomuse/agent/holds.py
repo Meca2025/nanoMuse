@@ -134,7 +134,7 @@ class Holds:
             return existing
         hold = Hold(id=new_hold_id(), thread=thread, tool=tool, by=by, reason=reason)
         self._holds[hold.id] = hold
-        logger.info("hold on: {} in {} by {} — {}", tool, thread, by, reason or "(no reason)")
+        logger.info("hold on: {} in {} by {}: {}", tool, thread, by, reason or "(no reason)")
         self._emit(hold)
         return hold
 

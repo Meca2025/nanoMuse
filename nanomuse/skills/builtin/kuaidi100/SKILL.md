@@ -1,6 +1,6 @@
 ---
 name: kuaidi100
-description: Where a parcel is, when it will arrive and what a shipment would cost, through the 快递100 MCP server — any Chinese courier (顺丰, 京东, 中通, 圆通, 韵达, 邮政 and more) from a tracking number. Use when the user asks 快递到哪了, 什么时候到, 查一下单号, or how much it costs to send something.
+description: Where a parcel is, when it will arrive and what a shipment would cost, through the 快递100 MCP server: any Chinese courier (顺丰, 京东, 中通, 圆通, 韵达, 邮政 and more) from a tracking number. Use when the user asks 快递到哪了, 什么时候到, 查一下单号, or how much it costs to send something.
 channel: api
 metadata:
   author: nanoMuse
@@ -13,7 +13,7 @@ metadata:
 
 ## Is it there?
 
-Look for `kuaidi100__query_trace` in your tools (the tools list is the only place it can be: no shell command or script to check). If it is not there, say so in one line, give the user the lines to add, and stop — no browsing 快递100's website instead:
+Look for `kuaidi100__query_trace` in your tools (the tools list is the only place it can be: no shell command or script to check). If it is not there, say so in one line, give the user the lines to add, and stop; no browsing 快递100's website instead:
 
 ```toml
 [[mcp.servers]]
@@ -28,10 +28,10 @@ and `nanomuse vault set KUAIDI100_KEY`. The same server runs locally from `npx -
 
 ## The tools
 
-- `kuaidi100__query_trace` — the events of a parcel: `kuaidi_num` (the tracking number) and `phone`, required only for 顺丰 numbers (they start with `SF`; the sender's or receiver's phone, the last four digits are enough), empty otherwise. The carrier is recognised from the number.
-- `kuaidi100__estimate_time` — the expected delivery time of a shipment **not yet sent**: `kuaidi_com` (the courier's lower-case code: `shunfeng`, `jd`, `zhongtong`, `yuantong`, `yunda`, `shentong`, `ems`, `debangkuaidi`, `jtexpress` …), `from_loc` and `to_loc` down to the district (`广东省深圳市南山区`), `order_time` (`yyyy-MM-dd HH:mm:ss`, optional) and `exp_type` (`标准快递`).
-- `kuaidi100__estimate_time_with_logistic` — when a parcel **already on its way** will arrive: the same courier and addresses plus `logistic`, the events from `query_trace` as a JSON array of `{time, context}`.
-- `kuaidi100__estimate_price` — what it would cost: `kuaidi_com`, `send_addr`, `rec_addr` (province and city at least), `weight` in kg.
+- `kuaidi100__query_trace`: the events of a parcel, `kuaidi_num` (the tracking number) and `phone`, required only for 顺丰 numbers (they start with `SF`; the sender's or receiver's phone, the last four digits are enough), empty otherwise. The carrier is recognised from the number.
+- `kuaidi100__estimate_time`: the expected delivery time of a shipment **not yet sent**: `kuaidi_com` (the courier's lower-case code: `shunfeng`, `jd`, `zhongtong`, `yuantong`, `yunda`, `shentong`, `ems`, `debangkuaidi`, `jtexpress` …), `from_loc` and `to_loc` down to the district (`广东省深圳市南山区`), `order_time` (`yyyy-MM-dd HH:mm:ss`, optional) and `exp_type` (`标准快递`).
+- `kuaidi100__estimate_time_with_logistic`: when a parcel **already on its way** will arrive: the same courier and addresses plus `logistic`, the events from `query_trace` as a JSON array of `{time, context}`.
+- `kuaidi100__estimate_price`: what it would cost, `kuaidi_com`, `send_addr`, `rec_addr` (province and city at least), `weight` in kg.
 
 Tool arguments may differ between server versions; read the tool descriptions you were given rather than this list when they disagree.
 
@@ -45,7 +45,7 @@ Tool arguments may differ between server versions; read the tool descriptions yo
 
 ## With the other hands
 
-- 快递100 + the browser: the order page (京东, 淘宝, 拼多多) has the tracking number; the `browser` tool reads it, this skill tracks it — no need to open the courier's site.
+- 快递100 + the browser: the order page (京东, 淘宝, 拼多多) has the tracking number; the `browser` tool reads it, this skill tracks it; no need to open the courier's site.
 - 快递100 + reminders: "tell me when it is out for delivery" is a reminder or a trigger that asks again tomorrow morning, not a loop of queries today.
 - 快递100 + the phone: the number from a text message (`phone-messages`) or the clipboard; a reminder or an alarm for the pick-up-point deadline through the device tools.
 

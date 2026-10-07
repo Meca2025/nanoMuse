@@ -552,7 +552,7 @@ class QuartzAdapter:
             # on its own and the capture is attributed to whatever started it
             logger.info(
                 "window mode: the runtime captures windows itself with CGWindowListCreateImage "
-                "(no nanoMuse Computer Use helper) — Screen Recording must be on for this process"
+                "(no nanoMuse Computer Use helper); Screen Recording must be on for this process"
             )
             self._announced = True
         image = q.CGWindowListCreateImage(

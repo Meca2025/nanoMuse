@@ -186,7 +186,7 @@ def status(config: ConfigOpt = None, as_json: bool = typer.Option(False, "--json
         console.print("[dim]nanomuse serve is not running; this is what is on disk.[/dim]")
     pending = view.get("pending") or []
     if pending:
-        console.print(f"{len(pending)} pairing code(s) waiting — `nanomuse channels pending`.")
+        console.print(f"{len(pending)} pairing code(s) waiting: `nanomuse channels pending`.")
 
 
 @channels_app.command("pending")

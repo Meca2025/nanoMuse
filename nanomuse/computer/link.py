@@ -243,7 +243,7 @@ class ComputerLink:
         self.window_frame = None
         if self.settings.mode == "auto":
             self._window_broken = self._window_error
-            logger.warning("window mode: {} — the screen from here on", exc)
+            logger.warning("window mode: {}; the screen from here on", exc)
         else:
             logger.warning("window mode: {}", exc)
 
@@ -292,7 +292,7 @@ class ComputerLink:
             note, self._window_error = self._window_error, ""
         raw = await asyncio.to_thread(self._capture_screen)
         if raw is not None and note:
-            raw["note"] = (note + " — showing the whole screen instead")[:300]
+            raw["note"] = (note + "; showing the whole screen instead")[:300]
         if raw is None:
             raise DeviceError(
                 "no screenshot could be taken on this computer: install mss and Pillow "
@@ -400,7 +400,7 @@ class ComputerLink:
         except mac_window.WindowLayerBroken as exc:
             self._window_layer_failed(exc)
             raise DeviceError(
-                f"{action} failed: {exc} — the hands work on the whole screen from here"
+                f"{action} failed: {exc}; the hands work on the whole screen from here"
             ) from exc
         except mac_window.WindowUnavailable as exc:
             # the window went away under the hands: back to the screen for the next look
@@ -415,7 +415,7 @@ class ComputerLink:
             if isinstance(hands, mac_window.MacWindowHands):
                 self._window_layer_failed(exc)
                 raise DeviceError(
-                    f"{action} failed: {exc} — the hands work on the whole screen from here"
+                    f"{action} failed: {exc}; the hands work on the whole screen from here"
                 ) from exc
             raise DeviceError(f"{action} failed: {exc}") from exc
         settle = max(0.0, self.settings.settle_s - (time.monotonic() - started))
@@ -476,7 +476,7 @@ class ComputerLink:
             "screenshot": base64.b64encode(data).decode(),
             "mime": mime,
             "mode": "window",
-            "note": f"{where} — coordinates are pixels of this window picture",
+            "note": f"{where}; coordinates are pixels of this window picture",
         }
 
     def _hands_for(self, action: str) -> hands_mod.HandsBackend:

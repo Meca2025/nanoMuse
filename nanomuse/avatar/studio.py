@@ -106,10 +106,10 @@ VARIATIONS = (
     "variation 1: the most typical, classic colouring",
     "variation 2: a different breed or colour pattern, lighter tones",
     "variation 3: a different breed or colour pattern, darker or warmer tones, a small accessory such as a scarf or glasses",
-    "variation 4: a playful take — unusual colouring or a tiny outfit, slight head tilt",
+    "variation 4: a playful take: unusual colouring or a tiny outfit, slight head tilt",
 )
 KEEP = (
-    "Keep this exact character — same face, colours, outfit, art style, proportions, framing, "
+    "Keep this exact character: same face, colours, outfit, art style, proportions, framing, "
     "camera angle and pure white background. Change only the pose and props described. "
 )
 # Muse's fixed motions, one per mood, on top of the pose picture (the phone's AvatarMotion)
@@ -333,7 +333,7 @@ class StudioError(Exception):
 # Said when no configured provider has an image model (contract C11): the catalogue's
 # one-sentence line, with the providers named by region; this is the English fallback
 NO_IMAGE_MODEL = (
-    "Pictures need a provider with image models — Alibaba Cloud Bailian, OpenAI, Google Gemini "
+    "Pictures need a provider with image models: Alibaba Cloud Bailian, OpenAI, Google Gemini "
     "or OpenRouter (how: docs/own-key.md)."
 )
 
@@ -1122,7 +1122,7 @@ class AvatarStudio:
     @staticmethod
     def _http_error(r: httpx.Response) -> str:
         if r.status_code == 429:
-            return "The image provider is busy right now — try again in a minute."
+            return "The image provider is busy right now; try again in a minute."
         try:
             err = r.json()
             if isinstance(err, dict):

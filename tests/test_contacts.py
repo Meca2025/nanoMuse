@@ -95,7 +95,7 @@ def test_parse_google_export():
     assert alice.urls == ["https://alice.example"] and alice.source == "Google"
     assert wei.name == "张伟" and wei.org == "快手" and re.fullmatch(r"[0-9a-f]{12}", wei.id)
     rendered = alice.render()
-    assert rendered.startswith("Alice Zhang (Ali) — Design Lead, Acme Corp, Design  [google-1]")
+    assert rendered.startswith("Alice Zhang (Ali): Design Lead, Acme Corp, Design  [google-1]")
     assert "  email: alice@example.com (home), alice.zhang@acme.example (work)" in rendered
 
 

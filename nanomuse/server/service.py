@@ -61,7 +61,7 @@ IDEAS_PROMPT = """You are {name}, the user's personal agent. Based on what you k
 What you know:
 {context}
 
-Answer with a JSON array only, no prose. Each item: {{"title": "<short title, max 8 words>", "detail": "<one sentence on what you would do and why it helps>", "prompt": "<the exact request the user could send you to start>", "area": "<one of: planning, research, goals, money, health, home, learning, people, files, fun>", "kind": "<chat for a one-off conversation; routine for something to do every day at a time; goal for something long-term to track>", "time": "<HH:MM, routines only>", "category": "<goals only — one of: health, finance, career, learning, relationships, family, home, travel, creative, other>"}}. Mostly chat; at most one routine and one goal. Write in the user's language ({language})."""
+Answer with a JSON array only, no prose. Each item: {{"title": "<short title, max 8 words>", "detail": "<one sentence on what you would do and why it helps>", "prompt": "<the exact request the user could send you to start>", "area": "<one of: planning, research, goals, money, health, home, learning, people, files, fun>", "kind": "<chat for a one-off conversation; routine for something to do every day at a time; goal for something long-term to track>", "time": "<HH:MM, routines only>", "category": "<goals only; one of: health, finance, career, learning, relationships, family, home, travel, creative, other>"}}. Mostly chat; at most one routine and one goal. Write in the user's language ({language})."""
 
 # what tapping an idea does on every client: a message in the main chat, a daily routine
 # (a repeating reminder with the prompt), or a goal conversation (the phone's IdeaKind)
@@ -133,7 +133,7 @@ STARTER_IDEAS = [
     },
     {
         "title": "Research & compare options",
-        "detail": "Laptops, flights, insurance, a new phone plan — I'll gather the facts and compare them for you.",
+        "detail": "Laptops, flights, insurance, a new phone plan: I'll gather the facts and compare them for you.",
         "prompt": "I need to make a purchase decision. Ask me what I'm choosing between, then research and compare the options.",
         "area": "research",
         "kind": "chat",
@@ -155,7 +155,7 @@ STARTER_IDEAS = [
     },
     {
         "title": "Build a quick tracker",
-        "detail": "Spending, habits, workouts, reading — I can write a small script or document to track it for you.",
+        "detail": "Spending, habits, workouts, reading: I can write a small script or document to track it for you.",
         "prompt": "Build me a simple tracker. Ask me what I want to track and how, then create it in the workspace.",
         "area": "files",
         "kind": "chat",
@@ -169,14 +169,14 @@ PROACTIVITY = ("off", "low", "default", "high")
 NAME_MAX = 20
 TAGLINE_MAX = 60
 TONES: dict[str, str] = {
-    "formal": "Tone: formal — polite and precise, no slang, no exclamation marks.",
-    "casual": "Tone: casual — relaxed and friendly, the way a capable friend talks.",
-    "playful": "Tone: playful — light and a little witty, never at the expense of being clear.",
-    "concise": "Tone: concise — say what matters, then stop; no preamble, no recap.",
+    "formal": "Tone: formal. Polite and precise, no slang, no exclamation marks.",
+    "casual": "Tone: casual. Relaxed and friendly, the way a capable friend talks.",
+    "playful": "Tone: playful. Light and a little witty, never at the expense of being clear.",
+    "concise": "Tone: concise. Say what matters, then stop; no preamble, no recap.",
 }
 COMMUNICATION: dict[str, str] = {
-    "short": "Length: keep replies short — a few sentences, one or two paragraphs at most, unless asked for more.",
-    "detailed": "Length: be thorough — give the reasoning, the alternatives and what you ruled out.",
+    "short": "Length: keep replies short, a few sentences, one or two paragraphs at most, unless asked for more.",
+    "detailed": "Length: be thorough; give the reasoning, the alternatives and what you ruled out.",
     "bullets": "Shape: prefer bullet points and short headings over running prose; one idea per line.",
 }
 # how the configured interval stretches or shrinks per level
@@ -1273,7 +1273,7 @@ class MuseService:
         if tool is None:
             raise LookupError("the browser tool is not enabled")
         if action not in ("look", "navigate") and not tool.open:
-            raise LookupError("the browser is not open right now — open a URL first")
+            raise LookupError("the browser is not open right now; open a URL first")
         result = await tool.user_action(
             action,
             thread,
@@ -1733,7 +1733,7 @@ class MuseService:
                 where = f" · {occ.location}" if occ.location else ""
                 self.fire_trigger(
                     trig.id,
-                    what=f"Coming up: {occ.summary} — {start:%a %Y-%m-%d} {when}{where} (in {minutes} min)",
+                    what=f"Coming up: {occ.summary}, {start:%a %Y-%m-%d} {when}{where} (in {minutes} min)",
                     context=cal.render([occ], now.date())
                     + (f"\n\n{occ.description}" if occ.description else ""),
                     key=f"{occ.uid}:{occ.start.isoformat()}",
@@ -2181,7 +2181,7 @@ class MuseService:
                 name=self.profile.name,
                 n=n,
                 instructions=data["instructions"]
-                or "(none yet — write what a good personal agent would)",
+                or "(none yet; write what a good personal agent would)",
                 context="\n".join(self._feed_context()),
                 language="the same language as the context above"
                 if language in ("", "auto")
@@ -2513,13 +2513,13 @@ def _tidy_summary(report: TidyReport, language: str = "auto") -> str:
         zh = language.lower().startswith(("中文", "zh", "chinese", "简体", "繁體"))
     if zh:
         parts = ([f"合并了 {n_m} 条"] if n_m else []) + ([f"删除了 {n_d} 条"] if n_d else [])
-        head = "我整理了一下记忆——" + "，".join(parts) + "："
+        head = "我整理了一下记忆，" + "，".join(parts) + "："
         tail = "每一处改动都可以在「记忆 → 最近的改动」里撤销。"
     else:
         parts = ([f"merged {n_m} line{'s' if n_m != 1 else ''}"] if n_m else []) + (
             [f"dropped {n_d}"] if n_d else []
         )
-        head = "I tidied your memory — " + " and ".join(parts) + ":"
+        head = "I tidied your memory: " + " and ".join(parts) + ":"
         tail = "Each change can be undone under Memory → Recent changes."
     body = "\n".join(f"- {line}" for line in report.lines(zh=zh))
     return f"{head}\n{body}\n\n{tail}"

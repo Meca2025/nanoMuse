@@ -621,7 +621,7 @@ def to_computer_action(step: Step, screen: Screen) -> dict[str, Any] | None:
 
 
 _SECRET_FIELD_REASON = (
-    "A password or code field has the focus — please fill it in yourself, then press Done."
+    "A password or code field has the focus. Please fill it in yourself, then press Done."
 )
 
 
@@ -839,7 +839,7 @@ class PhoneOperator:
                 break
             entry = step.action.replace("\n", " ").replace('"', "")
             logger.info(
-                "{} step {}: {} — {}", self.dialect.noun, step_no, step.action, step.arguments
+                "{} step {}: {} {}", self.dialect.noun, step_no, step.action, step.arguments
             )
 
             if step.name != self.dialect.name:
@@ -860,7 +860,7 @@ class PhoneOperator:
             if kind == "hand_over":
                 reason = str(step.arguments.get("text") or "").strip() or step.thought
                 trace.step(step_no, screen, step=step, raw=raw, latency_ms=latency_ms)
-                outcome.actions.append(f"hand over — {reason[:80]}")
+                outcome.actions.append(f"hand over: {reason[:80]}")
                 if self.holds is None:
                     # no app to show the card: the main agent puts it to the user
                     outcome.status, outcome.message = "ask", reason
@@ -906,7 +906,7 @@ class PhoneOperator:
             if len(recent) >= 3 and all(_same_action(recent[-3], r) for r in recent[-2:]):
                 steps.append(
                     f"{entry}; Note: this same action was taken three times with no visible "
-                    "change — try another way, or terminate with status failure"
+                    "change; try another way, or terminate with status failure"
                 )
                 recent.clear()
                 trace.step(step_no, screen, step=step, raw=raw, latency_ms=latency_ms, error="loop")

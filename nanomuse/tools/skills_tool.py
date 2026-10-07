@@ -14,15 +14,15 @@ class Skills(BaseTool):
     name: str = "skills"
     description: str = (
         "Skills are written-down ways of doing a job (a weekly review, a trip plan, an inbox "
-        "triage …); the system prompt lists the ones available. Actions: `use` — the full "
+        "triage …); the system prompt lists the ones available. Actions: `use`, the full "
         "instructions of skill `name`; call it as the first step whenever a request matches a "
-        "skill, then follow them. `list` — every skill with its description. `save` — write a "
+        "skill, then follow them. `list`, every skill with its description. `save`, write a "
         "skill of your own: `name` (lowercase-with-hyphens), `description` (one line: what it "
         "does and when to use it, ≤ 1024 characters) and `instructions` (Markdown: the steps, "
         "what to produce, what to ask and what never to do; include the user's preferences that "
         "came up). Save one when the user asks you to remember how a job is done, or after a "
-        "multi-step job they say they will want again — it asks the user first, so tell them "
-        "what you are about to save. `remove` — delete a skill you saved (`name`)."
+        "multi-step job they say they will want again; it asks the user first, so tell them "
+        "what you are about to save. `remove`, delete a skill you saved (`name`)."
     )
     parameters: dict[str, Any] = {
         "type": "object",

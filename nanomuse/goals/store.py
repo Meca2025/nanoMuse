@@ -166,7 +166,7 @@ class Goal:
         if self.description:
             lines.append(f"  {self.description}")
         for s in self.steps:
-            extra = f"  — {s.note}" if s.note else ""
+            extra = f"  · {s.note}" if s.note else ""
             lines.append(f"  {icons.get(s.status, '[ ]')} {s.idx}. {s.title}{extra}")
         if self.proposal:
             lines.append(

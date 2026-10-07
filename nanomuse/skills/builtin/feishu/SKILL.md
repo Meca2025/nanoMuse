@@ -1,6 +1,6 @@
 ---
 name: feishu
-description: The user's 飞书 / Lark through its command-line tool (lark-cli) — agenda, people and groups, reading and sending messages, events, tasks, documents — with no app open. Use when the user mentions 飞书, Lark, a 群, a 日程 or a 飞书文档, or wants a colleague told something.
+description: The user's 飞书 / Lark through its command-line tool (lark-cli): agenda, people and groups, reading and sending messages, events, tasks, documents, with no app open. Use when the user mentions 飞书, Lark, a 群, a 日程 or a 飞书文档, or wants a colleague told something.
 channel: cli
 metadata:
   author: nanoMuse
@@ -13,7 +13,7 @@ metadata:
 
 ## Is it there?
 
-`shell`: `lark-cli auth status` — `identities.user.available` must be true for anything done in the user's name (their agenda, their messages). If the command is missing, the answer says `not_configured`, or the user identity is not logged in, say so in one line and stop; setting it up is the user's job, in two steps they run themselves: `lark-cli config init --new` once (it prints a link that creates the CLI's own 飞书 app under their account), then `lark-cli auth login` (a link or a QR code to approve; `--domain calendar,im,task` narrows what it may touch). Do not try to install it, to run `config init` or to log in for them. In a sandbox the CLI and its login only exist when the user shared them (`sandbox.share_read_only` / `sandbox.share` in config.toml); the error then says "command not found" — tell the user which two lines to add.
+`shell`: `lark-cli auth status`; `identities.user.available` must be true for anything done in the user's name (their agenda, their messages). If the command is missing, the answer says `not_configured`, or the user identity is not logged in, say so in one line and stop; setting it up is the user's job, in two steps they run themselves: `lark-cli config init --new` once (it prints a link that creates the CLI's own 飞书 app under their account), then `lark-cli auth login` (a link or a QR code to approve; `--domain calendar,im,task` narrows what it may touch). Do not try to install it, to run `config init` or to log in for them. In a sandbox the CLI and its login only exist when the user shared them (`sandbox.share_read_only` / `sandbox.share` in config.toml); the error then says "command not found"; tell the user which two lines to add.
 
 ## Reading
 
@@ -39,7 +39,7 @@ Commands the CLI marks *high-risk-write* (deleting an event, removing members, a
 ## With the other hands
 
 - 飞书 + 高德: plan the route or check the weather with the `amap` skill, then put the result in a message or an event description.
-- 飞书 + the phone: apps that have no API (12306, 微信, 支付宝) are done with `phone_task`; the outcome — the train, the payment made — goes to the colleague through lark-cli.
+- 飞书 + the phone: apps that have no API (12306, 微信, 支付宝) are done with `phone_task`; the outcome (the train, the payment made) goes to the colleague through lark-cli.
 - 飞书 + the workspace: a brief, a comparison, a page you wrote becomes a document with `docs +create` or an attachment with `im +messages-send --file`.
 
 ## Finish

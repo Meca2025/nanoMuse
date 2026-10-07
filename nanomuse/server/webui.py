@@ -486,7 +486,7 @@ class WebUI:
                     "type": "notice",
                     "level": "warn",
                     "text": f"Sentinel blocked: {summary}"
-                    + (f" — {'; '.join(reasons)}" if reasons else ""),
+                    + (f": {'; '.join(reasons)}" if reasons else ""),
                 }
             )
 

@@ -161,7 +161,7 @@ def test_intro_and_addendum_per_phase():
     s = fresh()
     ask = firstrun.prompt_addendum(s, "en", "nanoMuse")
     assert ask is not None and "```nanomuse-naming" in ask and '"user_address"' in ask
-    assert "  > Before we start — what should I call you?" in ask
+    assert "  > Before we start, what should I call you?" in ask
     assert "Siri, Alexa" in ask
     asking = firstrun.after_turn(s, ASK).state
     name = firstrun.prompt_addendum(asking, "en", "nanoMuse")

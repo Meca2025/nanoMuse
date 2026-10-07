@@ -41,7 +41,7 @@ def pdf_text(path: Path, max_pages: int = 60) -> str:
             try:
                 reader.decrypt("")
             except Exception:  # noqa: BLE001
-                return "(this PDF is encrypted — the text cannot be read without its password)"
+                return "(this PDF is encrypted; the text cannot be read without its password)"
         pages = len(reader.pages)
     except Exception as exc:  # noqa: BLE001 — a damaged file is a result, not a crash
         return f"(this PDF could not be read: {type(exc).__name__}: {str(exc)[:200]})"
@@ -57,7 +57,7 @@ def pdf_text(path: Path, max_pages: int = 60) -> str:
     text = "\n\n".join(parts)
     if not any(p.split("---\n", 1)[-1].strip() for p in parts):
         return (
-            f"(this PDF has {pages} page{'s' if pages != 1 else ''} but no text layer — it is "
+            f"(this PDF has {pages} page{'s' if pages != 1 else ''} but no text layer; it is "
             "probably scanned images; the text cannot be extracted here)"
         )
     return text

@@ -329,7 +329,7 @@ def test_a_busy_provider_is_waited_out_two_pictures_at_a_time(studio_server, mon
     fake.busy = 99
     client.post("/api/avatar/start", json={"session": ev["session"]})
     ev = _wait(lambda: (e := _avatar_event(client))["stage"] == "failed" and e)
-    assert ev["message"] == "The image provider is busy right now — try again in a minute."
+    assert ev["message"] == "The image provider is busy right now; try again in a minute."
     fake.busy = 0
 
 

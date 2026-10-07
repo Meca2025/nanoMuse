@@ -88,7 +88,7 @@ class Remember(BaseTool):
             note = (
                 " Similar memories: "
                 + "; ".join(f"[{m.id}] {m.content}" for _, m in similar)
-                + " — if this replaces one of them, call remember again with replaces=<id>."
+                + "; if this replaces one of them, call remember again with replaces=<id>."
             )
         return ToolResult(output=f"Remembered {item.id}: {item.content}.{note}")
 

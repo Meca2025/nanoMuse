@@ -1,6 +1,6 @@
 ---
 name: trip-plan
-description: Plan a trip end to end — itinerary by day, a packing list to tick off, a budget, and the calendar checked for conflicts — as pages in the workspace. Use when the user is going somewhere for more than a day and wants a plan, an itinerary or a packing list.
+description: Plan a trip end to end (itinerary by day, a packing list to tick off, a budget, and the calendar checked for conflicts) as pages in the workspace. Use when the user is going somewhere for more than a day and wants a plan, an itinerary or a packing list.
 channel: mixed
 metadata:
   author: nanoMuse
@@ -13,7 +13,7 @@ Everything goes in `trips/<place>-<yyyy-mm>/` in the workspace: `itinerary.html`
 
 ## Before anything
 
-- You need: where, the dates (or roughly when and for how long), who is going, and what the trip is for (work, holiday, visiting someone). Ask for what is missing with **one** `ask_user` call — not one question at a time.
+- You need: where, the dates (or roughly when and for how long), who is going, and what the trip is for (work, holiday, visiting someone). Ask for what is missing with **one** `ask_user` call, not one question at a time.
 - `recall` the user's travel preferences (pace, budget, dietary needs, kids, mobility, what they hated last time). Follow them without asking again.
 - `calendar` action=search for the trip dates: anything already on the calendar during the trip is a conflict to mention up front.
 
@@ -21,7 +21,7 @@ Everything goes in `trips/<place>-<yyyy-mm>/` in the workspace: `itinerary.html`
 
 - `web_search` for: how to get there and around, the weather in that season, opening days of the two or three things worth seeing, and anything that must be booked ahead. Two or three searches, then stop; `web_fetch` a page only when the search result is not enough.
 - Prices and times only from pages you actually read. If you did not find something, say "check" next to it rather than inventing a figure.
-- Trains in China: real options come from the `12306__*` tools (the 12306 MCP server; the `train-tickets` skill says how — search only, no booking); the times and prices go into the itinerary and the budget. Without the server, the 12306 app on a connected phone the same way; without either, "check 12306" in the plan.
+- Trains in China: real options come from the `12306__*` tools (the 12306 MCP server; the `train-tickets` skill says how; search only, no booking); the times and prices go into the itinerary and the budget. Without the server, the 12306 app on a connected phone the same way; without either, "check 12306" in the plan.
 - Places and distances in China: when the `amap__maps_*` tools are there (the 高德 MCP server, see the `amap` skill), use them for the travel time between the day's places, the route to the station, and the forecast for the dates; the itinerary's "travel time between places" then comes from a map, not a guess.
 
 ## Itinerary (`itinerary.html`)

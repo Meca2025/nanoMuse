@@ -117,13 +117,13 @@ class Browser(BaseTool):
         "`click` (index), `type` (index, text, submit=true to press Enter), `press` (key, e.g. 'Enter'), "
         "`scroll` (direction up|down), `back`, `wait` (seconds, for a page that is still drawing itself), "
         "`screenshot`, `fetch` (url: GET a URL with the browser's "
-        "cookies and return the raw body — a signed-in request without driving the page; method/body "
+        "cookies and return the raw body, a signed-in request without driving the page; method/body "
         "for POST), `profile` (profile: mobile|desktop, or user_agent/width/height: how the browser "
         "presents itself), `close`. After navigate/click/type the tool returns the new page state. "
         "The user watches the browser live in the app and can take over it. Never enter passwords, "
         "one-time codes, CAPTCHAs or payment details yourself: when a page needs a sign-in, a code "
         'or a confirmation only the user can give, call `hand_over` with a short `reason` ("sign in '
-        'to Gmail", "enter the code sent by SMS") — the user does it in the browser view, presses '
+        'to Gmail", "enter the code sent by SMS"): the user does it in the browser view, presses '
         "Done, and the tool returns the page as they left it; continue from there. `hand_over` is "
         "for things done on the page; `ask_user` is for an answer in words. If the user takes the "
         "page over themselves, your next action waits until they are done. Leave the browser open "

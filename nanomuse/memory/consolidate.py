@@ -28,7 +28,7 @@ TIDY_PROMPT = """You maintain the long-term memory of a personal agent: short fa
 
 Rules:
 - merge: two or more lines that say the same thing, or where one is a more detailed version of another → one line that keeps every detail (names, numbers, dates). When lines contradict because the fact changed (a move, a new job), keep the newer fact and mention the change if it matters ("Lives in Beijing, moved from Shanghai in 2026").
-- drop: a line that is not a durable fact about the user — a one-off request, a finished errand, something about today's weather, a duplicate of something kept.
+- drop: a line that is not a durable fact about the user: a one-off request, a finished errand, something about today's weather, a duplicate of something kept.
 - Do not invent, embellish, or generalise. Do not merge lines about different people or topics. Do not touch anything that is fine as it is. When nothing needs doing, answer [].
 - Keep the user's wording and language.
 

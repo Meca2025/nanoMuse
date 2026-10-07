@@ -129,7 +129,7 @@ class WebSearchProvider:
             )
             return await self._ddg(
                 query, max_results, region
-            ), f"{self.label}: {missing} — results from DuckDuckGo"
+            ), f"{self.label}: {missing}; results from DuckDuckGo"
         try:
             return await self._call(query, max_results, region), ""
         except Exception as exc:  # noqa: BLE001 — a failed provider must not stop the task
@@ -139,7 +139,7 @@ class WebSearchProvider:
             logger.warning("{} search failed ({}); using DuckDuckGo", self.label, reason)
             return await self._ddg(
                 query, max_results, region
-            ), f"{self.label} failed ({reason}) — results from DuckDuckGo"
+            ), f"{self.label} failed ({reason}); results from DuckDuckGo"
 
     async def probe(self, query: str = "nanoMuse personal agent") -> dict[str, Any]:
         """One search against the configured provider, no fallback — for the test button."""

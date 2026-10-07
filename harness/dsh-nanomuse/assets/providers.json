@@ -184,8 +184,8 @@
         "hands": "gpt-5.4",
         "image": "gpt-image-2.5-flare"
       },
-      "note": "With an API key: chat, hands and pictures (gpt-image-2.5-flare / gpt-image-2 through /images/generations). Signed in with a ChatGPT plan (the Codex OAuth): chat and hands only — the Codex backend has no image or video endpoints. OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does.",
-      "note_zh": "用 API key：对话、手、画图（gpt-image-2.5-flare / gpt-image-2，走 /images/generations）。用 ChatGPT 订阅登录（Codex 的 OAuth）：只有对话和手——Codex 后端没有图像和视频接口。OpenAI 的条款只允许在它自己的 Codex 里使用 ChatGPT 订阅；其他应用的这条路曾被切断过（OpenCode，2026 年 1 月）。如果哪天不能用了，API key 还能用。",
+      "note": "With an API key: chat, hands and pictures (gpt-image-2.5-flare / gpt-image-2 through /images/generations). Signed in with a ChatGPT plan (the Codex OAuth): chat and hands only; the Codex backend has no image or video endpoints. OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does.",
+      "note_zh": "用 API key：对话、手、画图（gpt-image-2.5-flare / gpt-image-2，走 /images/generations）。用 ChatGPT 订阅登录（Codex 的 OAuth）：只有对话和手，Codex 后端没有图像和视频接口。OpenAI 的条款只允许在它自己的 Codex 里使用 ChatGPT 订阅；其他应用的这条路曾被切断过（OpenCode，2026 年 1 月）。如果哪天不能用了，API key 还能用。",
       "verified": "2026-10"
     },
     {
@@ -344,8 +344,8 @@
       "capabilities": ["chat"],
       "user_capabilities": true,
       "defaults": {},
-      "note": "A gateway, a relay, a server of your own: paste the address (usually ending in /v1) and say what it can do — the person sets the capabilities.",
-      "note_zh": "网关、中转、自己的服务：贴地址（一般以 /v1 结尾），再说明它能做什么——能力由你勾选。",
+      "note": "A gateway, a relay, a server of your own: paste the address (usually ending in /v1) and say what it can do; the person sets the capabilities.",
+      "note_zh": "网关、中转、自己的服务：贴地址（一般以 /v1 结尾），再说明它能做什么，能力由你勾选。",
       "verified": "2026-10"
     }
   ]
