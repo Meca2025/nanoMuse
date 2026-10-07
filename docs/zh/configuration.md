@@ -130,7 +130,7 @@ Ollama 在 `http://localhost:11434/v1` 提供 OpenAI 兼容的 API；带工具�
 
 ## `[image]` 和 `[video]` {#image-and-video}
 
-形象工作室的图片和形象的短视频不在聊天模型的主机上生成时，从哪里来。两个槽位都空（默认）的含义和以前一样：聊天模型的主机，前提是那里有图像模型——账号的中继、阿里云百炼——由 `[llm] image_model` / `video_model` 指定模型。设一个槽位，就能换到别处画，或者在聊天模型是 DeepSeek、ChatGPT 套餐或本地模型时才有地方画：
+形象工作室的图片和形象的短视频不在聊天模型的主机上生成时，从哪里来。两个槽位都空（默认）时按一个顺序来（模型约定，0.1.41）：聊天服务商自己的图片模型（它有的话）——账号的中继、阿里云百炼，以及目录里任何带 `image` 的服务商（它的 `defaults.image`；`[llm] image_model` / `video_model` 仍可指定别的）——否则在你登录了 nanoMuse Cloud 时是账号的中继，哪怕聊天模型在别处；再否则没有。短视频同理：图片主机会说视频 API 就用它，否则登录时用账号 key 走中继。设一个槽位，就能换到别处画，或者在聊天模型是 DeepSeek、ChatGPT 套餐或本地模型而你没有登录时才有地方画：
 
 ```toml
 [image]
@@ -146,7 +146,9 @@ model    = ""                         # empty → the catalogue's default (wan2.
 api_key  = "{{vault:VIDEO_API_KEY}}"
 ```
 
-目录里没有的主机可以不写 `provider`，改写 `base_url`。一项没有任何配置覆盖的功能就是不可用，并用一句话说明谁可以——大陆是*图片需要一家有图像模型的服务商——阿里云百炼、智谱 GLM、SiliconFlow 或火山方舟（怎么做：docs/own-key.md）*，其他地方是 OpenRouter、OpenAI、Google Gemini 或 xAI Grok，按 `[agent] language` 用英文或中文——出现在形象工作室、「连接」里的「图片与短片」下，以及 `GET /api/providers` 里。这些句子和能力都来自目录，目录变它们就变。`app-settings.json` 可以带 `image` 和 `video` 对象，键和这里一样是四个，像其他设置一样叠在这个文件之上。
+目录里没有的主机可以不写 `provider`，改写 `base_url`；`api_key` 发给那台主机（`[video]` 自己的主机用 `[video]` 的 key，不用图片主机的）。一项没有任何配置覆盖的功能就是不可用，并用一句话说明谁可以——大陆是*图片需要一家有图像模型的服务商——阿里云百炼、智谱 GLM、SiliconFlow 或火山方舟（怎么做：docs/own-key.md）*，其他地方是 OpenRouter、OpenAI、Google Gemini 或 xAI Grok，按 `[agent] language` 用英文或中文——出现在形象工作室、「连接」里的「生成图片」和「生成视频」下，以及 `GET /api/providers` 里。这些句子和能力都来自目录，目录变它们就变。
+
+应用层设置的是同样的槽位：`PUT /api/connections/image` 和 `PUT /api/connections/video` 接受 `provider`（目录 id，或 `openai` / `openai_responses` 加 `base_url`）、`model`（空：目录的默认值）、`base_url` 和 `api_key`（进保险库，名为 `IMAGE_API_KEY` / `VIDEO_API_KEY`，或原样保留的 `{{vault:NAME}}` 引用；`""` 删掉它），写 `app-settings.json` 的 `image` / `video` 对象，键和这里一样是四个，像其他设置一样叠在这个文件之上，并回答槽位的设置加上它解析成什么（`effective_provider`、`effective_model`、`effective_source`：`app`、`config`、`chat` 或 `cloud`）；`GET /api/connections/image` 和 `/video` 回答同样的内容，`GET /api/connections` 两者都带。四项都空就清掉槽位。目录里列出但没有这项能力的服务商被拒绝，400 加那一句话（`DeepSeek has no image models; Pictures need …`），ChatGPT 登录也一样；本地服务器或目录不认识的主机放行，因为它有的是你装的东西。网页控制台的「生成图片」和「生成视频」两行用的就是这些路由（[web.md](web.md)）。
 
 ## `[agent]` {#agent}
 
@@ -383,7 +385,9 @@ reconnect_grace_s = 30.0             # 手机掉线后，进行中的任务等�
 sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first
 ```
 
-`model`、`base_url` 和 `api_key` 为空时回退到 `[llm]`——有一个例外：登录了 nanoMuse Cloud 并以中继为模型时，空的 `model` 意味着中继的手的模型（`qwen3.8-27b`，除非 `/v1/models` 另有指定），而不是聊天模型：聊天的默认模型（`deepseek-v4.1-flash`）看得懂图片，但手需要的是训练过、会在屏幕上指东西的模型。只有操作器的 `base_url` 是另一个服务时才需要 key。每次手机任务的轨迹都进 `<data_dir>/phone-traces/`（保留最近 200 条；`nanomuse phone traces`）。
+`base_url` 和 `api_key` 为空时回退到 `[llm]`。空的 `model` 按一个顺序来（模型约定，0.1.41）：以中继为聊天模型时，是中继的手的模型（`qwen3.8-27b`，除非 `/v1/models` 另有指定），而不是聊天模型——聊天的默认模型看得懂图片，但手需要的是训练过、会在屏幕上指东西的模型；聊天服务商是目录里带 `vision` 的自有服务商时，是它自己的手的模型（`defaults.hands`，百炼是 `qwen3.8-27b`，智谱是 `glm-4.6v`），用聊天的 key；聊天服务商看不了图（按目录 id 或主机识别出的本地服务器）而账号已登录时，是中继的手的模型，用账号的 key，聊天模型留在原处；其余情况是聊天模型，目录里没有的主机也是。明确写了 `model` 总是优先。只有操作器的 `base_url` 是另一个服务时才需要 key。每次手机任务的轨迹都进 `<data_dir>/phone-traces/`（保留最近 200 条；`nanomuse phone traces`）。
+
+应用层通过 `PUT /api/connections/gui` 设置这个槽位，它接受的 `provider` 和 `PUT /api/connections/llm` 一样：协议（`openai`、`openai_responses`）、`chatgpt`，或者 `bailian` 这样的目录 id，后者自带接口地址（`base_url` 可以留空）；目录里没有的 id，或运行时不会说其协议的 id，回 400 并列出可选项。回答（以及 `GET /api/connections` → `gui`）带 `provider` 原样、`provider_id`（协议加 URL 对应的目录条目）、`effective_model` 和 `effective_source`（`gui`、`chat` 或 `cloud`）。
 
 ### MCP 服务器 {#mcp-servers}
 
