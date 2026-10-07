@@ -1115,7 +1115,6 @@ export const en = {
   abIssues: 'Report a problem',
   menuAbout: 'About nanoMuse',
   menuUpdate: 'Update to {version}',
-  // the account's two models (C4)
   mdPick: 'Pick one',
   // Settings → Models (0.1.41, "Choice"): the four slots, the card after a key is saved, the one-time Cloud retry
   mlTitle: 'Models',
@@ -1773,7 +1772,7 @@ export const zh: typeof en = {
   acSignOutAll: '退出所有设备',
   acSignOutAllConfirm: '在所有设备上退出？包括这台在内的每台设备都要重新登录。',
   acDelete: '删除账号',
-  acDeleteSub: '从 nanoMuse 云端删除账号、额度、用量和样本。不可恢复。',
+  acDeleteSub: '从 nanoMuse Cloud 删除账号、额度、用量和样本。不可恢复。',
   acDeleteConfirm: '删除这个账号以及中继为它保存的一切？不可恢复。',
   acDeleteConfirm2: '最后确认：永久删除账号？',
   saving: '保存中…',
@@ -1785,7 +1784,7 @@ export const zh: typeof en = {
   nwProxy: '代理',
   nwProxyNone: '没有设置。请求都直接发出。',
   nwProxyPlaceholder: 'http://host:port · socks5://host:port',
-  nwProxyHelp: '这个应用发出的请求都会经过它：模型服务商、它读取的网页、连接的服务、更新检查；发往 nanoMuse 云端和本机的除外。重启后生效。',
+  nwProxyHelp: '这个应用发出的请求都会经过它：模型服务商、它读取的网页、连接的服务、更新检查；发往 nanoMuse Cloud 和本机的除外。重启后生效。',
   nwProxyBad: '地址要以 http://、https://、socks5:// 或 socks5h:// 开头，并写明主机和端口。',
   nwProxyPending: '已保存。正在运行的应用在重启前仍用旧设置。',
   nwProxyRestart: '立即重启',
@@ -2513,7 +2512,6 @@ export const zh: typeof en = {
   abIssues: '反馈问题',
   menuAbout: '关于 nanoMuse',
   menuUpdate: '更新到 {version}',
-  // the account's two models (C4)
   mdPick: '选一个',
   // Settings → Models (0.1.41, "Choice"): the four slots, the card after a key is saved, the one-time Cloud retry
   mlTitle: '模型',
