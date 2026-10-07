@@ -220,6 +220,13 @@ time* while signed in: that one message is sent again through the account and th
 goes back to its model when the turn ends; the Models page stays as it was. Nothing falls
 back on its own. The same button follows a failed studio round and a failed set of clips.
 
+While signed in, the page starts with one switch, *Use nanoMuse Cloud models*. Off, the
+account's models leave every picker and the automatic order, the harness's side calls (a
+chat's title, a compaction) run on the chat row's own model instead, and a chat that still
+sits on a Cloud model is not sent: a card says so and offers another model, a new chat, or
+*Use nanoMuse Cloud this time*, the only thing that spends the allowance while the switch
+is off. You stay signed in; sync, your devices and Settings → nanoMuse Cloud keep working.
+
 The profile's `node_modules/dsh-nanomuse` is a link (a junction on Windows) to the plugin
 inside the installed app, rewritten at every launch whose install folder differs from the
 link's target — an update that moved the app, say from `Programs\nanoMuse\nanomuse-desktop`

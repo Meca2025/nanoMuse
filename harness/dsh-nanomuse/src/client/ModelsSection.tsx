@@ -46,6 +46,8 @@ export function valueText(provider: string, providerLabel: string, model: string
 /** `GET /models`. */
 export interface ModelsView {
   signedIn: boolean
+  /** *Use nanoMuse Cloud models*: signed in and not switched off. */
+  cloudModels: boolean
   slots: Record<Slot, SlotView>
   handsExcluded: string[]
 }
@@ -149,6 +151,17 @@ export function makeModelsSection(t: Translate) {
     const [busy, setBusy] = useState<Slot | null>(null)
     const [said, setSaid] = useState<Partial<Record<Slot, string>>>({})
     const [failed, setFailed] = useState<string | undefined>()
+    const [switching, setSwitching] = useState(false)
+    // Signed in: the one switch for the account as a model source. Off, nanoMuse Cloud leaves every
+    // row's list and order and no side call runs on it; the sign-in stays (sync, the devices).
+    const setCloudModels = (on: boolean) => {
+      setSwitching(true)
+      setFailed(undefined)
+      call<ModelsView>('cloud-models', { on })
+        .then((next) => { setView(next); setSaid({}); reload() })
+        .catch((err: unknown) => setFailed(t('failed', { message: (err as Error).message })))
+        .finally(() => setSwitching(false))
+    }
     const pick = (slot: Slot, provider: string, model: string) => {
       setBusy(slot)
       setFailed(undefined)
@@ -187,8 +200,17 @@ export function makeModelsSection(t: Translate) {
           slot === 'hands' && view.handsExcluded.length ? h('span', { className: 'nm-row-sub nm-wrap', style: muted }, t('mlHandsExcluded', { providers: view.handsExcluded.join(t('langTag') === 'zh' ? '、' : ', ') })) : null),
         empty ? null : h(SlotPicker, { t, slot, view: row, disabled: busy !== null, ...(gate ? { catalogue: gate.catalogue } : {}), onPick: (provider, model) => pick(slot, provider, model) }))
     })
+    const cloudRow = view.signedIn
+      ? h('div', { className: 'nm-card', style: { marginBottom: 10 } },
+          h('div', { className: 'nm-row', 'data-testid': 'nm-ml-cloud-row' },
+            h('div', { className: 'nm-row-main' },
+              h('span', { className: 'nm-row-title' }, t('mlCloudModels')),
+              h('span', { className: 'nm-row-sub nm-wrap' }, view.cloudModels ? t('mlCloudModelsOn') : t('mlCloudModelsOff'))),
+            h('button', { type: 'button', role: 'switch', className: 'nm-switch', 'aria-checked': view.cloudModels, 'aria-label': t('mlCloudModels'), 'data-testid': 'nm-ml-cloud-switch', disabled: switching || busy !== null, onClick: () => setCloudModels(!view.cloudModels) })))
+      : null
     return h('div', { className: 'nm-section', 'data-testid': 'nm-models-section' },
       h('p', null, t('mlLead')),
+      cloudRow,
       h('div', { className: 'nm-card' }, rows),
       failed ? h('div', { style: errorStyle }, failed) : null,
       h('div', { style: { marginTop: 10 } }, h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', onClick: openAccountWays }, t('mlAddProvider'))))

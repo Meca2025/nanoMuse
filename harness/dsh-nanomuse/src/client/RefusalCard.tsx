@@ -25,7 +25,7 @@ import { settingsBus } from './bus.ts'
 import { focusComposer } from './composer.ts'
 import { IconRefresh } from './icons.tsx'
 import { useLive } from './live.ts'
-import { ACCOUNT_SECTION } from './OwnKey.tsx'
+import { ACCOUNT_SECTION, MODELS_SECTION } from './OwnKey.tsx'
 
 /** The node the harness hands the seat: the failure's words and code, the turn it ended. */
 export interface TurnErrorNode {
@@ -71,6 +71,8 @@ export function refusalText(t: Translate, kind: RefusalKind, message: string, re
       return t('rfSyncPaused')
     case 'hub_paused':
       return t('rfHubPaused')
+    case 'cloud_off':
+      return t('rfCloudOff')
     case 'other':
       return message || t('rfOther')
   }
@@ -162,6 +164,10 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
             return button(t('rfSignIn'), openSettings, true)
           case 'settings':
             return button(t('rfSettings'), openSettings)
+          case 'models':
+            return button(t('rfModels'), () => { settingsBus.openSection?.(MODELS_SECTION) })
+          case 'cloud-once':
+            return sessionId ? h('button', { type: 'button', className: 'nm-pill nm-pill-sm', 'data-testid': 'nm-rf-cloud-once', disabled: busy, onClick: retryOnCloud }, t('rfUseCloudOnce')) : null
         }
       })
 
@@ -175,6 +181,7 @@ export function makeTurnError(t: Translate, deps: RefusalDeps) {
       return h('div', { ref, className: 'nm-refusal nm-card', role: 'note', 'data-testid': 'nm-refusal', 'data-kind': kind },
         h('div', { className: 'nm-refusal-text' }, refusalText(t, kind, message)),
         plan.showRelayText && message && kind !== 'other' ? h('div', { className: 'nm-refusal-sub', style: muted }, t('rfRelaySaid', { message })) : null,
+        cloudError ? h('div', { className: 'nm-refusal-sub', style: muted }, cloudError) : null,
         h('div', { className: 'nm-refusal-actions', style: row }, actionsOf(plan.actions)))
     }
     // not the relay: an own key's provider, a local model, the harness itself
