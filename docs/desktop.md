@@ -66,7 +66,29 @@ is dsh's — its agent loop, tools, skills, goals, plan mode, compaction, sub-ag
   tools `devices`, `device_screen`, `device_shell`, `device_files`, `device_open`,
   `device_notify` and `delegate` for the phone and the other computers; the phone's
   `delegate` landing here as a dsh session "From <device>" with its approvals relayed
-  back; remote control (`shell`, `files`, `open`, `screen`) behind a switch.
+  back; remote control (`shell`, `files`, `open`, `screen`) behind a switch;
+- **Network** (Settings → nanoMuse Cloud → Network): one proxy for what the app sends out —
+  `http://host:port`, `https://`, `socks5://` or `socks5h://`, a `user:pass@` allowed and
+  shown masked. Everything the dsh Host sends goes through it: your own keys, the ChatGPT
+  sign-in's calls, *List models*, the pages the tools read, connectors, the update check,
+  and the hands' runtime (`nanomuse mcp` inherits the same variables). nanoMuse Cloud — the relay, the hub's WebSocket, the sync — and loopback never
+  do. The shell keeps it in `desktop.json` next to *open at login* and puts it on the dsh
+  Host's environment at start (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` for SOCKS, `NO_PROXY`
+  with `localhost,127.0.0.1,::1`, `cloud.nanomuse.cn` and the relay the plugin talks to, and
+  `NODE_USE_ENV_PROXY=1`, which is what makes Node's fetch read them), so it takes effect
+  after a restart — *Restart now* under the row restarts the Host with the window up. The
+  phones have the same setting in the provider form, the web app in the own-key form, the
+  runtime in `[llm] proxy` ([own-key.md](own-key.md#when-the-provider-cannot-be-reached));
+- **Standing grants** (Settings → Permissions): every permission this computer remembers,
+  in one list, grouped under the three tiers the phone's Permissions page uses — *Runs
+  without asking* (the remote-control switch: every device of the account may run things
+  here), *Remembered from the card* (a device allowed with *always* on a remote-control
+  card; the hands in an app, from *Always in <app>* on a permission card), *Runs, then tells
+  you* (nothing of the desktop's lands there today). Each row says what was allowed, for
+  whom or where, when, and has *Revoke*; the empty state says that *always* on a card is
+  what puts a row here. The Computer use page and the profile drawer keep their own shorter
+  lists; this one is the complete one. The host answers `GET /nanomuse/cloud/grants` with
+  the list and `POST /grants/revoke {id}` for any row of it.
 
 ## When the allowance is used up, and the relay's other answers
 
@@ -84,7 +106,10 @@ show, under the turn that did not run, in the chat:
 - **a plan you already pay for**: the ChatGPT sign-in, right there, with the relay's caveat
   about it;
 - **invite a friend**: the bonus for each of you and *Copy the link*;
-- a star on GitHub, once, when the nudge policy allows it;
+- a star on GitHub, once, when the nudge policy allows it — the card's title and buttons are
+  the app's; its sentence is the app's too unless the relay's policy carries one (`star.text`,
+  `star.text_zh`, up to 200 characters; a Chinese UI takes `text_zh`, else `text`;
+  [cloud.md](cloud.md));
 - *Open Settings → nanoMuse Cloud* and *Try again* (the same words are sent again once a
   way on is set up).
 

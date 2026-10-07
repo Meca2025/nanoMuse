@@ -27,7 +27,7 @@
  */
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { ApprovalDesk, appOf, checkForUpdate, HoldDesk, modelFor, pickChatModel, pickHandsModel, sharedConnectors, takesImages, type Grant, type Hold, type HoldTool, type PendingApproval, type UpdateInfo } from './desk.ts'
+import { ApprovalDesk, appOf, checkForUpdate, DEVICE_GRANT_PREFIX, HoldDesk, modelFor, pickChatModel, pickHandsModel, REMOTE_CONTROL_GRANT_ID, sharedConnectors, standingGrants, takesImages, type Grant, type Hold, type HoldTool, type PendingApproval, type StandingGrant, type UpdateInfo } from './desk.ts'
 import { arch, homedir, hostname, release, type, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
 import { createHmac, randomBytes, randomUUID } from 'node:crypto'
@@ -936,6 +936,31 @@ export default class NanomuseCloud extends Service {
     await this.writeState()
     this.broadcast()
     return true
+  }
+
+  /** Every remembered permission on this computer as one list (the Permissions page's *Standing grants*). */
+  standingGrants(): StandingGrant[] {
+    return standingGrants({ grants: this.state.grants ?? [], trusted: this.trusted, remoteControl: this.remoteControl })
+  }
+
+  /**
+   * Revoke one standing grant by the id `standingGrants()` gave it, whichever store it lives
+   * in: the hands' grant, a trusted device (`device:<id>`), or the remote-control switch.
+   * False when nothing by that id is remembered.
+   */
+  async revokeStanding(id: string): Promise<boolean> {
+    if (id === REMOTE_CONTROL_GRANT_ID) {
+      if (!this.remoteControl) return false
+      await this.setRemoteControl(false)
+      return true
+    }
+    if (id.startsWith(DEVICE_GRANT_PREFIX)) {
+      const deviceId = id.slice(DEVICE_GRANT_PREFIX.length)
+      if (!this.state.trusted?.[deviceId]) return false
+      await this.setTrusted(deviceId, '', false)
+      return true
+    }
+    return this.revokeGrant(id)
   }
 
   /** The person takes the screen (`by: user`); the hands wait until `holdDone`. */
@@ -2541,9 +2566,13 @@ export default class NanomuseCloud extends Service {
         const id = decodeURIComponent(route.split('/')[2] ?? '')
         return this.holdDone(id) ? send(res, 204) : send(res, 404, { error: { code: 'not_found', message: 'No such hold' } })
       }
+      // Standing grants (the Permissions page): every remembered permission as one list — the
+      // hands' per-app grants, the devices allowed without asking, the remote-control switch —
+      // and one revoke for any of them by the id the list gives.
+      if (req.method === 'GET' && route === '/grants') return send(res, 200, { grants: this.standingGrants() })
       if (req.method === 'POST' && route === '/grants/revoke') {
         const body = await json(req)
-        return (await this.revokeGrant(String(body.id ?? ''))) ? send(res, 204) : send(res, 404, { error: { code: 'not_found', message: 'No such grant' } })
+        return (await this.revokeStanding(String(body.id ?? ''))) ? send(res, 204) : send(res, 404, { error: { code: 'not_found', message: 'No such grant' } })
       }
       if (req.method === 'POST' && route === '/chat-model') {
         const body = await json(req)

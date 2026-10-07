@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { routineDue } from '../lib/rooms.js'
-import { askKey, dayKey, DEFAULT_NUDGES, dueAsk, LEDGER_EMPTY, mergeNudges, readLedger, readNudges, recordAsk, recordDay, recordStarred, recordTask } from '../lib/nudges.js'
+import { askKey, dayKey, DEFAULT_NUDGES, dueAsk, LEDGER_EMPTY, mergeNudges, readLedger, readNudges, recordAsk, recordDay, recordStarred, recordTask, STAR_TEXT_MAX, starSentence, starText } from '../lib/nudges.js'
 
 const DAY = 86_400_000
 const T0 = Date.UTC(2026, 9, 5, 12)
@@ -18,8 +18,44 @@ test('the defaults are the shared contract', () => {
       moments: { signed_in: true, tasks: [3, 10, 30], new_look: true, exhausted: true, days_used: [7, 30], goal_done: true },
       cooldown_days: 7,
       max_asks: 4,
+      text: '',
+      text_zh: '',
     },
   })
+})
+
+test('the relay may say the card\'s sentence: trimmed, at most 200 characters, else the app\'s own', () => {
+  assert.equal(STAR_TEXT_MAX, 200)
+  // read: trimmed; over the cap dropped, not cut; anything that is not a string is nothing
+  assert.equal(starSentence('  A star helps.  '), 'A star helps.')
+  assert.equal(starSentence('x'.repeat(200)), 'x'.repeat(200))
+  assert.equal(starSentence('x'.repeat(201)), '')
+  assert.equal(starSentence(`${' '.repeat(5)}${'y'.repeat(200)}${' '.repeat(5)}`), 'y'.repeat(200), 'the cap is measured after trimming')
+  assert.equal(starSentence(''), '')
+  assert.equal(starSentence(42), '')
+  assert.equal(starSentence(null), '')
+  // merged: a policy without the fields keeps the empty defaults; one with them keeps them; a bad one is dropped
+  assert.equal(mergeNudges({ star: {} }).star.text, '')
+  const p = mergeNudges({ star: { text: ' Thanks for running it. ', text_zh: '谢谢你用它。', max_asks: 2 } })
+  assert.equal(p.star.text, 'Thanks for running it.')
+  assert.equal(p.star.text_zh, '谢谢你用它。')
+  assert.equal(p.star.max_asks, 2)
+  assert.equal(mergeNudges({ star: { text: 'z'.repeat(300), text_zh: '好'.repeat(201) } }).star.text, '')
+  assert.equal(mergeNudges({ star: { text: 'z'.repeat(300), text_zh: '好'.repeat(201) } }).star.text_zh, '')
+  // /v1/me carries it under `nudges` too
+  assert.equal(readNudges({ nudges: { star: { text_zh: '一颗 Star。' } } }).star.text_zh, '一颗 Star。')
+  // chosen: a Chinese UI takes text_zh, else text, else the app's own; an English UI never takes text_zh
+  const own = 'the app’s own sentence'
+  assert.equal(starText(DEFAULT_NUDGES, false, own), own)
+  assert.equal(starText(DEFAULT_NUDGES, true, own), own)
+  assert.equal(starText(p, false, own), 'Thanks for running it.')
+  assert.equal(starText(p, true, own), '谢谢你用它。')
+  const enOnly = mergeNudges({ star: { text: 'English only.' } })
+  assert.equal(starText(enOnly, true, own), 'English only.')
+  assert.equal(starText(enOnly, false, own), 'English only.')
+  const zhOnly = mergeNudges({ star: { text_zh: '只有中文。' } })
+  assert.equal(starText(zhOnly, true, own), '只有中文。')
+  assert.equal(starText(zhOnly, false, own), own)
 })
 
 test('a relay policy fills the gaps from the defaults and cannot break the shape', () => {

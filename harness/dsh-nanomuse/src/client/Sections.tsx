@@ -186,7 +186,9 @@ function publishDesktopPrefs(p: DesktopPrefs): void {
   desktopPrefsCache = p
   for (const l of desktopPrefsListeners) l(p)
 }
-export function useDesktopPrefs(): { prefs: DesktopPrefs | undefined; set: (patch: Partial<Pick<DesktopPrefs, 'openAtLogin' | 'menuBar' | 'quickChat' | 'quickChatKey'>>) => void } {
+/** What `setPrefs` takes: the switches, the quick-chat key, the proxy and the relay hosts it must never cover. */
+export type DesktopPrefsPatch = Partial<Pick<DesktopPrefs, 'openAtLogin' | 'menuBar' | 'quickChat' | 'quickChatKey' | 'proxy'> & { relayHosts: string[] }>
+export function useDesktopPrefs(): { prefs: DesktopPrefs | undefined; set: (patch: DesktopPrefsPatch) => void } {
   const b = bridge()
   const [prefs, setLocal] = useState<DesktopPrefs | undefined>(desktopPrefsCache)
   useEffect(() => {
@@ -194,7 +196,7 @@ export function useDesktopPrefs(): { prefs: DesktopPrefs | undefined; set: (patc
     void b?.prefs?.().then(publishDesktopPrefs).catch(() => undefined)
     return () => { desktopPrefsListeners.delete(setLocal) }
   }, [b])
-  const set = useCallback((patch: Partial<Pick<DesktopPrefs, 'openAtLogin' | 'menuBar' | 'quickChat' | 'quickChatKey'>>) => {
+  const set = useCallback((patch: DesktopPrefsPatch) => {
     if (desktopPrefsCache) publishDesktopPrefs({ ...desktopPrefsCache, ...patch })
     void b?.setPrefs?.(patch).then(publishDesktopPrefs).catch(() => undefined)
   }, [b])
