@@ -8,6 +8,7 @@ import com.openminis.app.sandbox.NativeOffloadHandler
 import com.openminis.app.sandbox.NativeOffloadRequest
 import com.openminis.app.sandbox.NativeOffloadResult
 import com.openminis.app.sandbox.PRootKernel
+import io.github.nanomuse.sandbox.SandboxPaths
 import io.github.nanomuse.avatar.ImageGen
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
@@ -146,7 +147,10 @@ class MediaOffloadHandler(private val context: Context) : NativeOffloadHandler {
         return runCatching { file.outputStream().use(write); file }.getOrNull()
     }
 
-    /** A picture the agent points at: a sandbox path, an attachment link or a host path. */
+    /**
+     * A picture the agent points at: a sandbox path or an attachment link, inside the sandbox
+     * only (a host path such as the app's own private files is not the agent's to read).
+     */
     private fun loadPicture(path: String, sessionId: String?): Bitmap? {
         val linux = when {
             path.startsWith("minis://attachments/") -> "/var/minis/attachments/" + path.removePrefix("minis://attachments/")
@@ -155,11 +159,11 @@ class MediaOffloadHandler(private val context: Context) : NativeOffloadHandler {
         }
         val file = when {
             linux.startsWith("/var/minis/attachments/") && sessionId != null ->
-                File(context.filesDir, "minis-sessions/$sessionId/attachments/" + linux.removePrefix("/var/minis/attachments/"))
-            sessionId != null -> PRootKernel.resolveSessionHostPath(sessionId, linux, context)
-            else -> PRootKernel.resolveHostPath(linux)
-        } ?: File(linux)
-        val f = file.takeIf { it.exists() } ?: File(linux).takeIf { it.exists() } ?: return null
+                File(context.filesDir, "minis-sessions/$sessionId/attachments/" + SandboxPaths.normalise(linux.removePrefix("/var/minis/attachments")).removePrefix("/"))
+                    .takeIf { SandboxPaths.inside(context, it) }
+            else -> SandboxPaths.host(context, linux, sessionId)
+        } ?: return null
+        val f = file.takeIf { it.isFile } ?: return null
         return runCatching { BitmapFactory.decodeFile(f.path) }.getOrNull()
     }
 

@@ -69,6 +69,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **Two `nanomuse-hands run` arriving together cannot both start**; the second is told the hands are busy.
 - Reasons kept as grant labels (*taps "Pay": looks like a payment*) no longer carry a dash.
 - **The ideas catalogue reads without em dashes** (the same file the desktop and the web console carry).
+- **A path the agent or another device names stays inside the sandbox.** The hub's `files` actions, `nanomuse-media` and `nanomuse-pc put` resolved `..` and symlinks literally and fell back to the raw phone path, so a sandbox path could reach the app's own private files; they now resolve inside the rootfs, a bound folder or the session's own folders only, and anything else is "not inside the phone's sandbox".
+- **The hub waits when the relay asks it to.** A paused hub or a connection replaced by a newer one of the same device (close 4003) is retried after 30 seconds instead of at once, as on the desktop; a key the relay refuses at the handshake (HTTP 401 or 403) is shown as refused under Devices and retried once a minute instead of on the fast backoff forever. The close is acknowledged with a normal code.
 
 ### iOS
 

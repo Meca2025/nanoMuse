@@ -6,6 +6,7 @@ import com.openminis.app.sandbox.NativeOffloadHandler
 import com.openminis.app.sandbox.NativeOffloadRequest
 import com.openminis.app.sandbox.NativeOffloadResult
 import com.openminis.app.sandbox.PRootKernel
+import io.github.nanomuse.sandbox.SandboxPaths
 import io.github.nanomuse.guard.GateOutcome
 import io.github.nanomuse.guard.GuardKind
 import io.github.nanomuse.guard.RiskAssessment
@@ -229,6 +230,7 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         if (sessionId != null) File(context.filesDir, "minis-sessions/$sessionId/attachments").apply { mkdirs() }
         else PRootKernel.resolveHostPath("/var/minis/attachments")?.apply { mkdirs() }
 
+    /** The local file behind a sandbox path or attachment link; inside the sandbox only. */
     private fun resolveLocal(path: String, sessionId: String?): File? {
         val linux = when {
             path.startsWith("minis://attachments/") -> "/var/minis/attachments/" + path.removePrefix("minis://attachments/")
@@ -237,11 +239,11 @@ class ReachOffloadHandler(private val context: Context) : NativeOffloadHandler {
         }
         val file = when {
             linux.startsWith("/var/minis/attachments/") && sessionId != null ->
-                File(context.filesDir, "minis-sessions/$sessionId/attachments/" + linux.removePrefix("/var/minis/attachments/"))
-            sessionId != null -> PRootKernel.resolveSessionHostPath(sessionId, linux, context)
-            else -> PRootKernel.resolveHostPath(linux)
-        } ?: File(linux)
-        return file.takeIf { it.isFile } ?: File(linux).takeIf { it.isFile }
+                File(context.filesDir, "minis-sessions/$sessionId/attachments/" + SandboxPaths.normalise(linux.removePrefix("/var/minis/attachments")).removePrefix("/"))
+                    .takeIf { SandboxPaths.inside(context, it) }
+            else -> SandboxPaths.host(context, linux, sessionId)
+        } ?: return null
+        return file.takeIf { it.isFile }
     }
 
     // ── results ────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ import com.openminis.app.data.MemoryGlobalPrefs
 import com.openminis.app.debug.HeadlessChatRunner
 import com.openminis.app.logging.AppLogger
 import com.openminis.app.sandbox.PRootKernel
+import io.github.nanomuse.sandbox.SandboxPaths
 import com.openminis.app.sandbox.ShellExecutor
 import com.openminis.app.service.AgentForegroundService
 import io.github.nanomuse.guard.GateOutcome
@@ -166,7 +167,9 @@ object HubActions {
             !path.startsWith("/") -> "/root/$path"
             else -> path
         }
-        return PRootKernel.resolveHostPath(linux) ?: throw Refused("no_sandbox", "the phone's sandbox is not set up yet")
+        // Confined to the sandbox: `..` and symlinks out of the rootfs resolve to nothing.
+        return SandboxPaths.host(context, linux, null)
+            ?: throw Refused("not_found", "$path is not inside the phone's sandbox")
     }
 
     private fun files(context: Context, path: String): JSONObject {
