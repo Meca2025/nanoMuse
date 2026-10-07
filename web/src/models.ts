@@ -49,6 +49,7 @@ export function entryFor(provider: string, baseUrl: string, list: CatalogueProvi
 /** The name a provider id shows in a row: nanoMuse Cloud, the catalogue's name, or the host. */
 export function providerLabel(id: string, locale: string, baseUrl = "", list: CatalogueProvider[] = CATALOGUE): string {
   if (id === CLOUD_ID) return "nanoMuse Cloud";
+  if (id === "chatgpt") return "ChatGPT";
   const entry = list.find((p) => p.id === id);
   if (entry && id !== CUSTOM_ID) return providerName(entry, locale);
   return hostOf(baseUrl) || id;
@@ -59,6 +60,39 @@ export function slotValue(slot: Pick<MediaSlotData, "effective_provider" | "effe
   if (!slot.effective_provider) return "";
   const name = providerLabel(slot.effective_provider, locale, slot.base_url, list);
   return slot.effective_model ? `${name} · ${slot.effective_model}` : name;
+}
+
+/** the hands slot as `GET /api/connections` reports it, the fields the row's value needs */
+export interface HandsSlot {
+  provider: string;
+  provider_id?: string;
+  base_url: string;
+  effective_model?: string;
+  effective_source?: "gui" | "chat" | "cloud";
+}
+
+/**
+ * The hands row's value, `<provider> · <model>`, from the effective fields: nanoMuse Cloud
+ * when the relay's hands model serves, the hands' own host when one is set, else the chat
+ * model's provider. "" while the runtime does not say.
+ */
+export function handsValue(
+  gui: HandsSlot,
+  llm: { provider: string; base_url: string; cloud?: boolean },
+  locale: string,
+  list: CatalogueProvider[] = CATALOGUE,
+): string {
+  const model = gui.effective_model ?? "";
+  if (!model) return "";
+  // a protocol with an unlisted host is the host, never the OpenAI entry the word also names
+  const labelOf = (provider: string, baseUrl: string) =>
+    providerLabel(entryFor(provider, baseUrl, list)?.id ?? (PROTOCOLS.includes(provider) ? CUSTOM_ID : provider), locale, baseUrl, list);
+  let name: string;
+  if (gui.effective_source === "cloud") name = "nanoMuse Cloud";
+  else if (gui.effective_source === "gui" && (gui.provider_id || gui.base_url || !PROTOCOLS.includes(gui.provider || "openai")))
+    name = gui.provider_id ? providerLabel(gui.provider_id, locale, gui.base_url, list) : labelOf(gui.provider, gui.base_url);
+  else name = llm.cloud ? "nanoMuse Cloud" : labelOf(llm.provider, llm.base_url);
+  return `${name} · ${model}`;
 }
 
 export interface MediaChoice {

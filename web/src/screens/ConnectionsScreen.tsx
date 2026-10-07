@@ -41,7 +41,7 @@ import { CloudCard } from "../components/CloudCard";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { getLocale, useT } from "../i18n";
 import { useStore } from "../store";
-import { CLOUD_ID, CLOUD_KEY_REF, CUSTOM_ID, currentChoice, mediaChoices, slotValue, type MediaChoice } from "../models";
+import { CLOUD_ID, CLOUD_KEY_REF, CUSTOM_ID, currentChoice, handsValue, mediaChoices, slotValue, type MediaChoice } from "../models";
 import { CATALOGUE, catalogueIdFor, coversLine, editionFor, invalidateProviders, presetFor, providerName, regionOf, unavailableLine, type Capability } from "../providers";
 import { modelSees, orderPresets } from "../region";
 import type { Contact, ConnectionsData, SharedConnector, TestResult } from "../types";
@@ -406,13 +406,15 @@ export function ModelCard({
         : (cloudPreset?.gui_model ?? model.trim())
       : model.trim();
   const handsOnCloud = !p?.cloud && lacks("vision") && !!cloudPreset;
+  // what the hands use right now, as the runtime resolved it (the saved state, not the form)
+  const handsNow = data.gui ? handsValue(data.gui, data.llm, locale) : "";
   const handsOptions = Array.from(
     new Set([
       ...(p?.cloud ? models.gui : []),
       ...(p?.gui_model ? [p.gui_model] : []),
       ...models.list.filter((m) => models.vision.includes(m) || modelSees(m) === true),
     ]),
-  ).filter((m) => m && m !== handsDefault);
+  ).filter(Boolean);
   const willAppendV1 = needsUrl && /^https?:\/\/[^/]+\/?$/.test(baseUrl.trim());
 
   return (
@@ -635,14 +637,15 @@ export function ModelCard({
         }
       >
         <select value={guiModel} onChange={(e) => setGuiModel(e.target.value)} className={cx(inputCls, "text-fg")}>
-          <option value="">{handsDefault ? (handsOnCloud ? t("Default — nanoMuse Cloud · {model}", { model: handsDefault }) : t("Default — {model}", { model: handsDefault })) : t("Default — the chat model")}</option>
+          <option value="">{t("Automatic")}</option>
           {handsOptions.map((m) => (
             <option key={m} value={m}>
               {m}
             </option>
           ))}
-          {guiModel && !handsOptions.includes(guiModel) && guiModel !== handsDefault && <option value={guiModel}>{guiModel}</option>}
+          {guiModel && !handsOptions.includes(guiModel) && <option value={guiModel}>{guiModel}</option>}
         </select>
+        {handsNow && <p className="mt-1.5 text-[12px] text-muted">{t("Currently {value}", { value: handsNow })}</p>}
         {!p?.cloud && model.trim() && !guiModel && modelSees(model.trim()) === false && (
           <div className="mt-1.5 text-[12px] text-amber-700 dark:text-amber-300">
             {t("{model} does not take pictures, so the hands would be blind with it. Pick a model that sees for them.", { model: model.trim() })}
@@ -904,9 +907,6 @@ export function MediaSlotCard({
       : info.effective_source === "chat"
         ? { text: t("The chat model's provider"), tone: "ok" }
         : { text: t("Your key"), tone: "ok" };
-  // what "Automatic" means today, for the first option (unknown while a choice is in force)
-  const automaticValue = info.configured ? "" : value;
-
   const save = async () => {
     setSaving(true);
     try {
@@ -956,7 +956,7 @@ export function MediaSlotCard({
           }}
           className={cx(inputCls, "text-fg")}
         >
-          <option value="">{automaticValue ? t("Automatic — {model}", { model: automaticValue }) : t("Automatic")}</option>
+          <option value="">{t("Automatic")}</option>
           {groups.map(({ g, items }) => (
             <optgroup key={g} label={groupTitle(g)}>
               {items.map((c) => (
@@ -967,6 +967,7 @@ export function MediaSlotCard({
             </optgroup>
           ))}
         </select>
+        {value && <p className="mt-1.5 text-[12px] text-muted">{t("Currently {value}", { value })}</p>}
         {!value && !choice && (
           <button type="button" className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] text-accent" onClick={() => setChoice(choices.find((c) => c.group === "add")?.value ?? "")}>
             <Plus size={13} /> {t("Add a provider")}
