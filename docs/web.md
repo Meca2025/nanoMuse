@@ -30,7 +30,11 @@ about it (the Kimi editions, the OpenRouter Image API, the ChatGPT caveat). The
 the one sentence instead of a blind hands model. Under *Pictures and clips*,
 a provider without `image` or `video` shows the sentence in place of the
 picker; one with them shows *Automatic — the catalogue's default* so you know
-what *Automatic* will draw with.
+what *Automatic* will draw with. A *Proxy (optional)* field under them takes an
+`http://host:port`, `https://` or `socks5://` address for this provider's
+requests only (`[llm] proxy`; nanoMuse Cloud never goes through it, a SOCKS
+address needs `httpx[socks]` on the runtime); a saved password comes back as
+dots, and an emptied field clears it.
 
 **Connections → Or sign in with a ChatGPT plan.** The card asks the runtime to
 start the Codex sign-in (`POST /api/chatgpt/login` → `{url}`), opens the page
@@ -66,6 +70,44 @@ models — Alibaba Cloud Bailian, Zhipu GLM, SiliconFlow or Volcengine Ark* on
 the mainland, *OpenRouter, OpenAI, Google Gemini or xAI Grok* elsewhere — with
 *Change model* beside it. **Settings → Image & video models** shows the same
 sentence as its value when the runtime says pictures or clips are not covered.
+
+## The first run and the chat's opening
+
+The first-run list is *Add a model → Connect mail, calendar, contacts
+(optional) → Start*. There is no naming page: *Start* asks the runtime to begin
+the first conversation (`POST /api/firstrun/start {lang}`, which also marks the
+first run done) and opens the chat, where the opening happens the way it does
+on the phones and the desktop (contract C4 in [parity.md](parity.md)):
+
+1. **The app speaks first**, as the agent, three lines in the console's
+   language — hello, *I am a personal agent on this computer, free and open
+   source, from a small non-profit*, and *what should I call you?* They cost no
+   tokens and the model never sees them as messages; the chat draws them where
+   the history begins (`GET /api/firstrun?lang=` returns them as `intro`).
+2. **The model asks your name** and, when you give it (or decline), reports it
+   in a ```` ```nanomuse-naming ```` block at the end of its reply — the same
+   JSON the desktop and the phones read (`addressGiven`, `userAddress`,
+   `suggestions`, `agentName`). The runtime owns the phases
+   (`none → ask_user_name → ask_agent_name → named → done`,
+   `nanomuse/server/firstrun.py`, saved as `firstrun.json` next to the
+   profile), writes your address to the profile and to memory as *Call them:
+   …*, and tells the page over the socket (`firstrun` frame). The block itself
+   is never shown, not even half-streamed.
+3. **The chooser** appears under the reply: the model's two or three name
+   suggestions, or two from the built-in pool when it gave none, and
+   *Something else* for a name of your own. A chip saves the name at once
+   (`POST /api/firstrun/pick {name}`) and sends it as your message, so the
+   model's next reply is its first as itself; a typed name reaches the model
+   and comes back in the block. A card the app answers itself (the avatar
+   options) dismisses the chooser (`POST /api/firstrun/dismiss`).
+
+While the first conversation runs, its turns are never *tasks* for the star
+asks. The addendum that tells the model about the ritual goes only into the
+chat the conversation is bound to, never into a routine, a feed post or
+another chat. *Skip setup* keeps the plain "onboarded" without the
+conversation; the identity form stays under Settings for changing the name,
+face and tone later. An older runtime without these routes gets the plain
+greeting and the form-free list as before.
 
 ## The sentences
 

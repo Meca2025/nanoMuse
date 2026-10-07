@@ -1,7 +1,7 @@
 import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
 import {
   askDue,
   askId,
@@ -16,6 +16,7 @@ import {
   recordStarred,
   recordTask,
   type StarMoment,
+  starSentence,
 } from "../nudges";
 import type { CloudConfig } from "../types";
 import { cx } from "../util";
@@ -179,17 +180,28 @@ export function useCloudConfig(): CloudConfig {
   return cfg;
 }
 
-/** One card: the star, a line saying why, "Star on GitHub" and "Not now". */
+/** The star card's sentence: the relay's when it set one for this UI's language, else `own`. */
+export function useStarSentence(own: string): string {
+  const { policy: current } = useStarPolicy();
+  return starSentence(current, useLocale() === "zh-CN", own);
+}
+
+/**
+ * One card: the star, a line saying why, "Star on GitHub" and "Not now". The line is the
+ * relay's sentence when its policy carries one (`star.text`, `star.text_zh` for a Chinese
+ * UI), else `text`, the app's own words for the moment; the title and buttons stay the app's.
+ */
 export function StarNudge({ text, onDone, className }: { text: string; onDone: () => void; className?: string }) {
   const t = useT();
   const cfg = useCloudConfig();
+  const body = useStarSentence(text);
   return (
     <section className={cx("rounded-[22px] border border-amber-400/40 bg-amber-50/70 p-4 dark:bg-amber-400/[0.08]", className)}>
       <div className="flex items-start gap-2.5">
         <Star size={18} className="mt-0.5 shrink-0 text-amber-500" />
         <div className="min-w-0 flex-1">
           <div className="text-[14px] font-semibold leading-snug">{t("A star on GitHub helps")}</div>
-          <p className="mt-1 text-[13px] leading-relaxed text-fg/85">{text}</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-fg/85">{body}</p>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 pl-7">

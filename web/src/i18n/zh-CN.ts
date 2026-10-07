@@ -1748,6 +1748,17 @@ const zhCN: Record<string, string> = {
   "This goes to {device}.": "这条会发给 {device}。",
   "Runs this there and reports back": "在那台设备上执行并汇报结果",
   Offline: "离线",
+
+  // the first conversation (contract C4): the opening in the chat, the chooser
+  "There is no form to fill in: once it has a model, it introduces itself in the chat and asks what to call you.": "不用填表：有了模型之后，它会在聊天里介绍自己，并问你希望怎么称呼你。",
+  "A model, then the chat. A minute.": "先接一个模型，再去聊天。一分钟。",
+  "Open the chat. It introduces itself and asks your name.": "打开聊天。它会介绍自己，并问你的名字。",
+  "Pick a name for me, or type one": "给我挑一个名字，或者自己输入一个",
+  "Something else": "换一个",
+
+  // the own-key model form: the proxy for this provider
+  "Proxy (optional)": "代理（可选）",
+  "Only this provider's requests go through it. nanoMuse Cloud never does.": "只有这个服务商的请求走代理；nanoMuse Cloud 的请求从不经过它。",
 };
 
 export default zhCN;

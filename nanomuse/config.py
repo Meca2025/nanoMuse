@@ -870,8 +870,8 @@ def apply_app_settings(settings: Settings, data: dict[str, Any]) -> None:
                 from nanomuse.llm.chatgpt import DEFAULT_MODEL
 
                 settings.llm.model = DEFAULT_MODEL
-        for key in ("image_model", "video_model"):
-            # "" is meaningful here: back to the automatic choice
+        for key in ("image_model", "video_model", "proxy"):
+            # "" is meaningful here: back to the automatic choice (the models), no proxy
             if key in llm and llm[key] is not None:
                 setattr(settings.llm, key, str(llm[key]).strip())
         if settings.llm.base_url:

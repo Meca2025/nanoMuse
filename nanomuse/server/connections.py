@@ -249,6 +249,49 @@ def normalize_base_url(url: str) -> str:
     return url
 
 
+PROXY_SCHEMES = ("http", "https", "socks5", "socks5h")
+
+
+def normalize_proxy(value: str) -> str:
+    """``[llm] proxy`` as typed in the app: trimmed; empty clears; otherwise an
+    ``http(s)://`` or ``socks5(h)://`` URL with a host, or :class:`ValueError`."""
+    value = value.strip()
+    if not value:
+        return ""
+    parts = urlsplit(value)
+    if parts.scheme.lower() not in PROXY_SCHEMES or not parts.hostname:
+        raise ValueError("proxy must be http://host:port, https://host:port or socks5://host:port")
+    if parts.path not in ("", "/") or parts.query or parts.fragment:
+        raise ValueError("proxy is a host and a port, without a path")
+    if parts.scheme.lower().startswith("socks") and not _socks_available():
+        raise ValueError(
+            "a SOCKS proxy needs the socksio package on the runtime: pip install 'httpx[socks]'"
+        )
+    return value.rstrip("/")
+
+
+def _socks_available() -> bool:
+    try:
+        import socksio  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def mask_proxy(value: str) -> str:
+    """The proxy as the app shows it: credentials, when it carries any, replaced by dots."""
+    value = (value or "").strip()
+    if "@" not in value:
+        return value
+    parts = urlsplit(value)
+    if not parts.hostname:
+        return value
+    host = parts.hostname + (f":{parts.port}" if parts.port else "")
+    user = parts.username or ""
+    cred = f"{user}:••••" if parts.password is not None else user
+    return f"{parts.scheme}://{cred}@{host}{parts.path}"
+
+
 def _vault_name(feed_name: str, prefix: str = "CALENDAR_") -> str:
     return prefix + (re.sub(r"[^A-Z0-9]+", "_", feed_name.upper()).strip("_") or "FEED")
 
@@ -355,6 +398,8 @@ class Connections:
                 # the avatar studio's models on the same host; "" = the automatic choice
                 "image_model": s.llm.image_model,
                 "video_model": s.llm.video_model,
+                # the slot's proxy, its credentials hidden; "" when there is none
+                "proxy": mask_proxy(s.llm.proxy),
                 "key_source": key_source,
                 "from_app": bool(self.data.get("llm")),
                 # the model is the nanoMuse Cloud account's (the form says so instead of a URL)
@@ -492,6 +537,9 @@ class Connections:
             llm["base_url"] = ""
         if llm.get("tool_mode") not in (None, "", "auto", "native", "prompt"):
             raise ValueError("tool_mode must be 'auto', 'native' or 'prompt'")
+        if body.get("proxy") is not None:
+            # this provider's requests through one proxy, never nanoMuse Cloud; "" clears
+            llm["proxy"] = normalize_proxy(str(body["proxy"]))
         api_key = body.get("api_key")
         if api_key:
             self.vault.set(LLM_KEY, str(api_key).strip())

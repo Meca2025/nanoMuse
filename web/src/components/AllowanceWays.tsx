@@ -9,7 +9,7 @@ import type { Guidance } from "../types";
 import { cx } from "../util";
 import { ChatGptSignIn } from "./ChatGptSignIn";
 import { primaryBtn, secondaryBtn } from "./Form";
-import { openStar, starText, useCloudConfig, useStarAsk } from "./StarNudge";
+import { openStar, starText, useCloudConfig, useStarAsk, useStarSentence } from "./StarNudge";
 
 /**
  * What the relay says beside a `429 allowance_exhausted` (and what `/v1/me.spend` carries):
@@ -123,6 +123,7 @@ export function AllowanceWays({
   const cfg = useCloudConfig();
   // the ask for a star among the ways on — when the policy allows it (contract C1)
   const [starAsk] = useStarAsk("exhausted", exhausted);
+  const starLine = useStarSentence(starText(t, "exhausted"));
   const lead = exhausted
     ? t("The free allowance is used up.")
     : t("Nearly used up: ¥{left} of ¥{grant} left.", { left: (info.left ?? 0).toFixed(2), grant: (info.grant ?? 0).toFixed(0) });
@@ -206,7 +207,7 @@ export function AllowanceWays({
       </Way>
 
       {exhausted && starAsk && (
-        <Way icon={<Star size={16} />} tone="bg-amber-400/15 text-amber-600 dark:text-amber-300" title={starText(t, "exhausted")}>
+        <Way icon={<Star size={16} />} tone="bg-amber-400/15 text-amber-600 dark:text-amber-300" title={starLine}>
           <button type="button" onClick={() => openStar(cfg.repo_url)} className={cx(secondaryBtn, "inline-flex items-center gap-1.5")}>
             <Star size={14} /> {t("Star on GitHub")}
           </button>

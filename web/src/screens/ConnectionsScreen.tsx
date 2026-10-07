@@ -150,6 +150,10 @@ export function ModelCard({
   // the avatar studio's picture and clip models at the same host; "" lets the runtime pick
   const [imageModel, setImageModel] = useState(data.llm.image_model ?? "");
   const [videoModel, setVideoModel] = useState(data.llm.video_model ?? "");
+  // `[llm] proxy` for this provider's requests; the runtime masks credentials in what it
+  // shows, so the field is sent only once edited (typed = set, emptied = cleared)
+  const [proxy, setProxy] = useState(data.llm.proxy ?? "");
+  const [proxyTouched, setProxyTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [test, setTest] = useState<TestResult | null>(null);
   const [testing, setTesting] = useState(false);
@@ -193,6 +197,8 @@ export function ModelCard({
     setToolMode(data.llm.tool_mode || "auto");
     setImageModel(data.llm.image_model ?? "");
     setVideoModel(data.llm.video_model ?? "");
+    setProxy(data.llm.proxy ?? "");
+    setProxyTouched(false);
     setGuiModel(data.gui?.model ?? "");
     setPreset(currentPreset);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -349,6 +355,8 @@ export function ModelCard({
           tool_mode: toolMode,
           api_key: key ? key : keyless ? "" : null,
           ...studio,
+          // untouched: null leaves the runtime's value; "" clears it
+          proxy: proxyTouched && data.llm.proxy !== undefined ? proxy.trim() : null,
         });
       }
       // the hands model rides on the chat model's endpoint and key (contract C4)
@@ -770,6 +778,27 @@ export function ModelCard({
           )}
         </div>
       </Field>
+      {!p?.cloud && data.llm.proxy !== undefined && (
+        <Field
+          label={t("Proxy (optional)")}
+          hint={t("Only this provider's requests go through it. nanoMuse Cloud never does.")}
+        >
+          <input
+            className={inputCls}
+            value={proxy}
+            onChange={(e) => {
+              setProxy(e.target.value);
+              setProxyTouched(true);
+            }}
+            // a masked password cannot be edited in place: the field empties to be retyped
+            onFocus={() => proxy.includes("••••") && !proxyTouched && setProxy("")}
+            onBlur={() => !proxyTouched && setProxy(data.llm.proxy ?? "")}
+            placeholder="http://host:port / socks5://host:port"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Field>
+      )}
       <div className="flex gap-2 pt-1">
         <button
           type="button"

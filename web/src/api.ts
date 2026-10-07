@@ -17,6 +17,7 @@ import type {
   FeedItem,
   FeedPostsData,
   FileInfo,
+  FirstRunView,
   Goal,
   HandsStatus,
   HoldEvent,
@@ -403,6 +404,11 @@ export const api = {
     request<string[]>(`/api/vault/${encodeURIComponent(name)}`, { method: "PUT", body: JSON.stringify({ value }) }),
   vaultDelete: (name: string) => request<{ ok: boolean }>(`/api/vault/${encodeURIComponent(name)}`, { method: "DELETE" }),
   onboarded: (done = true) => request<{ onboarded: boolean; feed_started?: boolean }>("/api/onboarded", json({ done })),
+  // ---- the first conversation (contract C4): the runtime owns the state, the browser draws it
+  firstrun: (lang: string) => request<FirstRunView>(`/api/firstrun?lang=${encodeURIComponent(lang)}`),
+  firstrunStart: (lang: string) => request<FirstRunView>("/api/firstrun/start", json({ lang })),
+  firstrunPick: (name: string) => request<FirstRunView>("/api/firstrun/pick", json({ name })),
+  firstrunDismiss: () => request<FirstRunView>("/api/firstrun/dismiss", json({})),
   // browser view
   browserControl: (thread: string, body: BrowserControl) =>
     request<{ url: string; title: string; hold?: HoldEvent | null }>(`/api/browser/${encodeURIComponent(thread)}/control`, json(body)),

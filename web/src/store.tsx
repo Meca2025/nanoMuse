@@ -18,6 +18,7 @@ import type {
   AttachmentInfo,
   CodingEvent,
   CodingRun,
+  FirstRunView,
   Goal,
   HandsLive,
   HandsStatus,
@@ -148,6 +149,12 @@ export interface AppState {
    */
   working: Record<string, WorkingPresence | undefined>;
   /**
+   * The first conversation (contract C4) as the runtime holds it: which thread it is bound
+   * to, its phase, the chooser's names. From the hello snapshot and the `firstrun` frames;
+   * null on an older runtime, and the chat then shows its plain greeting.
+   */
+  firstrun: FirstRunView | null;
+  /**
    * `?ui=lite`: the app as it is shown inside the simulated phone of the showcase
    * (demo/mobilegym) — the phone layout with its tabs at any width, no sidebar, no first-run
    * setup and no desktop hints. Kept for the tab (sessionStorage) so a reload inside the frame
@@ -240,6 +247,7 @@ const initial: AppState = {
   handsLive: null,
   studio: null,
   working: {},
+  firstrun: null,
 };
 
 function upsertApproval(list: ApprovalEvent[], ev: TimelineEvent): ApprovalEvent[] {
@@ -324,6 +332,7 @@ function reducer(state: AppState, action: Action): AppState {
         hands: s.hands ?? state.hands,
         holds: (s.holds ?? []).map(normalizeEvent),
         working: liveWorking(s.working),
+        firstrun: s.firstrun ?? state.firstrun,
       };
     }
     case "connection":
@@ -472,6 +481,9 @@ function applyWs(state: AppState, msg: WsMessage): AppState {
       if (!list) return state;
       return { ...state, events: { ...state.events, [msg.thread]: list.filter((e) => e.id !== msg.id) } };
     }
+    case "firstrun":
+      // the first conversation moved on (contract C4): the chat redraws its chooser
+      return { ...state, firstrun: msg.firstrun };
     case "working": {
       // another device started or finished a turn on a synced chat (C9); a `false` from a
       // device other than the one shown changes nothing
