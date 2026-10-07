@@ -38,9 +38,9 @@
 
 ## 🗞️ Tin mới
 
-- **2026-10-07 · [Bài báo](https://arxiv.org/abs/2610.08699)** — báo cáo của chúng tôi *nanoMuse: An Open-Source Personal Agent for Every Device You Own* đã có trên arXiv: trợ lý cá nhân là gì, Muse được xây dựng ra sao, và nanoMuse trả lời điều đó một cách mở như thế nào.
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — phiên bản mới nhất: ô nhập của iPhone đã hiện trở lại, mỗi cuộc trò chuyện trên điện thoại thuộc về tài khoản của nó, và mỗi lần relay từ chối là một câu rõ ràng hoặc một thẻ trên mọi ứng dụng. Mac chụp đúng hình màn hình hoặc nói vì sao không chụp được, Windows khởi động lại được sau bản cập nhật đã dời ứng dụng, và bảng điều khiển của relay có thêm các trang Kiểm soát, Thống kê và Trang web.
-- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse ra mắt: OpenMinis 1.13 trở thành nanoMuse, phiên bản công khai đầu tiên.
+- `2026-10-07` 📄 Bài báo của chúng tôi đã có trên [arXiv](https://arxiv.org/abs/2610.08699).
+- `2026-10-06` 🚀 Phiên bản mới nhất: [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40).
+- `2026-09-25` 🎉 nanoMuse đã ra mắt.
 
 Mọi phiên bản: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
