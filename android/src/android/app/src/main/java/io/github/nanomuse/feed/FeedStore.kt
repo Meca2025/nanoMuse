@@ -80,7 +80,7 @@ object FeedStore {
         val written = mutableListOf<FeedPost>()
         for (d in drafts) {
             if (next > MAX_POSTS_PER_DAY) break
-            val file = File(dir, "%02d.md".format(next))
+            val file = File(dir, "%02d.md".format(Locale.ROOT, next))
             val post = FeedPost(
                 day = day, index = next, title = d.title.trim().take(80), type = d.type, emoji = d.emoji,
                 body = d.body.trim(), source = d.source, createdAt = now, liked = false, file = file,

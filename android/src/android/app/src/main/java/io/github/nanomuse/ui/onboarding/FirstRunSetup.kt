@@ -254,7 +254,7 @@ private fun WelcomePage(onSignIn: () -> Unit) {
         primaryLabel = stringResource(R.string.nm_welcome_email),
         onPrimary = onSignIn,
         finePrint = stringResource(R.string.nm_welcome_fine_print),
-        onLearnMore = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))) },
+        onLearnMore = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))) } },
     ) {
         FeatureRow(Icons.Outlined.ChatBubbleOutline, stringResource(R.string.nm_welcome_feat_chat), stringResource(R.string.nm_welcome_feat_chat_sub))
         Spacer(Modifier.height(10.dp))

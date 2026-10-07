@@ -28,7 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -350,7 +350,7 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, elsewh
                 ) {
                     Text(stringResource(R.string.nm_connectors_docs), fontSize = 13.sp, color = MuseTones.action)
                     Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(14.dp))
+                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(14.dp))
                 }
             }
             if (wantsClient && !wantsKey && state != Connectors.State.Connected && !done) {
@@ -363,7 +363,7 @@ private fun ConnectorSheet(connector: Connector, state: Connectors.State, elsewh
                     ) {
                         Text(stringResource(R.string.nm_connectors_client_developer, connector.name), fontSize = 13.sp, color = MuseTones.action)
                         Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Outlined.OpenInNew, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(14.dp))
+                        Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, tint = MuseTones.action, modifier = Modifier.size(14.dp))
                     }
                 }
                 Text(stringResource(R.string.nm_connectors_client_redirect), fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

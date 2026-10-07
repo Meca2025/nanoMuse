@@ -29,7 +29,7 @@ object BrowserHandOver {
     private val _pending = MutableStateFlow<Pending?>(null)
     val pending: StateFlow<Pending?> = _pending.asStateFlow()
 
-    private var waiter: CompletableDeferred<Boolean>? = null
+    @Volatile private var waiter: CompletableDeferred<Boolean>? = null
 
     /** The person pressed Done: the waiting tool call returns and the agent goes on. */
     fun finish() {

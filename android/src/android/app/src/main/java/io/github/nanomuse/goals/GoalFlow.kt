@@ -168,7 +168,7 @@ object GoalFlow {
     fun systemAddendum(context: Context, sessionId: String): String? {
         val goal = GoalStore.get(context).forSession(sessionId) ?: return null
         val cadence = if (goal.checkEveryHours > 0) "every ${goal.checkEveryHours} hour(s)"
-        else "daily at %02d:%02d".format(goal.checkHour, goal.checkMinute)
+        else "daily at %02d:%02d".format(java.util.Locale.ROOT, goal.checkHour, goal.checkMinute)
         val steps = goal.steps.mapIndexed { i, s -> "${i + 1}. ${s.text}" }.joinToString("\n").ifEmpty { "(none yet)" }
         return buildString {
             appendLine("## This conversation tracks a goal (nanoMuse)")

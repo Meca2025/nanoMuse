@@ -52,4 +52,15 @@ class AvatarFlowTest {
         assert(fence.contains("/a/3.png"))
         assert(fence.trimEnd().endsWith("```"))
     }
+
+    @Test fun `a reference picture is decoded at the largest power of two that still fills 1024`() {
+        assertEquals(1, AvatarFlow.sampleSize(800, 600, 1024))
+        assertEquals(1, AvatarFlow.sampleSize(1024, 1024, 1024))
+        assertEquals(1, AvatarFlow.sampleSize(2047, 100, 1024))
+        assertEquals(2, AvatarFlow.sampleSize(2048, 1536, 1024))
+        assertEquals(4, AvatarFlow.sampleSize(4096, 3072, 1024))
+        assertEquals(4, AvatarFlow.sampleSize(6000, 8000, 1024))
+        assertEquals(8, AvatarFlow.sampleSize(9000, 12000, 1024))
+        assertEquals(1, AvatarFlow.sampleSize(0, 0, 1024))
+    }
 }

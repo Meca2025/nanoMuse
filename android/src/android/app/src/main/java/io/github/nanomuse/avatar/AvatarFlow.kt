@@ -118,13 +118,28 @@ object AvatarFlow {
     /** Reads an attached picture for the reference, scaled to something an edit endpoint accepts. */
     fun loadReference(context: Context, uri: Uri?): Bitmap? {
         if (uri == null) return null
+        val max = 1024
         return runCatching {
-            context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+            // Bounds first, then a sampled decode: a 48-megapixel photo is read at a quarter or an
+            // eighth of its size instead of as a 200 MB bitmap that is scaled down afterwards.
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, max) }
+            context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
         }.getOrNull()?.let { bmp ->
-            val max = 1024
             val scale = maxOf(bmp.width, bmp.height).toFloat() / max
             if (scale > 1f) Bitmap.createScaledBitmap(bmp, (bmp.width / scale).toInt(), (bmp.height / scale).toInt(), true) else bmp
         }
+    }
+
+    /**
+     * The power of two that decodes a [width] x [height] picture no smaller than [max] on its
+     * longer side: 1 for anything that already fits, 2 for up to twice the size, and so on.
+     */
+    internal fun sampleSize(width: Int, height: Int, max: Int): Int {
+        var sample = 1
+        while (maxOf(width, height) / (sample * 2) >= max) sample *= 2
+        return sample
     }
 
     /** Draws the four candidates. False when no image model is configured; [AvatarStudio.error] says why. */
