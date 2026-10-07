@@ -32,7 +32,7 @@ object TapWords {
         "com.sina.weibo", "com.instagram.android", "com.twitter.android", "com.zhiliaoapp.musically", "com.ss.android.ugc.aweme",
     )
     private val sendField = Regex(
-        "发送|发消息|消息|说点什么|输入消息|评论|回复|留言|\bmessage\b|\bsend\b|\bchat\b|\breply\b|\bcomment\b|say something|write a message|type a message",
+        "发送|发消息|消息|说点什么|输入消息|评论|回复|留言|\\bmessage\\b|\\bsend\\b|\\bchat\\b|\\breply\\b|\\bcomment\\b|say something|write a message|type a message",
         RegexOption.IGNORE_CASE,
     )
 
@@ -75,9 +75,9 @@ object TapWords {
 
     /** The reason line for the card, from the class and the label. */
     fun reason(cls: RiskClass, short: String, where: String?): String = when (cls) {
-        RiskClass.MONEY -> "taps “$short” — looks like a payment"
-        RiskClass.DESTRUCTIVE -> "taps “$short” — looks like it deletes something"
-        else -> "taps “$short” — looks like it sends or posts"
+        RiskClass.MONEY -> "taps “$short”: looks like a payment"
+        RiskClass.DESTRUCTIVE -> "taps “$short”: looks like it deletes something"
+        else -> "taps “$short”: looks like it sends or posts"
     } + (where?.let { " on $it" } ?: "")
 
     fun looksSecret(text: String): Boolean = secretField.containsMatchIn(text)

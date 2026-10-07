@@ -152,6 +152,26 @@ class ShellGuardTest {
         assertEquals(RiskClass.OUTBOUND, cls("TOKEN=x curl -X POST https://api.example.com -H 'a: b'"))
     }
 
+    @Test fun `wrappers with options are seen through`() {
+        assertEquals(RiskClass.DESTRUCTIVE, cls("timeout 10 rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("timeout -k 5 10s rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("nice rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("nice -n 19 rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("sudo -u root rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("ionice -c3 nice -n 19 rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("env -i PATH=/bin rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("/usr/bin/env FOO=1 /bin/rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("sudo -- rm -rf /var/minis/workspace/x"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("nohup timeout 30 rm -rf /var/minis/workspace/x &"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("find . -name '*.log' | xargs -I {} rm -f {}"))
+        assertEquals(RiskClass.DESTRUCTIVE, cls("ls | xargs -n 1 -P 4 rm -f"))
+        assertEquals(RiskClass.OUTBOUND, cls("timeout 20 curl -X POST https://api.example.com/x -d '{}'"))
+        assertEquals(RiskClass.SAFE, cls("timeout 10 ls -la"))
+        assertEquals(RiskClass.SAFE, cls("nice -n 19 make -j4"))
+        assertEquals(RiskClass.SAFE, cls("command -v rm"))
+        assertEquals(listOf("rm", "-rf", "x"), ShellGuard.unwrap(listOf("sudo", "-u", "root", "timeout", "-k", "5", "10", "rm", "-rf", "x")))
+    }
+
     @Test fun `no target means no always button`() {
         val a = ShellGuard.assess("python3 -c \"import os; os.remove('x')\"")
         assertEquals(RiskClass.DESTRUCTIVE, a.riskClass)

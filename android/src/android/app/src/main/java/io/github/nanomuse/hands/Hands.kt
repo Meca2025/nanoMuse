@@ -171,6 +171,13 @@ object Hands {
     val active: StateFlow<Boolean> = _active.asStateFlow()
     internal fun setActive(on: Boolean) { _active.value = on }
 
+    /**
+     * Takes the hands for a run: true when they were free, false when another run holds them.
+     * One atomic step, so two `nanomuse-hands run` arriving together cannot both start; the
+     * run that gets them hands them back in [HandsOperator.run]'s finish.
+     */
+    internal fun claim(): Boolean = _active.compareAndSet(expect = false, update = true)
+
     /** The run in progress, so Stop can reach it from anywhere. */
     @Volatile internal var current: HandsOperator? = null
 
