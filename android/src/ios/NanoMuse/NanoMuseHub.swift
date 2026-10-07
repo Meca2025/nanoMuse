@@ -167,6 +167,7 @@ final class NanoMuseHub: ObservableObject {
 
     func stop() {
         stopping = true
+        refused = false // a deliberate stop (sign-out, a new key through `restart`) starts afresh
         reconnectTask?.cancel()
         reconnectTask = nil
         task?.cancel(with: .normalClosure, reason: nil)

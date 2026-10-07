@@ -346,6 +346,17 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   空表开始并把空表写回去覆盖每个账号的记录。图片和视频生成和同一服务商的聊天一样走
   「网络」里的代理（`NanoMuseProxy.SessionSlot`），失败时是每种语言都有的整句——*服务商拒绝了
   这把密钥（HTTP 401）*、*视频超过 12 分钟仍未完成*——服务商自己的话跟在*服务商说：*后面。
+- **审计的文案与排版（第 10 轮）**（`NanoMuseChrome.swift`、`NanoMuseFirstRun.swift`、
+  `NanoMuseProviderReachCard.swift`、`NanoMuseSystemFiles.swift`、`*.lproj/InfoPlist.strings`、
+  `Localizable.xcstrings`）：`NanoMuseFlowLayout` 是一个会换行的横排（iOS 16 的 `Layout`），
+  第一次对话里的名字候选和服务商卡片下的按钮都放在里面，四个名字或者*重试 · 这次改用
+  nanoMuse Cloud · 网络设置 · 添加自己的 key*在 iPhone SE 和大字号下也放得下，不会在右边
+  被切掉；设置页的小字是一段话，*了解更多*在段尾。NFC、蓝牙和面容 ID 的权限说明有了全部
+  九种语言（之前回退到 `Info.plist` 的英文），本地网络的说明讲的是这个 App，不是虚拟机。
+  简体中文里中继统一叫 *nanoMuse Cloud*，和句子里指向的那一行设置同名（之前 16 处写的是
+  *nanoMuse 云*或*nanoMuse 云端*）。HEARTBEAT.md 里每条例程的节奏用例程列表的词
+  （*每天 · 08:00*、*每 6 小时检查*），不再是英文的 *daily*、*once*、*every 6 h*；记忆导入的
+  提示词跟随 App 内的语言切换。
 
 ## 在 Mac 上构建 {#building-on-a-mac}
 
@@ -473,7 +484,8 @@ gh secret set IOS_DIST_P12_PASSWORD -R nano-muse/nanoMuse < dist.p12.pass
 *Actions → iOS · build check → Run workflow*（`.github/workflows/ios-check.yml`）在 Mac runner
 上关闭签名，面向真机构建这个 App——不要 Apple 账号，不要 secrets。它和 TestFlight 工作流
 共用原生依赖的缓存，所以先跑它：一个编译错误在这里只花几分钟，不用浪费一次上传。完整的
-`xcodebuild` 日志附在运行记录上。
+`xcodebuild` 日志附在运行记录上。`NanoMuse/` 下的文件只要报出一个警告，这次运行就算失败
+（上游的文件不算），所以上面「零警告」的规矩是被检查的，不只是写在这里。
 
 ### 跑起来 {#running-it}
 

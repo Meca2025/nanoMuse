@@ -34,6 +34,7 @@ struct NanoMuseRelayRefusalCard: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(tint)
                     .padding(.top, 2)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(sentence).font(.subheadline.weight(.medium))
                     if let relaySays {

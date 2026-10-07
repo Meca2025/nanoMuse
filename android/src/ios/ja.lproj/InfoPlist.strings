@@ -17,4 +17,10 @@
 "NSSpeechRecognitionUsageDescription" = "nanoMuse は音声をテキストメッセージに変換するために音声認識を使用します。";
 "NSHomeKitUsageDescription" = "nanoMuse はAIエージェントがスマートホームアクセサリを操作・制御できるようにHomeKitへのアクセスを使用します。";
 "NSAlarmKitUsageDescription" = "nanoMuse はAIエージェントがアラームやタイマーを設定できるようにAlarmKitを使用します。";
-"NSLocalNetworkUsageDescription" = "仮想マシンはSLIRPネットワーキングのためにネットワークアクセスが必要です";
+"NSLocalNetworkUsageDescription" = "nanoMuse はデバッグサーバーのため、また AI エージェントがあなたのネットワーク上のサービスにアクセスできるようにローカルネットワークを使用します。"; /* nanoMuse: the app has no VM; the sentence matches Info.plist */
+
+/* nanoMuse: the keys Info.plist declares but this file lacked, so the prompt is in the person's language */
+"NFCReaderUsageDescription" = "nanoMuse は NFC を使用し、AI エージェントがあなたに代わって NFC タグを読み書きできるようにします。";
+"NSBluetoothAlwaysUsageDescription" = "nanoMuse は Bluetooth を使用し、AI エージェントがあなたに代わって近くの BLE デバイスを検索・接続・通信できるようにします。";
+"NSBluetoothPeripheralUsageDescription" = "nanoMuse は Bluetooth を使用し、AI エージェントがあなたに代わって近くの BLE デバイスを検索・接続・通信できるようにします。";
+"NSFaceIDUsageDescription" = "nanoMuse は Face ID を使用してロックされたチャットセッションを保護し、あなただけが内容を見られるようにします。";

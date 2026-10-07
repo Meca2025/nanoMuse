@@ -409,6 +409,20 @@ Ours, in `NanoMuse/`:
   turn on the same provider (`NanoMuseProxy.SessionSlot`), and their failures are sentences in
   every language — *The provider refused this key (HTTP 401)*, *The video took longer than 12
   minutes* — with the vendor's own words after *The provider says:* when it sent some.
+- **The audit's strings and layout pass (round 10)** (`NanoMuseChrome.swift`,
+  `NanoMuseFirstRun.swift`, `NanoMuseProviderReachCard.swift`, `NanoMuseSystemFiles.swift`,
+  `*.lproj/InfoPlist.strings`, `Localizable.xcstrings`): `NanoMuseFlowLayout`, a wrapping row
+  (iOS 16 `Layout`), holds the name chips of the first conversation and the buttons under the
+  provider card, so four names or *Try again · Use nanoMuse Cloud this time · Network settings ·
+  Add a key of your own* fit an iPhone SE and a large text size instead of being cut off at the
+  right edge; a setup page's fine print is one paragraph with *Learn more* at its end. The
+  permission prompts for NFC, Bluetooth and Face ID are in all nine languages (they fell back
+  to the English `Info.plist` text), and the local-network prompt describes this app, not a
+  virtual machine. In 简体中文 the relay is *nanoMuse Cloud* everywhere, as the Settings row
+  that the sentences point to is named (it was *nanoMuse 云* or *nanoMuse 云端* in 16 places).
+  HEARTBEAT.md renders each routine's cadence with the Routines list's words (*Daily · 08:00*,
+  *Checks every 6 hours*) instead of English *daily*, *once*, *every 6 h*; the memory import
+  prompt follows an in-app language change.
 
 ## Building on a Mac
 
@@ -549,7 +563,9 @@ certificate); the lane makes them again if they are missing.
 *Actions → iOS · build check → Run workflow* (`.github/workflows/ios-check.yml`) builds the app
 for a device on a Mac runner with signing turned off — no Apple account, no secrets. It shares
 the native-dependency cache with the TestFlight workflow, so run it first: a compile error costs
-minutes there, not an upload. The full `xcodebuild` log is attached to the run.
+minutes there, not an upload. The full `xcodebuild` log is attached to the run. The run fails
+when a warning is reported in a file under `NanoMuse/` (upstream's files are not held to this),
+so the zero-warnings rule above is checked, not just asked for.
 
 ### Running it
 

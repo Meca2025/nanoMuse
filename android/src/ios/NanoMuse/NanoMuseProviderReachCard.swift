@@ -39,6 +39,7 @@ struct NanoMuseProviderReachCard: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(tint)
                     .padding(.top, 2)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title).font(.subheadline.weight(.semibold))
                     Text(explanation).font(.footnote).foregroundStyle(.secondary)
@@ -75,7 +76,7 @@ struct NanoMuseProviderReachCard: View {
                 .buttonStyle(.plain)
                 if details {
                     Text(reach.detail)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
@@ -158,7 +159,7 @@ struct NanoMuseProviderReachCard: View {
 
     @ViewBuilder
     private var actions: some View {
-        HStack(spacing: 8) {
+        NanoMuseFlowLayout(spacing: 8) {
             if reach.kind == .signedOut {
                 Button(plan ? AppLocalized("Sign in again") : AppLocalized("Open providers")) {
                     openURL(URL(string: "minis://settings/providers")!)

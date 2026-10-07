@@ -4825,7 +4825,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nanoMuse 云没有响应，稍后再试。"
+            "value" : "nanoMuse Cloud 没有响应，稍后再试。"
           }
         },
         "zh-Hant" : {
@@ -4884,7 +4884,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nanoMuse 云被运营者暂停了，登录和数据都保留着。稍后再试。"
+            "value" : "nanoMuse Cloud 被运营者暂停了，登录和数据都保留着。稍后再试。"
           }
         },
         "zh-Hant" : {
@@ -4943,7 +4943,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nanoMuse 云不再提供这个模型。到「设置 → nanoMuse 云」换一个。"
+            "value" : "nanoMuse Cloud 不再提供这个模型。到「设置 → nanoMuse Cloud」换一个。"
           }
         },
         "zh-Hant" : {
@@ -5002,7 +5002,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "快用完了：免费额度还剩 ¥%@（共 ¥%@）。自己的密钥或已付费的订阅都能接着用——设置 → nanoMuse 云。"
+            "value" : "快用完了：免费额度还剩 ¥%@（共 ¥%@）。自己的密钥或已付费的订阅都能接着用——设置 → nanoMuse Cloud。"
           }
         },
         "zh-Hant" : {
@@ -8482,7 +8482,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这台中转暂时停发了免费额度——不是用完了。到「设置 → nanoMuse 云」添加自己的密钥，或用已付费的订阅登录。登录、多设备和剩余额度都原样保留。"
+            "value" : "这台中转暂时停发了免费额度——不是用完了。到「设置 → nanoMuse Cloud」添加自己的密钥，或用已付费的订阅登录。登录、多设备和剩余额度都原样保留。"
           }
         },
         "zh-Hant" : {
@@ -8777,7 +8777,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "会从这台手机上移除 nanoMuse 云这个服务商和它的模型。"
+            "value" : "会从这台手机上移除 nanoMuse Cloud 这个服务商和它的模型。"
           }
         },
         "zh-Hant" : {
@@ -10370,7 +10370,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的邀请码和链接在「设置 → nanoMuse 云」。"
+            "value" : "你的邀请码和链接在「设置 → nanoMuse Cloud」。"
           }
         },
         "zh-Hant" : {
@@ -114013,7 +114013,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从 nanoMuse 云端删除账号、额度、用量和样本。不可恢复。"
+            "value" : "从 nanoMuse Cloud 删除账号、额度、用量和样本。不可恢复。"
           }
         },
         "zh-Hant" : {
@@ -114036,7 +114036,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从 nanoMuse 云端删除账号、额度、用量和样本。不可恢复。手机上的聊天记录会保留。"
+            "value" : "从 nanoMuse Cloud 删除账号、额度、用量和样本。不可恢复。手机上的聊天记录会保留。"
           }
         },
         "zh-Hant" : {
@@ -114931,7 +114931,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "免费额度用完了。用自己的 Key，或者邀请朋友——都在「设置 → nanoMuse 云端」里。"
+            "value" : "免费额度用完了。用自己的 Key，或者邀请朋友——都在「设置 → nanoMuse Cloud」里。"
           }
         },
         "zh-Hant" : {
@@ -114990,7 +114990,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这个账号还没有密码。先用验证码登录，再到 nanoMuse 云端里设置。"
+            "value" : "这个账号还没有密码。先用验证码登录，再到 nanoMuse Cloud 里设置。"
           }
         },
         "zh-Hant" : {
@@ -141397,7 +141397,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用于更换形象：四张候选和各个姿势。阿里云百炼：qwen-image-3.0（画图和摆姿势都用它，¥0.18 一张）或 Pro 版，用你自己的 key 画。nanoMuse 云则从账号额度里扣。"
+            "value" : "用于更换形象：四张候选和各个姿势。阿里云百炼：qwen-image-3.0（画图和摆姿势都用它，¥0.18 一张）或 Pro 版，用你自己的 key 画。nanoMuse Cloud 则从账号额度里扣。"
           }
         },
         "zh-Hant" : {
@@ -142577,7 +142577,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "还没有能出视频的服务商——nanoMuse 对接的是阿里云百炼的视频接口，nanoMuse 云也转发这套接口。登录 nanoMuse 云，或添加一个百炼的 key（可以和图像模型用同一把），形象就会动起来；之前保持静态图。"
+            "value" : "还没有能出视频的服务商——nanoMuse 对接的是阿里云百炼的视频接口，nanoMuse Cloud 也转发这套接口。登录 nanoMuse Cloud，或添加一个百炼的 key（可以和图像模型用同一把），形象就会动起来；之前保持静态图。"
           }
         },
         "zh-Hant" : {
@@ -142754,7 +142754,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的服务商里没有能画图的。登录 nanoMuse 云，或添加一个阿里云百炼服务商并填入 API key；形象用这两者之一来画。"
+            "value" : "你的服务商里没有能画图的。登录 nanoMuse Cloud，或添加一个阿里云百炼服务商并填入 API key；形象用这两者之一来画。"
           }
         },
         "zh-Hant" : {
@@ -143462,7 +143462,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "登录 nanoMuse 云，或添加一个服务商"
+            "value" : "登录 nanoMuse Cloud，或添加一个服务商"
           }
         },
         "zh-Hant" : {
@@ -144229,7 +144229,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nanoMuse 云在这个应用里就是一个普通的服务商：它的模型列在「服务商」里，也可以和你自己的模型放进同一个模型组。"
+            "value" : "nanoMuse Cloud 在这个应用里就是一个普通的服务商：它的模型列在「服务商」里，也可以和你自己的模型放进同一个模型组。"
           }
         },
         "zh-Hant" : {

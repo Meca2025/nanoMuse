@@ -17,4 +17,10 @@
 "NSSpeechRecognitionUsageDescription" = "nanoMuse использует распознавание речи, чтобы преобразовывать вашу речь в текстовые сообщения.";
 "NSHomeKitUsageDescription" = "nanoMuse использует доступ к HomeKit, чтобы ИИ-агент мог просматривать и управлять аксессуарами вашего умного дома от вашего имени.";
 "NSAlarmKitUsageDescription" = "nanoMuse использует AlarmKit, чтобы ИИ-агент мог устанавливать будильники и таймеры от вашего имени.";
-"NSLocalNetworkUsageDescription" = "Виртуальной машине требуется доступ к сети для работы SLIRP.";
+"NSLocalNetworkUsageDescription" = "nanoMuse использует локальную сеть для отладочного сервера и чтобы ИИ-агент мог обращаться к сервисам в вашей собственной сети."; /* nanoMuse: the app has no VM; the sentence matches Info.plist */
+
+/* nanoMuse: the keys Info.plist declares but this file lacked, so the prompt is in the person's language */
+"NFCReaderUsageDescription" = "nanoMuse использует NFC, чтобы ИИ-агент мог читать и записывать NFC-метки от вашего имени.";
+"NSBluetoothAlwaysUsageDescription" = "nanoMuse использует Bluetooth, чтобы ИИ-агент мог искать ближайшие BLE-устройства, подключаться к ним и обмениваться данными от вашего имени.";
+"NSBluetoothPeripheralUsageDescription" = "nanoMuse использует Bluetooth, чтобы ИИ-агент мог искать ближайшие BLE-устройства, подключаться к ним и обмениваться данными от вашего имени.";
+"NSFaceIDUsageDescription" = "nanoMuse использует Face ID для защиты заблокированных чатов, чтобы только вы могли видеть их содержимое.";

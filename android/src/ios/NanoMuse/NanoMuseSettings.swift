@@ -221,6 +221,8 @@ struct NanoMuseSettingsHomeView: View {
 enum NanoMuseLinks {
     /// The policy on the site (docs/privacy.md is its source), as Android's PRIVACY_URL.
     static let privacy = URL(string: "https://nanomuse.cn/privacy/")!
+    /// The own-key guide on the site (docs/own-key.md), when the relay sent no address of its own (Android's OWN_KEY_DOCS).
+    static let ownKeyDocs = "https://nanomuse.cn/own-key"
 
     /// A new GitHub issue with the build and the device filled in (no personal data): the
     /// issue form's fields by id (.github/ISSUE_TEMPLATE/bug_report.yml); a bare `body`

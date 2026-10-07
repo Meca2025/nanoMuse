@@ -109,26 +109,20 @@ enum NanoMuseSystemFiles {
         s += "## " + AppLocalized("Routines") + "\n"
         if routines.isEmpty { s += "_" + AppLocalized("none") + "_\n" }
         for r in routines {
-            let repeatWord: String
-            switch r.repeatMode {
-            case .once: repeatWord = "once"
-            case .daily: repeatWord = "daily"
-            case .weekdays: repeatWord = "weekdays"
-            }
-            s += "- \(r.enabled ? "[x]" : "[ ]") **\(r.label.isEmpty ? "routine" : r.label)** — \(repeatWord) \(NanoMuseDay.clock(hour: r.hour, minute: r.minute))" + lastRun(r) + "\n"
+            // the same words as the Routines list: "Daily · 08:00", "Checks every 6 hours"
+            s += "- \(r.enabled ? "[x]" : "[ ]") **\(r.label.isEmpty ? AppLocalized("Routine") : r.label)** — \(r.cadence)" + lastRun(r) + "\n"
         }
         s += "\n## " + AppLocalized("Goal checks") + "\n"
         let checks = all.filter { $0.hidden && $0.goalId != nil }
         if checks.isEmpty { s += "_" + AppLocalized("none") + "_\n" }
         for r in checks {
             let g = goals.first { $0.id == r.goalId }
-            let cadence = r.intervalHours.map { "every \($0) h" } ?? "daily \(NanoMuseDay.clock(hour: r.hour, minute: r.minute))"
-            s += "- \(r.enabled ? "[x]" : "[ ]") \(g?.title ?? r.label) — \(cadence)" + lastRun(r) + "\n"
+            s += "- \(r.enabled ? "[x]" : "[ ]") \(g?.title ?? r.label) — \(r.cadence)" + lastRun(r) + "\n"
         }
         let feedId = NanoMuseFeedFlow.routineId
         if let feed = all.first(where: { $0.id == feedId }) {
             s += "\n## " + AppLocalized("Feed") + "\n"
-            s += "- \(feed.enabled ? "[x]" : "[ ]") \(feed.label) — daily \(NanoMuseDay.clock(hour: feed.hour, minute: feed.minute))" + lastRun(feed) + "\n"
+            s += "- \(feed.enabled ? "[x]" : "[ ]") \(feed.label) — \(feed.cadence)" + lastRun(feed) + "\n"
         }
         return s
     }
@@ -178,7 +172,7 @@ enum NanoMuseSystemFiles {
         }
     }
 
-    static let importPrompt = AppLocalized("Please gather everything you remember about me into a concise list of bullet points: who I am, how I like to be addressed, where I live and my timezone, what I do, what I am working on right now, my preferences and habits, and anything you were told to always or never do. Plain text, no headings, no secrets or passwords.")
+    static var importPrompt: String { AppLocalized("Please gather everything you remember about me into a concise list of bullet points: who I am, how I like to be addressed, where I live and my timezone, what I do, what I am working on right now, my preferences and habits, and anything you were told to always or never do. Plain text, no headings, no secrets or passwords.") }
 }
 
 // MARK: - Views
