@@ -38,12 +38,17 @@ object ModelSlots {
         }
     }
 
-    /** One choice in a slot's picker: a model of a provider; [entryId] for chat and hands, where the app binds entries. */
+    /**
+     * One choice in a slot's picker: a model of a provider; [entryId] for chat and hands, where
+     * the app binds entries; [displayName] when the provider gave the model one (the search
+     * field matches it too).
+     */
     data class Option(
         val instance: ProviderInstance,
         val modelId: String,
         val entryId: String? = null,
         val recommended: Boolean = false,
+        val displayName: String? = null,
     )
 
     /** One group of the picker: nanoMuse Cloud first when signed in, then each configured own provider. */
@@ -186,17 +191,29 @@ object ModelSlots {
         else lane.mapNotNull { id -> all.firstOrNull { it.model.id == id } }
     }
 
-    /** The picker's groups for [slot]: the relay first when signed in, then each own provider with the capability; a provider without it is left out. */
+    /**
+     * The picker's groups for [slot]: the relay first when signed in, then each own provider
+     * with the capability; a provider without it is left out. Within a group the rows take
+     * [PickerList.order]: the catalogue's default for the slot (the relay's recommended model)
+     * first, then what the slot is set to when that is in the group, then the rest as the
+     * provider listed them, so a collapsed group shows the rows that matter.
+     */
     fun groups(context: Context, slot: Slot): List<Group> {
         val cloud = NanoMuseCloud.instance(context)?.takeIf { NanoMuseCloud.isSignedIn(context) && it.isEnabled }
         val own = ownInstances(context)
+        val now = if (isChosen(context, slot)) current(context, slot) else null
+        fun ordered(opts: List<Option>): List<Option> = PickerList.order(
+            opts,
+            isDefault = { it.recommended },
+            isCurrent = { now != null && now.instance.id == it.instance.id && now.modelId == it.modelId },
+        )
         val out = mutableListOf<Group>()
         // the relay's recommended model first and marked; a provider of the person's own lists
         // its models as they are, the mark is nanoMuse Cloud's word alone
         cloud?.let { options(context, slot, it, cloud = true) }?.takeIf { it.isNotEmpty() }
-            ?.let { out += Group(cloud, true, it.sortedByDescending { o -> o.recommended }) }
+            ?.let { out += Group(cloud, true, ordered(it)) }
         for (inst in own) {
-            val opts = options(context, slot, inst, cloud = false).map { it.copy(recommended = false) }
+            val opts = ordered(options(context, slot, inst, cloud = false)).map { it.copy(recommended = false) }
             if (opts.isNotEmpty()) out += Group(inst, false, opts)
         }
         return out
@@ -205,11 +222,15 @@ object ModelSlots {
     private fun options(context: Context, slot: Slot, inst: ProviderInstance, cloud: Boolean): List<Option> = when (slot) {
         Slot.CHAT -> {
             val rec = if (cloud) NanoMuseCloud.recommendedModelId(context) else defaultOf(context, inst, slot)
-            chatEntriesOf(context, inst).map { Option(inst, it.model.id, it.id, recommended = it.model.id.equals(rec, ignoreCase = true)) }
+            chatEntriesOf(context, inst).map {
+                Option(inst, it.model.id, it.id, recommended = it.model.id.equals(rec, ignoreCase = true), displayName = it.model.displayName)
+            }
         }
         Slot.HANDS -> {
             val rec = if (cloud) NanoMuseCloud.sightedModelId(context) else defaultOf(context, inst, slot)
-            handsEntriesOf(context, inst).map { Option(inst, it.model.id, it.id, recommended = it.model.id.equals(rec, ignoreCase = true)) }
+            handsEntriesOf(context, inst).map {
+                Option(inst, it.model.id, it.id, recommended = it.model.id.equals(rec, ignoreCase = true), displayName = it.model.displayName)
+            }
         }
         Slot.IMAGE -> {
             if (inst !in ImageGen.eligibleInstances(context)) emptyList()

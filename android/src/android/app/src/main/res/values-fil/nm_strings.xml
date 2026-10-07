@@ -1091,4 +1091,7 @@
     <string name="nm_hands_why_chat_provider">ang default ng mga kamay ng iyong chat provider</string>
     <string name="nm_models_auto">Awtomatiko</string>
     <string name="nm_models_auto_currently">Kasalukuyan: %1$s</string>
+    <string name="nm_models_show_more">Ipakita ang %1$d pa</string>
+    <string name="nm_models_search">Maghanap ng mga modelo</string>
+    <string name="nm_models_no_match">Walang tumutugmang modelo</string>
 </resources>

@@ -1064,4 +1064,7 @@
     <string name="nm_hands_why_chat_provider">你对话服务商的动手默认模型</string>
     <string name="nm_models_auto">自动</string>
     <string name="nm_models_auto_currently">当前为 %1$s</string>
+    <string name="nm_models_show_more">还有 %1$d 个</string>
+    <string name="nm_models_search">搜索模型</string>
+    <string name="nm_models_no_match">没有匹配的模型</string>
 </resources>

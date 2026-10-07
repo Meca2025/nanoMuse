@@ -14,6 +14,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Android
 
+- **The model picker stays short with a provider of hundreds of models.** Each group of *Settings › Models* shows eight models (the catalogue's default for the row first, then the one in use, then the rest as the provider lists them) and a *Show N more* row expands it; once the groups hold more than eight models in all, a *Search models* field above them filters every group live by model id or display name, and *No model matches* says when nothing does.
+
 ### iOS
 
 ### Project

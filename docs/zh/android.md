@@ -29,7 +29,10 @@ Play 商店：「设置 → 版本」把已安装的构建和最新版本并排�
    的模型（账号的菜单默认停在 `deepseek-v4.1-flash`）；**操作屏幕**，看屏幕的那个
    （`qwen3.8-27b`，账号的，或者你自己 key 下的同一个模型）；**生成图片**和**生成视频**。每一行
    显示「服务商 · 模型」，打开一个选择页：登录后先是 nanoMuse Cloud 一组，推荐的那个排在最前
-   并标出来，然后是你自己每个服务商一组，只列能做这件事的模型。在这里或在对话的 `•••` 菜单里
+   并标出来，然后是你自己每个服务商一组，只列能做这件事的模型。每组先只显示 8 个模型，点
+   「还有 N 个」才全部展开（目录里这一行的默认模型排最前，然后是正在用的那个，其余按服务商
+   列出的顺序）；所有组加起来超过 8 个时，分组上方多一个「搜索模型」输入框，按模型 id 或名称
+   实时过滤每一组，都不匹配时显示「没有匹配的模型」。在这里或在对话的 `•••` 菜单里
    选的对话模型，就是新对话的默认（「新对话起生效。」）；已经打开的对话保留它的模型。另外三个
    选择页第一项是「自动」（「当前为 nanoMuse Cloud · qwen3.8-27b」），选它会忘掉在这里做过的
    选择，让这一行重新按下面的顺序走。完全不要账号、一切自己跑，是运行时的
@@ -207,7 +210,7 @@ keytool -genkeypair -keystore ~/.nanomuse-release/nanomuse.jks -alias nanomuse \
 | `account/` | 契约 C12（0.1.40，[sync.md](sync.md)）：`AccountScope`（规则——一个会话是谁的聊天、账号的 key、列表排除什么、被拒绝的 key 保留什么（`keepOnRefusedKey`：全部保留，除非中继说 `account_deleted`）；有单元测试）、`AccountData`（执行规则：每个聊天一行归属记录，`leave` 把账号的聊天、记忆、动态、目标、例程、形象和偏好收起来或删掉，`enter` 把一个账号的东西带回来） |
 | `hub/` | `Hub`（状态、设备身份、设置）、`HubClient`（带退避的 socket；中继拒绝 key 时停止）、`HubService`（前台服务）、`HubActions`（其他设备可以让这台手机做什么）、`HubErrors`（用文字描述的失败） |
 | `reach/` | `Computers`（已配对的电脑，令牌在加密存储里）、把工作转交给电脑的处理器 |
-| `models/` | 「设置 → 模型」背后的逻辑：`ModelSlots`（四个槽位、各自设成了什么、存在哪里、选择页列出的分组、对话默认的 `followPick`、「用它来做什么」卡片的 `applyProvider`），`SlotOrder`（解析顺序和目录默认，纯 Kotlin，有单元测试） |
+| `models/` | 「设置 → 模型」背后的逻辑：`ModelSlots`（四个槽位、各自设成了什么、存在哪里、选择页列出的分组、对话默认的 `followPick`、「用它来做什么」卡片的 `applyProvider`），`SlotOrder`（解析顺序和目录默认，纯 Kotlin，有单元测试），`PickerList`（选择页每组 8 行的折叠、排序和搜索过滤，纯 Kotlin，有单元测试） |
 | `ui/models/` | 「模型」页、每一行背后的选择页、「用它来做什么」卡片（`minis://settings/models`） |
 | `chat/CloudRetry.kt` | 「这次改用 nanoMuse Cloud」：卡片何时提供它，以及 `ChatViewModel.retryLast` 这一轮用的服务商 |
 | `hands/` | 作为手的无障碍服务、舞台和胶囊、屏幕读取器；`Hands.screenModel` 选屏幕模型（已选的 → 对话服务商自己的默认，当它能看图 → Cloud 的 `qwen3.8-27b` → 你自己 key 下的同一个 → 一个能看图的聊天模型 → Vision Group） |

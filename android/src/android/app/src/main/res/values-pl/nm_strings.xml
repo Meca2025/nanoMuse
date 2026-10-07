@@ -1099,4 +1099,7 @@
     <string name="nm_hands_why_chat_provider">domyślny model rąk twojego dostawcy czatu</string>
     <string name="nm_models_auto">Automatycznie</string>
     <string name="nm_models_auto_currently">Obecnie %1$s</string>
+    <string name="nm_models_show_more">Pokaż jeszcze %1$d</string>
+    <string name="nm_models_search">Szukaj modeli</string>
+    <string name="nm_models_no_match">Żaden model nie pasuje</string>
 </resources>
