@@ -89,26 +89,24 @@ struct NanoMuseAppearanceView: View {
             // The header: how much of the face, and what sits under the name.
             VStack(alignment: .leading, spacing: 0) {
                 NanoMuseCard {
+                    // A menu, not five segments: "Extra large" / "Очень большой" / "Ausgeblendet" did not fit a 375 pt phone.
                     HStack(spacing: 14) {
                         NanoMuseFaceView(mood: .idle, size: appearance.avatarSize.points ?? 44)
                             .opacity(appearance.avatarSize == .hidden ? 0.25 : 1)
                             .frame(width: 76, height: 76)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(AppLocalized("Avatar size")).font(.body)
-                            Text(appearance.avatarSize.label).font(.footnote).foregroundStyle(.secondary)
+                        Text(AppLocalized("Avatar size")).font(.body)
+                        Spacer(minLength: 8)
+                        Picker(AppLocalized("Avatar size"), selection: $appearance.avatarSize) {
+                            ForEach(NanoMuseAvatarSize.allCases) { size in
+                                Text(size.label).tag(size)
+                            }
                         }
-                        Spacer(minLength: 0)
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .tint(NanoMuseTones.action)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 14)
-                    Picker(AppLocalized("Avatar size"), selection: $appearance.avatarSize) {
-                        ForEach(NanoMuseAvatarSize.allCases) { size in
-                            Text(size.label).tag(size)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 10)
                     NanoMuseRowDivider()
                     NanoMuseToggleRow(title: AppLocalized("Show the model under the name"), isOn: $appearance.headerModel)
                 }

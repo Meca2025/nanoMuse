@@ -224,7 +224,7 @@ enum NanoMuseGoalFlow {
         ## Creating a goal (nanoMuse)
         The user just chose to create a goal in the "\(category.rawValue)" category from the Goals tab.
         Shape it together, like Muse does: ask at most three short questions, ONE message at a time,
-        in the user's language — (1) what exactly they want to achieve, (2) why it matters and by
+        in the user's language: (1) what exactly they want to achieve, (2) why it matters and by
         when, (3) how often you should check in (every N hours, or daily at a time). Two or three
         sentences per message; if the user already answered something, skip that question.
         When you have enough, reply with one warm sentence of confirmation and then EXACTLY ONE fenced
@@ -232,7 +232,7 @@ enum NanoMuseGoalFlow {
         {"title": "<= 40 chars", "why": "one sentence", "category": "\(category.rawValue)",
          "check_every_hours": <integer, 0 means a daily check>, "check_time": "HH:MM" (used when check_every_hours is 0),
          "steps": ["3 to 5 short steps you will take or track"], "first_check": "what you will do at the first check"}
-        Do not describe the block or mention JSON — the app renders it as a card. Say nothing after the block.
+        Do not describe the block or mention JSON; the app renders it as a card. Say nothing after the block.
         Later, checks for this goal will happen in their own conversation when the app is open; on the iPhone the app cannot run while it is asleep, so the person is reminded to open it.
         """
     }

@@ -181,7 +181,7 @@ final class NanoMuseComposerWatch: ObservableObject {
         guard visible else { return }
         if !attached.isEmpty && hostHeight > 0 {
             if frameHeight == 0 {
-                note("check (\(reason)): the column is up (\(Self.one(hostHeight)) pt) although the bar's last frame was 0 — left alone")
+                note("check (\(reason)): the column is up (\(Self.one(hostHeight)) pt) although the bar's last frame was 0; left alone")
             }
             return
         }
@@ -206,7 +206,7 @@ final class NanoMuseComposerWatch: ObservableObject {
         Self.log.error("composer missing one second after \(reason, privacy: .public) (\(state, privacy: .public))")
         let since = CFAbsoluteTimeGetCurrent() - lastRebuild
         if since <= Self.cooldown {
-            note("composer missing one second after \(reason) (\(state)) — inside the rebuild cooldown, checking again after it")
+            note("composer missing one second after \(reason) (\(state)); inside the rebuild cooldown, checking again after it")
             schedule(reason, after: Self.cooldown - since + 0.1)
             return
         }
@@ -215,13 +215,13 @@ final class NanoMuseComposerWatch: ObservableObject {
 
     private func rebuild(_ reason: String) {
         guard rebuilds < Self.rebuildCap else {
-            note("not rebuilding — \(reason); \(rebuilds) rebuilds since the chat appeared is the cap")
+            note("not rebuilding: \(reason); \(rebuilds) rebuilds since the chat appeared is the cap")
             return
         }
         rebuilds += 1
         lastRebuild = CFAbsoluteTimeGetCurrent()
-        Self.log.error("composer self-heal: rebuilding the composer column (\(self.rebuilds)/\(NanoMuseComposerWatch.rebuildCap)) — \(reason, privacy: .public)")
-        note("rebuilding the composer column (\(rebuilds)/\(Self.rebuildCap)) — \(reason)")
+        Self.log.error("composer self-heal: rebuilding the composer column (\(self.rebuilds)/\(NanoMuseComposerWatch.rebuildCap)): \(reason, privacy: .public)")
+        note("rebuilding the composer column (\(rebuilds)/\(Self.rebuildCap)): \(reason)")
         attached = []
         hostHeight = 0
         frameHeight = -1

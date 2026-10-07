@@ -46,7 +46,7 @@ struct NanoMuseDataControlsView: View {
                     }
                 } footer: {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(AppLocalized("While this is on, the text of your chats with the nanoMuse Cloud models — what you wrote, what it answered and the tools it chose to call — is kept on the relay to train the community's own open model. Not your memory or SOUL (the system prompt), not what tools returned, not pictures, and never next to who you are. Your own API key never passes through the relay."))
+                        Text(AppLocalized("While this is on, the text of your chats with the nanoMuse Cloud models is kept on the relay to train the community's own open model: what you wrote, what it answered and the tools it chose to call. Not your memory or SOUL (the system prompt), not what tools returned, not pictures, and never next to who you are. Your own API key never passes through the relay."))
                         if let info {
                             Text(info.defaultOn ? AppLocalized("New accounts start with it on.") : AppLocalized("New accounts start with it off."))
                         }

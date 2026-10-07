@@ -399,7 +399,7 @@ enum NanoMuseHeadless {
     @MainActor
     static func run(prompt: String, sessionId: String?, title: String?, source: String, timeout: TimeInterval = 10 * 60) async -> Outcome {
         guard ProviderConfigStore.shared.defaultPrimaryGroupId != nil || !ProviderConfigStore.shared.modelEntries.isEmpty else {
-            return Outcome(ok: false, sessionId: sessionId, text: "", note: AppLocalized("Add a model first — routines are run by your agent."))
+            return Outcome(ok: false, sessionId: sessionId, text: "", note: AppLocalized("Add a model first; routines are run by your agent."))
         }
         let vm: AIChatViewModel
         var sid = sessionId

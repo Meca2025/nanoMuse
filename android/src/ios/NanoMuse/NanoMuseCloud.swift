@@ -432,9 +432,9 @@ enum NanoMuseCloud {
             return AppLocalized("The starter allowance is used up. Add a provider of your own to keep going.")
         case "allowance_exhausted" where cloud.paused:
             // relay 0.22: the operator's switch, not use — the same card, another lead
-            return AppLocalized("The free allowance is paused on this relay for now — not used up. Add a key of your own or sign in with a plan you already pay for, under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are.")
+            return AppLocalized("The free allowance is paused on this relay for now. It is not used up. Add a key of your own or sign in with a plan you already pay for, under Settings → nanoMuse Cloud. Your sign-in, your devices and what is left stay as they are.")
         case "allowance_exhausted":
-            return AppLocalized("The free allowance is used up. Use a key of your own, or invite a friend — both under nanoMuse Cloud in Settings.")
+            return AppLocalized("The free allowance is used up. Use a key of your own, or invite a friend; both are under nanoMuse Cloud in Settings.")
         case "too_large":
             return AppLocalized("That message is too large for the model. Shorten it, leave out some attachments, or start a new chat.")
         case "too_many_in_flight":

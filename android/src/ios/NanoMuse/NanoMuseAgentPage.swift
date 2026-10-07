@@ -558,7 +558,7 @@ struct NanoMuseShareCard: View {
         ZStack {
             palette.background
             VStack(spacing: 0) {
-                Text(String(format: AppLocalized("Hi, I'm %@, a personal AI agent. Meet nanoMuse — open source, runs on your phone."), agentName))
+                Text(String(format: AppLocalized("Hi, I'm %@, a personal AI agent. Meet nanoMuse: open source, runs on your phone."), agentName))
                     .font(.system(size: 42))
                     .foregroundStyle(Color(red: 0.106, green: 0.106, blue: 0.122))
                     .multilineTextAlignment(.center)
@@ -670,7 +670,7 @@ struct NanoMuseAvatarShareSheet: View {
         }
         .sheet(isPresented: Binding(get: { sharing != nil }, set: { if !$0 { sharing = nil } })) {
             if let sharing {
-                NanoMuseShareSheet(items: [sharing, String(format: AppLocalized("My new look — %@. Have a look."), agentName)])
+                NanoMuseShareSheet(items: [sharing, String(format: AppLocalized("My new look: %@. Have a look."), agentName)])
             }
         }
     }

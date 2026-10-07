@@ -658,7 +658,7 @@ struct NanoMuseConnectorsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(connector?.name ?? entry.label).foregroundStyle(.primary)
                                 Text(connector != nil
-                                     ? String(format: AppLocalized("Connected on %@ — sign in here to use it on this phone."), device)
+                                     ? String(format: AppLocalized("Connected on %@. Sign in here to use it on this phone."), device)
                                      : String(format: AppLocalized("Connected on %@. Not in this phone's catalogue; add it under Your own servers if you need it here."), device))
                                     .font(.footnote).foregroundStyle(.secondary)
                             }
@@ -762,7 +762,7 @@ private struct NanoMuseConnectorSheet: View {
                     Text(how).font(.footnote).foregroundStyle(.secondary)
                     if state != .connected, let other = NanoMuseSharedConnectors.shared.elsewhere(connector.serverId).first {
                         // Contract C3: another device of the account has this one; the sign-in is per device.
-                        Label(String(format: AppLocalized("Connected on %@ — sign in here to use it on this phone."), other.device.isEmpty ? AppLocalized("another device") : other.device), systemImage: "laptopcomputer.and.iphone")
+                        Label(String(format: AppLocalized("Connected on %@. Sign in here to use it on this phone."), other.device.isEmpty ? AppLocalized("another device") : other.device), systemImage: "laptopcomputer.and.iphone")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if let docs = connector.docs, let url = URL(string: docs) {
@@ -802,7 +802,7 @@ private struct NanoMuseConnectorSheet: View {
                             }
                         }
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(AppLocalized("Callback (redirect) address for the app — tap to copy:"))
+                            Text(AppLocalized("Callback (redirect) address for the app, tap to copy:"))
                                 .font(.footnote).foregroundStyle(.secondary)
                             Button {
                                 UIPasteboard.general.string = redirect
@@ -882,7 +882,7 @@ private struct NanoMuseConnectorSheet: View {
     private var how: String {
         switch connector.auth {
         case .none:
-            return AppLocalized("Open to everyone — no sign-in needed.")
+            return AppLocalized("Open to everyone, no sign-in needed.")
         case .key(_, _, _, let hint):
             return String(format: AppLocalized("Needs a key from the service: %@. It is kept in the MCP entry on this phone only."), hint)
         case .oauth:

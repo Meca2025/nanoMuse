@@ -366,6 +366,18 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   *nanoMuse 云*或*nanoMuse 云端*）。HEARTBEAT.md 里每条例程的节奏用例程列表的词
   （*每天 · 08:00*、*每 6 小时检查*），不再是英文的 *daily*、*once*、*every 6 h*；记忆导入的
   提示词跟随 App 内的语言切换。
+- **审计的后续（第 11 轮）**（`Localizable.xcstrings`、`NanoMuseVendorSheet.swift`、
+  `NanoMuseFeed.swift`、`NanoMuseAppearance.swift`、`OpenAIProvider.swift` 里的 `// nanoMuse:`
+  改动点、`MinisTests/NanoMuseCopyTests.swift`）：人读到的句子里不再有破折号，九种语言都是：
+  73 个 key 改写成两句话、逗号、冒号或间隔号（*开始之前，我该怎么称呼你？*、*Sign in · free*、
+  *Done. My new look is on.*），HEARTBEAT.md 的行和诊断报告也一并改了，十个没人再引用的 key
+  删掉了；上游 OpenMinis 的 key 不是我们的，原样保留。繁體中文也和其他语言一样写
+  *nanoMuse Cloud*，俄语用 *Эл. почта*。`NanoMuseCopyTests` 在 Mac 上读目录和 `NanoMuse/`
+  源码，我们的 key 里出现破折号、感叹号或翻译过的中继名就失败。服务商表单在保存 key 之前先拿它
+  去取服务商的模型列表：401 或 403 时手机保持原样，并在输入框下面说明原因；之前上游的回退会
+  填入一份目录里的模型列表，表单像 key 正确一样关闭。订阅的 429 带的 `Retry-After` 现在会传到
+  可达性卡片，ChatGPT 或 Claude 订阅也能看到*……后重置*。动态详情的几行是一个 `Grid`，标签列
+  按最长的标签取宽；形象大小改成菜单，不再是五段分段控件。
 
 ## 在 Mac 上构建 {#building-on-a-mac}
 

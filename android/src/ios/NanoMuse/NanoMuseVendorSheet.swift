@@ -51,24 +51,69 @@ enum NanoMuseVendorSetup {
         }
     }
 
+    /// The vendor answered the key with 401 or 403: the key is not kept, the sheet says why.
+    struct Refused: LocalizedError {
+        let status: Int
+        let vendorMessage: String
+        var errorDescription: String? {
+            NanoMuseMediaWords.refused(status: status, vendorMessage: vendorMessage) + " " + AppLocalized("Check the key and paste it again.")
+        }
+    }
+
     /// Add the vendor with a pasted key, fetch its models, make the chat default the group's first.
+    ///
+    /// The key is tried against the vendor's model list before anything is kept: a 401 or 403
+    /// throws `Refused` and leaves the phone as it was (an instance that already existed keeps
+    /// its previous key). Upstream's `refreshModels` would have fallen back to a catalogue list
+    /// and the wrong key would have gone unnoticed until the first chat.
     @discardableResult
-    static func install(_ vendor: NanoMuseVendor, apiKey: String, mainland: Bool, chinese: Bool) async -> ProviderInstance? {
+    static func install(_ vendor: NanoMuseVendor, apiKey: String, mainland: Bool, chinese: Bool) async throws -> ProviderInstance? {
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return nil }
         let store = ProviderConfigStore.shared
-        let inst: ProviderInstance
-        if let existing = existingInstance(vendor, auth: nil, mainland: mainland) {
-            inst = existing
-        } else {
+        let existing = existingInstance(vendor, auth: nil, mainland: mainland)
+        let inst: ProviderInstance = existing ?? {
             let (base, v1) = split(vendor.baseURL(mainland: mainland))
-            inst = ProviderInstance(label: vendor.displayName(chinese: chinese), providerType: vendor.providerType, credentialType: .apiKey, customBaseURL: base.isEmpty ? nil : base, appendV1Suffix: v1)
-            store.addInstance(inst)
-        }
+            return ProviderInstance(label: vendor.displayName(chinese: chinese), providerType: vendor.providerType, credentialType: .apiKey, customBaseURL: base.isEmpty ? nil : base, appendV1Suffix: v1)
+        }()
+        let previousKey = existing.flatMap { ProviderKeychainHelper.loadAPIKey(instanceId: $0.id) }
         ProviderKeychainHelper.saveAPIKey(key, instanceId: inst.id)
-        await store.refreshModels(for: inst)
+        var models: [LLMModel] = []
+        do {
+            models = try await ProviderConfigStore.fetchModelsForInstance(inst, forceRefresh: true)
+        } catch {
+            if let refusal = refusal(error) {
+                if let previousKey { ProviderKeychainHelper.saveAPIKey(previousKey, instanceId: inst.id) } else { ProviderKeychainHelper.deleteAPIKey(instanceId: inst.id) }
+                throw refusal
+            }
+            // Anything else (no /models on this host, a network hiccup): upstream's fallback below.
+        }
+        if existing == nil { store.addInstance(inst) }
+        if models.isEmpty {
+            await store.refreshModels(for: inst)
+        } else {
+            store.replaceEntries(for: inst.id, models: models, caller: "NanoMuseVendorSetup.install")
+        }
         adoptDefaults(inst, vendor: vendor)
         return inst
+    }
+
+    /// 401 / 403 from the models fetch, as upstream's APIs report them: `LLMError.invalidAPIKey`
+    /// ("OpenAI HTTP 401: {…}") or, for Anthropic, `providerError` ("Failed to fetch models (401): …").
+    static func refusal(_ error: Error) -> Refused? {
+        guard let llm = error as? LLMError else { return nil }
+        let text: String
+        switch llm {
+        case .invalidAPIKey(let detail): text = detail.isEmpty ? "HTTP 401" : detail
+        case .providerError(let message): text = message
+        default: return nil
+        }
+        guard let r = text.range(of: "(HTTP |\\()(401|403)", options: .regularExpression) else {
+            if case .invalidAPIKey = llm { return Refused(status: 401, vendorMessage: NanoMuseProviderReach.vendorMessage(text)) }
+            return nil
+        }
+        let status = Int(text[r].suffix(3)) ?? 401
+        return Refused(status: status, vendorMessage: NanoMuseProviderReach.vendorMessage(text))
     }
 
     /// A server on a computer of one's own (Ollama, LM Studio, vLLM): no key, the address the
@@ -300,11 +345,17 @@ struct NanoMuseVendorSheet: View {
     private func save() async {
         busy = true
         defer { busy = false }
-        guard let inst = await NanoMuseVendorSetup.install(vendor, apiKey: key, mainland: mainland, chinese: chinese) else {
-            message = AppLocalized("Nothing to add")
-            return
+        message = nil
+        do {
+            guard let inst = try await NanoMuseVendorSetup.install(vendor, apiKey: key, mainland: mainland, chinese: chinese) else {
+                message = AppLocalized("Nothing to add")
+                return
+            }
+            finish(inst)
+        } catch {
+            // A refused key: the sheet stays open with the vendor's answer under the field.
+            message = error.localizedDescription
         }
-        finish(inst)
     }
 
     private func saveLocal() async {

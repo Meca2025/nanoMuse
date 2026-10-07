@@ -53,7 +53,7 @@ struct NanoMuseBackgroundView: View {
                     openSystemSettings()
                 }
             @unknown default:
-                NanoMuseRowLabel(title: AppLocalized("Notifications"), value: "—", chevron: false)
+                NanoMuseRowLabel(title: AppLocalized("Notifications"), value: "…", chevron: false)
             }
             if notifications == .denied {
                 NanoMuseRowDivider()
@@ -78,7 +78,7 @@ struct NanoMuseBackgroundView: View {
             case .restricted:
                 NanoMuseRowLabel(title: AppLocalized("Background App Refresh"), value: AppLocalized("Restricted"), chevron: false)
             @unknown default:
-                NanoMuseRowLabel(title: AppLocalized("Background App Refresh"), value: "—", chevron: false)
+                NanoMuseRowLabel(title: AppLocalized("Background App Refresh"), value: "…", chevron: false)
             }
             if refresh == .denied {
                 NanoMuseRowDivider()

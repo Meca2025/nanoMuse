@@ -186,14 +186,14 @@ struct NanoMuseCodingView: View {
     var body: some View {
         List {
             Section {
-                Text(AppLocalized("Cursor, Codex and Claude Code on your computers: their sessions, their last reply, and a message to any of them — from here. Nothing of theirs is copied to the phone."))
+                Text(AppLocalized("Cursor, Codex and Claude Code on your computers: their sessions, their last reply, and a message to any of them, from here. Nothing of theirs is copied to the phone."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 if computer == nil {
                     Text(AppLocalized("No computer with a coding agent is online. Run nanoMuse on the computer where Cursor, Codex or Claude Code is installed, signed in with this account."))
                         .font(.subheadline)
                     if let hint = NanoMuseCloud.account?.hint, !hint.isEmpty {
-                        Text(String(format: AppLocalized("This phone is signed in as %@ — the computer must use the same account."), hint))
+                        Text(String(format: AppLocalized("This phone is signed in as %@; the computer must use the same account."), hint))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

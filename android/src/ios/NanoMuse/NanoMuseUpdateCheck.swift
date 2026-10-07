@@ -64,14 +64,14 @@ final class NanoMuseUpdateCheck: ObservableObject {
     var installedLine: String { Self.installedLine }
 
     /// The row's second line (Android `nm_version_*`): "Checking for the latest release…", "1.5.0
-    /// is out — tap to update", "Latest 1.4.0 — you have it", or "Could not check — tap to try again".
+    /// is out — tap to update", "Latest 1.4.0 — you have it", or "Could not check. Tap to try again".
     var latestLine: String {
         if checking { return AppLocalized("Checking for the latest release…") }
-        guard let latest else { return AppLocalized("Could not check — tap to try again") }
+        guard let latest else { return AppLocalized("Could not check. Tap to try again") }
         let shown = Self.normalize(latest)
         return latestIsNewer
-            ? String(format: AppLocalized("%@ is out — tap to update"), shown)
-            : String(format: AppLocalized("Latest %@ — you have it"), shown)
+            ? String(format: AppLocalized("%@ is out. Tap to update"), shown)
+            : String(format: AppLocalized("Latest %@. You have it"), shown)
     }
 
     /// Whether `latest` is newer than what is installed.

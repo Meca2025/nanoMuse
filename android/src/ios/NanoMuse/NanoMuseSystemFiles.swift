@@ -43,9 +43,9 @@ enum NanoMuseSystemFile: String, CaseIterable, Identifiable {
         switch self {
         case .soul: return AppLocalized("This is the agent's persona: the values and habits it tries to hold to in every conversation, its name, and the style it answers in. It starts from a template that ships with nanoMuse; the agent may refine it over time and tells you when it does. You can edit it at any time. This note is not part of the file.")
         case .user: return AppLocalized("The agent keeps this file as its working notes about you: your name, how you like to be addressed, your timezone, and the context it needs to be useful, such as what you are working on. It fills it in over time from your conversations and reads it at the start of each one. It reflects the agent's current understanding, so it can be incomplete or out of date. You can edit anything here, and the agent will follow what you write. This note is not part of the file.")
-        case .memory: return AppLocalized("Durable notes the agent keeps across conversations — the things worth remembering, in its own words, plus anything you imported from another assistant. The day-by-day diary lives beside it in the memory folder. Read at the start of every conversation when memory is on. This note is not part of the file.")
+        case .memory: return AppLocalized("Durable notes the agent keeps across conversations: the things worth remembering, in its own words, plus anything you imported from another assistant. The day-by-day diary lives beside it in the memory folder. Read at the start of every conversation when memory is on. This note is not part of the file.")
         case .feed: return AppLocalized("One paragraph that steers the feed: what you want more of, what to skip, how long posts should be. The daily feed routine reads it before writing. This note is not part of the file.")
-        case .heartbeat: return AppLocalized("When the agent wakes up on its own: every routine and every goal check, with its schedule and how the last run went. Rendered from the routines, so it is read-only here — change them from Goals → Routines. This note is not part of the file.")
+        case .heartbeat: return AppLocalized("When the agent wakes up on its own: every routine and every goal check, with its schedule and how the last run went. Rendered from the routines, so it is read-only here; change them from Goals → Routines. This note is not part of the file.")
         }
     }
 
@@ -94,7 +94,7 @@ enum NanoMuseSystemFiles {
     static func userPromptFragment() -> String? {
         let text = NanoMuseSystemFile.user.read().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
-        return "## About the user (USER.md — maintained by you and the user)\n"
+        return "## About the user (USER.md, maintained by you and the user)\n"
             + "Read at the start of every conversation. Fill it in over time from what the user tells you (name, how to address them, timezone, what they are working on, preferences); edit it with your shell at /var/minis/memory/USER.md when you learn something durable, and tell the user in one line when you do. Never write secrets into it.\n"
             + String(text.prefix(4000))
     }
@@ -110,19 +110,19 @@ enum NanoMuseSystemFiles {
         if routines.isEmpty { s += "_" + AppLocalized("none") + "_\n" }
         for r in routines {
             // the same words as the Routines list: "Daily · 08:00", "Checks every 6 hours"
-            s += "- \(r.enabled ? "[x]" : "[ ]") **\(r.label.isEmpty ? AppLocalized("Routine") : r.label)** — \(r.cadence)" + lastRun(r) + "\n"
+            s += "- \(r.enabled ? "[x]" : "[ ]") **\(r.label.isEmpty ? AppLocalized("Routine") : r.label)** · \(r.cadence)" + lastRun(r) + "\n"
         }
         s += "\n## " + AppLocalized("Goal checks") + "\n"
         let checks = all.filter { $0.hidden && $0.goalId != nil }
         if checks.isEmpty { s += "_" + AppLocalized("none") + "_\n" }
         for r in checks {
             let g = goals.first { $0.id == r.goalId }
-            s += "- \(r.enabled ? "[x]" : "[ ]") \(g?.title ?? r.label) — \(r.cadence)" + lastRun(r) + "\n"
+            s += "- \(r.enabled ? "[x]" : "[ ]") \(g?.title ?? r.label) · \(r.cadence)" + lastRun(r) + "\n"
         }
         let feedId = NanoMuseFeedFlow.routineId
         if let feed = all.first(where: { $0.id == feedId }) {
             s += "\n## " + AppLocalized("Feed") + "\n"
-            s += "- \(feed.enabled ? "[x]" : "[ ]") \(feed.label) — \(feed.cadence)" + lastRun(feed) + "\n"
+            s += "- \(feed.enabled ? "[x]" : "[ ]") \(feed.label) · \(feed.cadence)" + lastRun(feed) + "\n"
         }
         return s
     }
@@ -208,7 +208,7 @@ struct NanoMuseSystemFilesView: View {
                     }
                 }
             } footer: {
-                Text(AppLocalized("These files are the agent's: who it is, what it knows about you, what it remembers, what it writes for you and when it wakes up. They live in your phone's storage — the agent reads and edits them from its shell under /var/minis/memory, and you can edit anything here."))
+                Text(AppLocalized("These files are the agent's: who it is, what it knows about you, what it remembers, what it writes for you and when it wakes up. They live in your phone's storage; the agent reads and edits them from its shell under /var/minis/memory, and you can edit anything here."))
             }
             Section {
                 NavigationLink(AppLocalized("Import memory")) { NanoMuseMemoryImportView() }
@@ -313,7 +313,7 @@ struct NanoMuseMemoryImportView: View {
     var body: some View {
         Form {
             Section {
-                Text(AppLocalized("Bring over what another assistant already knows about you. Ask it with the prompt below, paste its answer here, and it is appended to GLOBAL.md under “Imported” — where your agent reads it at the start of every conversation."))
+                Text(AppLocalized("Bring over what another assistant already knows about you. Ask it with the prompt below, paste its answer here, and it is appended to GLOBAL.md under “Imported”, where your agent reads it at the start of every conversation."))
                     .font(.footnote).foregroundStyle(.secondary)
             }
             Section(AppLocalized("Ask your other assistant")) {
@@ -324,7 +324,7 @@ struct NanoMuseMemoryImportView: View {
                 }
             }
             Section(AppLocalized("Paste its answer")) {
-                TextField(AppLocalized("From (optional) — e.g. ChatGPT, Claude"), text: $from)
+                TextField(AppLocalized("From (optional), e.g. ChatGPT, Claude"), text: $from)
                 TextEditor(text: $pasted).frame(minHeight: 140)
                     .overlay(alignment: .topLeading) {
                         if pasted.isEmpty {

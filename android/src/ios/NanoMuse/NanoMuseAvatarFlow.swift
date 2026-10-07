@@ -189,11 +189,11 @@ final class NanoMuseAvatarFlow: ObservableObject {
             return true
         }
         if studio.isBusy {
-            vm.nmLocalTurn(user: text, assistant: AppLocalized("Give me a moment — I'm still drawing the last one."))
+            vm.nmLocalTurn(user: text, assistant: AppLocalized("Give me a moment. I'm still drawing the last one."))
             return true
         }
         if studio.usesOwnKey {
-            vm.nmLocalTurn(user: text, assistant: String(format: AppLocalized("I'm drawing a few takes on \"%@\" now. Pictures take a little while — I'll tell you when they're ready."), desc))
+            vm.nmLocalTurn(user: text, assistant: String(format: AppLocalized("I'm drawing a few takes on \"%@\" now. Pictures take a little while; I'll tell you when they're ready."), desc))
             begin(session: session, description: desc)
         } else {
             vm.nmLocalTurn(user: text)
@@ -206,7 +206,7 @@ final class NanoMuseAvatarFlow: ObservableObject {
     /// The person tapped "Draw it" on the cost card.
     func confirmDraw() {
         guard case .confirming(let session, let desc) = stage else { return }
-        vm?.nmLocalTurn(assistant: String(format: AppLocalized("I'm drawing a few takes on \"%@\" now. Pictures take a little while — I'll tell you when they're ready."), desc))
+        vm?.nmLocalTurn(assistant: String(format: AppLocalized("I'm drawing a few takes on \"%@\" now. Pictures take a little while; I'll tell you when they're ready."), desc))
         begin(session: session, description: desc)
     }
 
@@ -239,7 +239,7 @@ final class NanoMuseAvatarFlow: ObservableObject {
         stage = .finalizing(session: session, description: desc, chosen: index)
         let line = typed ?? String(format: AppLocalized("Option %d"), index + 1)
         let fence = NanoMuseFences.fence(Self.blockOptions, ["desc": desc, "chosen": index, "files": files])
-        var reply = String(format: AppLocalized("Done — my new look is on. I'm %@ now."), desc)
+        var reply = String(format: AppLocalized("Done. My new look is on. I'm %@ now."), desc)
         // With a video model set the clips follow in the background (NanoMuseAvatarMotion); say so,
         // as Android's `nm_avatar_clips_coming` does.
         if NanoMuseAvatarMotion.shared.enabled {
@@ -251,7 +251,7 @@ final class NanoMuseAvatarFlow: ObservableObject {
 
     func regenerate(typed: String? = nil) {
         guard case .choosing = stage, !studio.isBusy else { return }
-        vm?.nmLocalTurn(user: typed, assistant: AppLocalized("One more round — give me a moment."))
+        vm?.nmLocalTurn(user: typed, assistant: AppLocalized("One more round. Give me a moment."))
         announcedRound = false
         studio.draw()
     }
@@ -260,7 +260,7 @@ final class NanoMuseAvatarFlow: ObservableObject {
         switch (stage, phase) {
         case (.choosing(_, let desc), .pick) where !announcedRound:
             announcedRound = true
-            vm?.nmLocalTurn(assistant: String(format: AppLocalized("Here are a few takes on \"%@\" — pick the one you like best."), desc))
+            vm?.nmLocalTurn(assistant: String(format: AppLocalized("Here are a few takes on \"%@\". Pick the one you like best."), desc))
         case (.choosing, .describe):
             // Every candidate failed; the studio went back to describe.
             if let error = studio.lastError {
@@ -302,7 +302,7 @@ struct NanoMuseAvatarOptionsCard: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 } else {
-                    Text(AppLocalized("Tap the one you like, or tell me — \"the second one\"."))
+                    Text(AppLocalized("Tap the one you like, or tell me: \"the second one\"."))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
@@ -369,7 +369,7 @@ struct NanoMuseAvatarCostCard: View {
                 if e.unlimited {
                     Text(what + ".").font(.footnote)
                 } else {
-                    Text(String(format: AppLocalized("%@ — about ¥%@ from your allowance."), what, NanoMuseFaceCostSheet.money(e.cny))).font(.footnote)
+                    Text(String(format: AppLocalized("%@: about ¥%@ from your allowance."), what, NanoMuseFaceCostSheet.money(e.cny))).font(.footnote)
                     if let left = e.leftCny {
                         Text(String(format: AppLocalized("You have ¥%@ of the allowance left."), NanoMuseFaceCostSheet.money(left))).font(.footnote).foregroundStyle(.secondary)
                     }
