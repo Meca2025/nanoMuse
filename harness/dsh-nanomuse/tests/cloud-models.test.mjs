@@ -492,3 +492,47 @@ test('OpenRouter shape: POST {base}/images with output_format png; a pose carrie
   assert.equal(pose.input_references[0].type, 'image_url')
   assert.ok(pose.input_references[0].image_url.url.startsWith('data:image/png;base64,'))
 })
+
+test('the hands row says why: the mount’s outcome reaches hands/runtime, with the cause behind a colon', async () => {
+  const { mountError, apply } = await import('../lib/hands-tools.js')
+  assert.equal(mountError(new Error('mcp-client(nanomuse): initial connection or tool synchronization failed', { cause: new Error('spawn /opt/nanomuse ENOENT') })), 'initial connection or tool synchronization failed: spawn /opt/nanomuse ENOENT')
+  assert.equal(mountError(new Error('bad config')), 'bad config')
+  assert.equal(mountError('a string'), 'a string')
+  assert.equal(mountError(new Error('')), 'the hands did not mount')
+
+  const out = await cloud()
+  try {
+    // before any mount: nothing known to be wrong
+    assert.deepEqual(out.svc.handsStatus(), { at: 0, ok: true, reason: '' })
+    // a fake agent scope: the plugin's client is a fiber whose start fails the way the MCP client reports it
+    let plugins = 0
+    const effects = []
+    const ctx = {
+      nanomuseCloud: out.svc,
+      logger: { info() {}, warn() {}, debug() {}, error() {} },
+      plugin() {
+        plugins++
+        return { await: () => Promise.reject(new Error('mcp-client(nanomuse): initial connection or tool synchronization failed', { cause: new Error('spawn /opt/nanomuse ENOENT') })), dispose: async () => undefined }
+      },
+      effect(fn) { effects.push(fn) },
+    }
+    apply(ctx)
+    await new Promise((r) => setTimeout(r, 50))
+    assert.equal(plugins, 1)
+    const status = out.svc.handsStatus()
+    assert.equal(status.ok, false)
+    assert.equal(status.reason, 'initial connection or tool synchronization failed: spawn /opt/nanomuse ENOENT')
+    assert.ok(status.at > 0)
+    const runtime = (await out.api('GET', '/hands/runtime')).body
+    assert.equal(runtime.ok, false)
+    assert.equal(runtime.problem, 'missing')
+    assert.deepEqual(runtime.mount, status)
+    // a mount that goes well clears it
+    out.svc.handsMounted({ ok: true })
+    assert.deepEqual(out.svc.handsStatus().reason, '')
+    assert.equal(out.svc.handsStatus().ok, true)
+    for (const fn of effects) { const off = fn(); if (typeof off === 'function') off() }
+  } finally {
+    await out.done()
+  }
+})

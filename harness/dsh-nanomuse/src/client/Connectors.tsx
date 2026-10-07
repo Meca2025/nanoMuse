@@ -20,6 +20,7 @@ import { composing } from './keys.ts'
 import { MARKS } from './brand-marks.ts'
 import { openLink } from './bridge.ts'
 import { settingsBus } from './bus.ts'
+import { handsOffReason, useRuntimeInfo } from './HandsCheck.tsx'
 import {
   IconCalendar, IconCheck, IconChevronLeft, IconChevronRight, IconCode, IconCopy, IconDevices, IconExternal, IconFeed, IconFolder, IconGlobe, IconHand, IconLink, IconMail, IconPuzzle, IconRefresh, IconSearch, IconShield, IconUsers,
 } from './icons.tsx'
@@ -171,6 +172,7 @@ export function makeConnectorsSection(t: Translate) {
 
   return function ConnectorsSection(): ReactNode {
     const catalogue = useConnectors()
+    const runtimeInfo = useRuntimeInfo()
     const live = useLive()
     const rooms = useRooms()
     const { view, refresh } = useConnections()
@@ -189,7 +191,7 @@ export function makeConnectorsSection(t: Translate) {
     const others = (catalogue?.servers ?? []).filter((s) => s.name !== 'nanomuse' && !connectedNames.has(s.name))
 
     const builtin: Entry[] = [
-      { id: 'hands', mark: builtinMark(IconHand), title: t('cnHands'), sub: has('computer_act') ? t('cnHandsOn') : seen ? t('cnHandsOff') : t('cnNotYet'), about: t('cnHandsAbout'), on: has('computer_act'), group: 'builtin', tools: pick('computer_screen', 'computer_act'), connect: { section: COMPUTER_SECTION }, page: COMPUTER_SECTION },
+      { id: 'hands', mark: builtinMark(IconHand), title: t('cnHands'), sub: has('computer_act') ? t('cnHandsOn') : seen ? (runtimeInfo ? handsOffReason(t, runtimeInfo) || t('cnHandsOffNoTools', { path: runtimeInfo.path }) : t('cnHandsOff')) : t('cnNotYet'), about: t('cnHandsAbout'), on: has('computer_act'), group: 'builtin', tools: pick('computer_screen', 'computer_act'), connect: { section: COMPUTER_SECTION }, page: COMPUTER_SECTION },
       { id: 'email', mark: builtinMark(IconMail), title: t('cnEmail'), sub: has('read_emails') ? t('cnEmailOn') : t('cnEmailOff'), about: t('cnEmailAbout'), on: has('read_emails', 'send_email'), group: 'builtin', tools: pick('read_emails', 'send_email'), connect: { steps: [
         { text: t('cnStepAddress'), command: 'nanomuse vault set EMAIL_ADDRESS' },
         { text: t('cnStepPassword'), command: 'nanomuse vault set EMAIL_PASSWORD' },

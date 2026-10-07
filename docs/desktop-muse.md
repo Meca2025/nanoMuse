@@ -120,7 +120,9 @@ on a fresh install and never shown twice:
    pane, so nanoMuse is on the pane's list, and when the permission is granted while the app
    runs a dialog says macOS applies it only to freshly started apps, with *Restart now*
    (`relaunch` over the bridge). *Try it* rows — a test screenshot, a mouse move — and the
-   runtime row say whether it works, and a black capture gets its own notice with *Relaunch*.
+   runtime row say whether it works (the row names the binary and, when its last start for
+   the hands failed, why, in the host's words), and a black capture gets its own notice with
+   *Relaunch*.
    On Linux and Windows the page is skipped.
 6. **Meet <name>** — the face, *Start*.
 
@@ -434,7 +436,8 @@ stock General plugin switched off in the bundle layer:
   the hands and the mailbox), the vendor's documentation, and *Disconnect* (asked
   twice). Three kinds of row:
   - **Built in** is what the agent can really reach: *Hands — this computer* (on when
-    the runtime answered, with the reason when it did not), *Mailbox*, *Calendar*,
+    the runtime answered; when it did not, the reason: no runtime, a path that leads
+    nowhere, or a runtime that did not start, with the start's own error), *Mailbox*, *Calendar*,
     *Address book* (the runtime's connectors, on when their tools arrive through
     `nanomuse mcp`), *Reach — your other devices*, *Web*, *Files*, *Terminal*, the
     rooms, *Schedule*. *Connect* on the mailbox, the calendar or the address book opens a
@@ -580,8 +583,8 @@ serves `/nanomuse/rooms/*` and streams changes to the browser half:
 - **Library** — shelves (All, Documents, Web; Media: Images, Videos, Podcasts; System
   files at the foot), *Select*, *+ Create…* (a brief → a chat that writes the file under
   `~/nanoMuse/Library` — `构件` in Chinese — with the workspace-write preset), *Recent*
-  and a card grid; a viewer and a Markdown editor for text, pictures and media inline,
-  *Open* / *Show in folder* for the rest. Everything the agent delivers with `present`
+  and a card grid; a viewer and a Markdown editor for text (restoring IDENTITY.md or SOUL.md
+  to the stock text asks first), pictures and media inline, *Open* / *Show in folder* for the rest. Everything the agent delivers with `present`
   lands here, and `library_add` lists a file without delivering it.
 
 Rooms need a model that answers; signed out, they say so. The hidden chat the feed is
