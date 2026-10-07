@@ -205,7 +205,7 @@ class Controls:
             self.set(switch, False, actor=actor, note=f"rule #{rule['id']} at {total} accounts")
         if rule["action"] == "notify":
             self.notify(
-                f"{total} accounts — rule #{rule['id']} fired",
+                f"{total} accounts: rule #{rule['id']} fired",
                 [
                     f"The relay at {self.s.public_base} has {total} accounts; rule #{rule['id']} (threshold {rule['threshold']}) asked to be told.",
                     f"中继 {self.s.public_base} 的账号数达到 {total}（规则 #{rule['id']}，阈值 {rule['threshold']}）。",

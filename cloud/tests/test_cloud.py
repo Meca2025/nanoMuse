@@ -2196,7 +2196,7 @@ async def test_me_says_where_the_person_is_and_orders_the_ways_on_by_it(tmp_path
     assert err["guidance"]["region"] == "cn" and err["guidance"]["providers"][0]["id"] == "bailian"
     err = await exhaust(us, "8.8.8.8")
     assert err["region"] == "intl" and [w["id"] for w in err["ways"]] == ["openrouter", "bailian", "invite"]
-    assert "OpenRouter (one account, one key, pay as you go) or OpenAI first" in err["message"]
+    assert "OpenRouter, with one account, one key and pay as you go, or OpenAI first" in err["message"]
     assert "Alibaba Cloud Bailian only signs up accounts from mainland China" in err["message"]
     assert "a plan you already pay for (ChatGPT, Claude or Kimi" in err["message"]
     assert err["openrouter_url"] == "https://openrouter.ai/keys" and err["own_key_docs"] == "https://nanomuse.cn/own-key"

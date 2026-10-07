@@ -102,7 +102,7 @@ def test_exhausted_key_line():
     cn = pv.exhausted_key_line("cn")
     assert "阿里云百炼" in cn and "one key" in cn and "ChatGPT, Claude or Kimi" in cn and "OpenRouter" not in cn
     intl = pv.exhausted_key_line("intl")
-    assert intl.startswith("add your own model key — OpenRouter") and "OpenAI first" in intl and "mainland China" in intl
+    assert intl.startswith("add your own model key (OpenRouter") and "OpenAI first" in intl and "mainland China" in intl
     unknown = pv.exhausted_key_line("unknown")
     assert "OpenRouter or OpenAI outside mainland China, Alibaba Cloud Bailian inside" in unknown
     assert pv.exhausted_key_line("mars") == unknown
