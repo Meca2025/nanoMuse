@@ -29,9 +29,8 @@
 
 *nano* значит полный комплект, достаточно небольшой, чтобы вы запустили и развернули его сами: приложение для телефона, приложение для компьютера, веб-консоль и реле, которое их связывает, — всё в этом репозитории, под GPL-3.0-or-later. **[Бесплатно, открыто, некоммерчески — давайте строить вместе.](../../CONTRIBUTING.md)** После входа вы получаете бесплатный лимит на модели через реле сообщества — его оплачивает разработчик; когда он кончится, [подключите свой ключ](../own-key.md). То же реле работает на вашем собственном сервере, и тогда ничего не покидает дом. Последняя версия: **0.1.40 Clear** — [заметки о выпуске](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [попробовать в браузере](https://demo.nanomuse.dev/).
 
-<p align="center">
-  <a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-en.png" alt="The nanoMuse film, 74 seconds"></a>
-</p>
+https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
+
 <p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ Новости

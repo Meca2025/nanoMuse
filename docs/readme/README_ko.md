@@ -29,9 +29,8 @@
 
 *nano*는 직접 돌리고 직접 배포할 수 있을 만큼 작은, 완전한 한 세트라는 뜻입니다. 휴대폰 앱, 데스크톱 앱, 웹 콘솔, 그리고 이들을 잇는 릴레이가 모두 이 저장소에 GPL-3.0-or-later로 들어 있습니다. **[무료, 오픈 소스, 비영리 — 함께 만들어 갑시다.](../../CONTRIBUTING.md)** 로그인하면 커뮤니티 릴레이에서 모델을 쓸 수 있는 무료 사용량을 받습니다. 비용은 개발자가 부담합니다. 다 쓰면 [자신의 키로 바꾸세요](../own-key.md). 같은 릴레이를 자신의 서버에서 돌릴 수도 있어, 데이터가 집 밖으로 나갈 필요가 없습니다. 최신 버전: **0.1.40 Clear** — [릴리스 노트](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40) · [브라우저에서 써 보기](https://demo.nanomuse.dev/).
 
-<p align="center">
-  <a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4"><img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/docs/screenshots/film/poster-en.png" alt="The nanoMuse film, 74 seconds"></a>
-</p>
+https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
+
 <p align="center"><a href="https://nanomuse.cn/media/film/nanomuse-film-en-web.mp4">English</a> · <a href="https://nanomuse.cn/media/film/nanomuse-film-zh-web.mp4">中文</a> · <a href="https://nanomuse.cn/#film">nanomuse.cn</a></p>
 
 ## 🗞️ 소식
