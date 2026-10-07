@@ -99,6 +99,8 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_account_ts ON events(account_id, ts);
 CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
+-- the console's timeline filtered by kind, newest first; and "accounts with any X event"
+CREATE INDEX IF NOT EXISTS events_kind_id ON events(kind, id);
 CREATE TABLE IF NOT EXISTS devices (
     account_id    TEXT NOT NULL REFERENCES accounts(id),
     id            TEXT NOT NULL,           -- chosen by the device, stable across restarts
@@ -183,6 +185,8 @@ CREATE TABLE IF NOT EXISTS sync_conversations (
     PRIMARY KEY (account_id, cid)
 );
 CREATE INDEX IF NOT EXISTS sync_conversations_seq ON sync_conversations(account_id, seq);
+-- the sweep on every push looks only at tombstones; without this it reads the table
+CREATE INDEX IF NOT EXISTS sync_conversations_tombstones ON sync_conversations(deleted_at) WHERE deleted=1;
 CREATE TABLE IF NOT EXISTS sync_messages (
     account_id    TEXT NOT NULL REFERENCES accounts(id),
     mid           TEXT NOT NULL,              -- minted by the device that wrote it
@@ -200,6 +204,7 @@ CREATE TABLE IF NOT EXISTS sync_messages (
 );
 CREATE INDEX IF NOT EXISTS sync_messages_seq ON sync_messages(account_id, seq);
 CREATE INDEX IF NOT EXISTS sync_messages_cid ON sync_messages(account_id, cid);
+CREATE INDEX IF NOT EXISTS sync_messages_tombstones ON sync_messages(deleted_at) WHERE deleted=1;
 CREATE TABLE IF NOT EXISTS sync_cursors (
     account_id    TEXT PRIMARY KEY REFERENCES accounts(id),
     seq           INTEGER NOT NULL DEFAULT 0  -- one counter per account; cursor = its value
@@ -286,6 +291,10 @@ class Database:
         with self._lock:
             # executescript commits on its own; keep it outside tx().
             self._conn.execute("PRAGMA journal_mode=WAL")
+            # WAL with NORMAL: durable against a process crash, and an fsync per checkpoint
+            # instead of per commit (the default FULL costs one per commit). A power cut
+            # may lose the last commits, never the file's consistency.
+            self._conn.execute("PRAGMA synchronous=NORMAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.executescript(SCHEMA)
             self._migrate()
@@ -812,17 +821,26 @@ class Database:
                 return int(self._conn.execute("SELECT COUNT(*) FROM samples").fetchone()[0])
             return int(self._conn.execute("SELECT COUNT(*) FROM samples WHERE account_id=?", (account_id,)).fetchone()[0])
 
-    def samples(self, account_id: str | None = None, since: int = 0, limit: int = 100, before: int = 0) -> list[sqlite3.Row]:
-        """Newest first; ``before`` (a ts) pages further back."""
+    def samples(
+        self, account_id: str | None = None, since: int = 0, limit: int = 100, before: int = 0, before_id: str = ""
+    ) -> list[sqlite3.Row]:
+        """Newest first (ties in ``ts`` by insertion order); ``before`` (a ts) pages further
+        back. With ``before_id`` (the id of the last row seen, at that ts) the page continues
+        inside the same second, so rows that share a ts are not skipped; without it the page
+        starts at the second before. The tie-break is the rowid, not the random id, so the
+        order is the order the turns happened in."""
         q = "SELECT * FROM samples WHERE ts>=?"
         args: list = [since]
         if account_id is not None:
             q += " AND account_id=?"
             args.append(account_id)
-        if before:
+        if before and before_id:
+            q += " AND (ts<? OR (ts=? AND rowid<(SELECT rowid FROM samples WHERE id=?)))"
+            args.extend([before, before, before_id])
+        elif before:
             q += " AND ts<?"
             args.append(before)
-        q += " ORDER BY ts DESC LIMIT ?"
+        q += " ORDER BY ts DESC, rowid DESC LIMIT ?"
         args.append(max(1, min(limit, 1000)))
         with self._lock:
             return self._conn.execute(q, args).fetchall()

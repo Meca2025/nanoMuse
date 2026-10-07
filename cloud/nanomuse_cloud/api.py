@@ -58,7 +58,7 @@
     GET  /v1/admin/traffic    X-Admin-Token  ?days=30           → the site: pages, visitors, downloads per file, referrers, GitHub stars and release downloads (TRAFFIC_DB)
     GET  /v1/admin/demo       X-Admin-Token  ?days=30           → the phone in the browser: visitors with addresses and browsers, every demo and what it used (WEB_ADMIN_URL)
     GET  /v1/admin/data       X-Admin-Token  ?days=30           → Data controls: accounts with the switch on, kept turns by day / model / app / account, switches on and off, the newest turns
-    GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before= → kept turns (accounts with the switch on only)
+    GET  /v1/admin/samples    X-Admin-Token  ?account_id=&limit=&since=&before=&before_id= → kept turns (accounts with the switch on only)
     GET  /v1/admin/samples/export X-Admin-Token ?since=&account_id= → the same as JSON lines, without account ids or addresses
     GET  /v1/admin/sync       X-Admin-Token                     → conversation sync in aggregate: accounts on / off, conversations, messages, bytes (never a text)
 
@@ -266,7 +266,8 @@ def create_app(
     async def _rules_loop() -> None:
         while True:
             await asyncio.sleep(60)
-            cloud.evaluate_thresholds()
+            # off the loop: a *notify* rule sends an e-mail, and SMTP may take its whole timeout
+            await asyncio.to_thread(cloud.evaluate_thresholds)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -1115,6 +1116,11 @@ def create_app(
                     try:
                         caller = cloud.authenticate(auth[7:].strip())
                     except CloudError as e:
+                        # accept first: a close before the handshake reaches the app as an HTTP
+                        # 403 and looks like the network, not like the key (docs/hub.md says
+                        # 4001). Then the error frame with the code, as the hello path does.
+                        await ws.accept()
+                        await ws.send_text(json.dumps({"type": "error", "code": e.code, "message": e.message}))
                         await ws.close(code=4001, reason=e.code)
                         return
                 await hub.serve(ws, caller)
@@ -1333,11 +1339,12 @@ def create_app(
         return with_places({"events": cloud.admin_events(limit, kinds)})
 
     @app.get("/v1/admin/samples", dependencies=[Depends(admin_dep)])
-    async def admin_samples(account_id: str = "", limit: int = 100, since: int = 0, before: int = 0) -> dict:
-        """Contributed chat turns — only from accounts that turned contribution on."""
+    async def admin_samples(account_id: str = "", limit: int = 100, since: int = 0, before: int = 0, before_id: str = "") -> dict:
+        """Contributed chat turns — only from accounts that turned contribution on. Pages
+        with `before` (the last row's ts) and `before_id` (its id), newest first."""
         return with_places(
             {
-                "samples": cloud.admin_samples(account_id or None, since, limit, before),
+                "samples": cloud.admin_samples(account_id or None, since, limit, before, before_id[:64]),
                 "total": cloud.db.sample_count(account_id or None),
             }
         )
@@ -1464,13 +1471,17 @@ def create_app(
     @app.post("/v1/admin/controls/evaluate", dependencies=[Depends(admin_dep)])
     async def admin_rules_evaluate() -> dict:
         """Check the rules against the account count now (what the minute timer does)."""
-        return {"fired": cloud.evaluate_thresholds(), "accounts_total": cloud.db.account_counts()["total"]}
+        fired = await asyncio.to_thread(cloud.evaluate_thresholds)
+        return {"fired": fired, "accounts_total": cloud.db.account_counts()["total"]}
 
     @app.post("/v1/admin/controls/notify-test", dependencies=[Depends(admin_dep)])
     async def admin_notify_test(request: Request) -> dict:
         """Send a test notice to ADMIN_EMAIL the way a *notify* rule would."""
-        ok = cloud.controls.notify(
-            "test notice", ["This is a test from the console's Controls page.", "这是控制台「控制」页发出的测试邮件。"], _actor(request)
+        ok = await asyncio.to_thread(
+            cloud.controls.notify,
+            "test notice",
+            ["This is a test from the console's Controls page.", "这是控制台「控制」页发出的测试邮件。"],
+            _actor(request),
         )
         return {"sent": ok, "configured": cloud.controls.can_notify}
 

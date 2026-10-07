@@ -390,8 +390,25 @@ Ours, in `NanoMuse/`:
   composer (the Reach sheet's *Ask this device*). `NanoMuseRoot` draws nothing until it knows
   whether the setup is due, so a fresh install never shows the shell for a frame before the
   welcome page. The first conversation's fourth line no longer says the messages go *only* to
-  the model: signed in, the main conversation also follows the person to their other devices,
+  the   model: signed in, the main conversation also follows the person to their other devices,
   and *Data controls* switches that off — the same words on Android, in every language.
+- **The audit's second pass (round 10)** (`NanoMuseHub.swift`, `NanoMuseDevicesSection.swift`,
+  `NanoMuseScheduler.swift`, `NanoMuseSync.swift`, `NanoMuseAccountData.swift`,
+  `NanoMuseProxy.swift`, `NanoMuseImageGen.swift`, `NanoMuseVideoGen.swift`): the hub client
+  reads the relay's close codes ([hub.md](hub.md)) — 4001 and 4002 end the attempts until a new
+  sign-in and the Devices row says *Sign in again*; 4003 waits 30 s; a close with the reason
+  `hub_paused` waits two minutes and the row says *Paused by the relay*; everything else keeps
+  the 1 → 30 s backoff and reads *Reconnecting…*. An `open` call from another device opens
+  `http` and `https` links only, so a `tel:` or another app's scheme is refused with `usage`;
+  a call's timeout timer ends with its answer. A one-off routine made after its time of day
+  runs the next day instead of never. The sync side tables (`nanomuse-sync-accounts.json`,
+  `nanomuse-owners.json`) use the default data-protection class like the chats themselves, and
+  when the file is there but cannot be read (the phone locked, the app woken in the background)
+  the store waits for the next call rather than starting empty and writing that over every
+  account's table. The image and video generators go through the Network proxy like a chat
+  turn on the same provider (`NanoMuseProxy.SessionSlot`), and their failures are sentences in
+  every language — *The provider refused this key (HTTP 401)*, *The video took longer than 12
+  minutes* — with the vendor's own words after *The provider says:* when it sent some.
 
 ## Building on a Mac
 

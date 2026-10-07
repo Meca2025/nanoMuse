@@ -333,6 +333,19 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   所以全新安装绝不会在欢迎页之前闪过一帧主界面。第一次对话的第四句话不再说消息*只*发给
   模型：登录后，主对话也会跟着人到他的其他设备上，*数据控制*可以关掉——和 Android 同样的
   话，每种语言都有。
+- **审计第二轮（第 10 轮）**（`NanoMuseHub.swift`、`NanoMuseDevicesSection.swift`、
+  `NanoMuseScheduler.swift`、`NanoMuseSync.swift`、`NanoMuseAccountData.swift`、
+  `NanoMuseProxy.swift`、`NanoMuseImageGen.swift`、`NanoMuseVideoGen.swift`）：hub 客户端会读
+  中继的关闭码（[hub.md](hub.md)）——4001、4002 之后不再重试，直到重新登录，设备一行显示
+  *重新登录*；4003 等 30 秒；带 `hub_paused` 原因的关闭等两分钟，一行显示*中转已暂停*；其余
+  情况保持 1 → 30 秒的退避，显示*正在重新连接…*。其他设备发来的 `open` 只打开 `http` 和
+  `https` 链接，`tel:` 或别的 App 的 scheme 会以 `usage` 拒绝；一次调用的超时计时器随答复
+  一起结束。在当天时间点之后创建的一次性例程会在第二天运行，而不是永远不跑。同步侧表
+  （`nanomuse-sync-accounts.json`、`nanomuse-owners.json`）和聊天本身一样用默认的数据保护
+  等级；文件在但读不出来时（手机锁着、App 在后台被唤醒），存储等下一次调用再读，而不是从
+  空表开始并把空表写回去覆盖每个账号的记录。图片和视频生成和同一服务商的聊天一样走
+  「网络」里的代理（`NanoMuseProxy.SessionSlot`），失败时是每种语言都有的整句——*服务商拒绝了
+  这把密钥（HTTP 401）*、*视频超过 12 分钟仍未完成*——服务商自己的话跟在*服务商说：*后面。
 
 ## 在 Mac 上构建 {#building-on-a-mac}
 

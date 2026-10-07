@@ -177,6 +177,43 @@ def test_bad_key_and_bad_hello(client):
             ws.receive_json()  # closed: hello expected
 
 
+def test_a_bad_bearer_header_is_refused_with_4001_after_the_handshake(client):
+    """The apps send the key in the header. A refusal must reach them as a close with
+    4001 and the code (docs/hub.md), not as a failed handshake: a failed handshake looks
+    like the network and the phone would retry it forever."""
+    with connect(client, "nm_nothing") as ws:
+        err = ws.receive_json()
+        assert err["type"] == "error" and err["code"] == "bad_key"
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+        assert closed.value.code == 4001 and closed.value.reason == "bad_key"
+
+
+def test_binary_and_unknown_frames_are_answered_not_fatal(client):
+    key = sign_up(client, "13800138000")
+    # before hello a binary frame is as wrong as any other non-hello: closed, 4000
+    with connect(client, key) as ws:
+        ws.send_bytes(b"\x00\x01")
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+        assert closed.value.code == 4000
+    # after hello the socket stays open and says what was wrong
+    with connect(client, key) as ws:
+        ws.send_json(hello("phone", "phone-1", "Pixel"))
+        assert ws.receive_json()["type"] == "welcome"
+        ws.receive_json()  # devices broadcast
+        ws.send_bytes(b"\x00\x01")
+        err = ws.receive_json()
+        assert err["code"] == "bad_frame" and "binary" in err["message"]
+        ws.send_json({"type": "teleport"})
+        err = ws.receive_json()
+        assert err["code"] == "bad_frame" and "teleport" in err["message"]
+        ws.send_text("[1, 2]")
+        assert ws.receive_json()["code"] == "bad_frame"
+        ws.send_json({"type": "ping"})
+        assert ws.receive_json()["type"] == "pong"  # still alive
+
+
 def test_accounts_are_separate_and_frames_are_capped(client):
     a = sign_up(client, "13800138000")
     b = sign_up(client, "13900139000")

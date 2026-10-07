@@ -100,7 +100,8 @@ struct NanoMuseRoutine: Codable, Identifiable, Equatable {
             }()
             // In the future → the next run; already passed and never run → missed, due now.
             if qualifies && !firedThisSlot && afterCreation { return candidate }
-            if repeatMode == .once { return nil }
+            // A one-off that has run is spent; one made after today's time runs tomorrow.
+            if repeatMode == .once && lastFiredAt != nil { return nil }
             guard let next = calendar.date(byAdding: .day, value: 1, to: candidate) else { return nil }
             candidate = next
         }
@@ -121,7 +122,7 @@ final class NanoMuseScheduler: ObservableObject {
     static let shared = NanoMuseScheduler()
 
     /// Also listed under BGTaskSchedulerPermittedIdentifiers in Info.plist.
-    static let backgroundTaskId = "io.github.nanomuse.app.scheduler"
+    nonisolated static let backgroundTaskId = "io.github.nanomuse.app.scheduler"
     static let notificationCategory = "NANOMUSE_ROUTINE"
     private static let maxRunsKept = 10
 
@@ -131,6 +132,7 @@ final class NanoMuseScheduler: ObservableObject {
 
     private var file: URL { NanoMuseDirs.root.appendingPathComponent("routines.json") }
     private var catchUpTask: Task<Void, Never>?
+    private var notificationsTask: Task<Void, Never>?
     private var tickTimer: Timer?
 
     private init() {
@@ -302,26 +304,33 @@ final class NanoMuseScheduler: ObservableObject {
 
     /// One pending calendar notification per enabled routine, at its next time: "open to run it".
     func refreshNotifications() {
-        let center = UNUserNotificationCenter.current()
-        center.getPendingNotificationRequests { pending in
+        notificationsTask?.cancel()
+        notificationsTask = Task { [weak self] in
+            let center = UNUserNotificationCenter.current()
+            let pending = await center.pendingNotificationRequests()
+            guard !Task.isCancelled, let self else { return }
             let ours = pending.filter { $0.identifier.hasPrefix("nanomuse-routine-") }.map(\.identifier)
             center.removePendingNotificationRequests(withIdentifiers: ours)
-            Task { @MainActor in
-                let now = Date()
-                for r in self.routines.prefix(20) {
-                    guard r.enabled, let at = r.nextDue(after: now), at > now.addingTimeInterval(30) else { continue }
-                    let content = self.notificationContent(for: r)
-                    let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: at)
-                    let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-                    center.add(UNNotificationRequest(identifier: "nanomuse-routine-\(r.id)", content: content, trigger: trigger))
-                }
+            let now = Date()
+            // iOS keeps 64 pending requests per app; the soonest routines get the slots.
+            let soon = self.routines
+                .compactMap { r in r.enabled ? r.nextDue(after: now).map { (r, $0) } : nil }
+                .filter { $0.1 > now.addingTimeInterval(30) }
+                .sorted { $0.1 < $1.1 }
+                .prefix(20)
+            for (r, at) in soon {
+                let content = self.notificationContent(for: r)
+                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: at)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                try? await center.add(UNNotificationRequest(identifier: "nanomuse-routine-\(r.id)", content: content, trigger: trigger))
             }
         }
     }
 
     private func postDueNotification(_ r: NanoMuseRoutine, at now: Date) {
         let content = notificationContent(for: r)
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "nanomuse-due-\(r.id)-\(Int(now.timeIntervalSince1970))", content: content, trigger: nil))
+        let request = UNNotificationRequest(identifier: "nanomuse-due-\(r.id)-\(Int(now.timeIntervalSince1970))", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { _ in }
     }
 
     private func notificationContent(for r: NanoMuseRoutine) -> UNMutableNotificationContent {
@@ -342,10 +351,11 @@ final class NanoMuseScheduler: ObservableObject {
 
     /// Ask once; iOS keeps the answer.
     func requestNotificationPermission() {
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let settings = await center.notificationSettings()
             guard settings.authorizationStatus == .notDetermined else { return }
-            center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+            _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
         }
     }
 }

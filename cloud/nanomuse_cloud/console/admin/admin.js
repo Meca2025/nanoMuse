@@ -21,7 +21,7 @@
   document.documentElement.lang = zh ? "zh-CN" : "en"; // the markup says zh-CN; the page follows the browser
   const fmt = (n) => Number(n || 0).toLocaleString();
   const T = zh ? {
-    title: "nanoMuse Cloud 后台", tokenLabel: "管理口令", tokenHint: "服务器上 /opt/nanomuse/relay/ADMIN_TOKEN.txt 里的那一行；只留在这个标签页里。",
+    title: "nanoMuse Cloud 后台", tokenLabel: "管理口令", tokenHint: "中继 .env 里 CLOUD_ADMIN_TOKEN 的值；只留在这个标签页里。",
     enter: "进入", wrong: "口令不对。", offline: "连不上服务器。", refresh: "刷新", lock: "锁定", loading: "加载中…",
     today: "今天", week: "最近 7 天", period: (d) => `最近 ${d} 天`,
     kSamples: "保存的对话", kSamplesSub: (n) => `${n} 个账号开启了「帮助改进」`, exportSamples: "导出 JSONL", exportFailed: (why) => `导出没有成功：${why}。可以再试一次；如果一直这样，看服务器上 docker logs nanomuse-relay。`, exportCut: "下载中途断开", exportEmpty: "还没有可导出的对话。", contributes: "帮助改进", samples: "保存的对话（最近）", samplesNote: "只有开启了「帮助改进 nanoMuse 的 AI 模型」的账号才会保存这些内容：用户写的、模型回答的和它调用的工具，不含系统提示、工具返回的内容和图片；导出的文件不带账号 id。", user: "用户", assistant: "回答", more: "查看更多", noSamples: "还没有",
@@ -63,7 +63,7 @@
     perMinute: (n) => (n > 0 ? `每分钟 ${n} 次` : "不限频"), capLine: (c, u, b) => (c > 0 ? `非成员共 ¥${c}（≈ $${u}）· 邀请双方各 +¥${b}` : "不限花费"), signupOpen: "开放注册", signupClosed: "仅白名单可登录",
     realtime: "实时通话", on: "开", off: "关", pwMin: (n) => `密码至少 ${n} 位`,
     // runtime settings (relay 0.15): changed here, in force at once, kept across restarts
-    rtTitle: "额度（即时生效）", rtNote: "在这里改，所有客户端立刻按新数字走——新注册拿新额度，账号页、登录页、用完时的提示都读服务器的数字，不用发版、用户不用做任何事。留空恢复环境变量的值。调低只影响之后注册的人，不会从任何人的池子里扣。",
+    rtTitle: "额度（即时生效）", rtNote: "在这里改，所有客户端立刻按新数字走：新注册拿新额度，账号页、登录页、用完时的提示都读服务器的数字，不用发版、用户不用做任何事。留空恢复环境变量的值。调低只影响之后注册的人，不会从任何人的池子里扣。",
     rtAllowance: "每个新账号的免费额度（¥）", rtBonus: "邀请奖励（¥，双方各得）", rtSignup: "开放注册", rtSignupOff: "关闭后只有白名单和成员能登录；已登录的人不受影响。",
     rtEnv: (v) => `环境变量：${v}`, rtSet: "页面已设置", rtSave: "保存", rtSaved: "已保存，已生效。", rtApply: (n) => `把当前额度补给 ${n} 个老账号`, rtApplyNone: "所有账号拿到的额度都不低于当前值。",
     rtApplyConfirm: (n, c) => `给 ${n} 个拿到的额度低于 ¥${c} 的账号补齐差额？每个账号的流水会记一笔「额度调整」。`, rtApplied: (n) => `已补给 ${n} 个账号。`,
@@ -102,8 +102,8 @@
       title: "控制", note: "每个开关立刻生效、重启后保持；谁在何时改了什么记在下面的日志里。关闭前会先说明确切后果。",
       names: { free_allowance: "免费额度", signups: "开放注册", cloud_service: "云服务", sync: "对话同步", hub: "设备通道" },
       what: {
-        free_allowance: "关闭后：没有自己模型 key 的受限账号请求模型会被拒——HTTP 429，code allowance_exhausted，附 paused: true，提示语说明额度已暂停；成员不受影响；登录、设备、同步照常。",
-        signups: "关闭后：还没有账号的手机号 / 邮箱申请验证码或登录会被拒——HTTP 403，code signup_closed；已有账号照常登录和使用。",
+        free_allowance: "关闭后：没有自己模型 key 的受限账号请求模型会被拒（HTTP 429，code allowance_exhausted，附 paused: true，提示语说明额度已暂停）；成员不受影响；登录、设备、同步照常。",
+        signups: "关闭后：还没有账号的手机号 / 邮箱申请验证码或登录会被拒（HTTP 403，code signup_closed）；已有账号照常登录和使用。",
         cloud_service: "关闭后：除健康检查、/v1/config 和这个控制台以外的所有 API 返回 HTTP 503（code service_paused），设备通道的连接全部断开（4003 hub_paused）；数据原样保留。",
         sync: "关闭后：对话同步的推送和拉取返回 HTTP 503（code sync_paused）；已存的内容保留，设备各自继续工作。",
         hub: "关闭后：设备通道拒绝新连接并断开现有连接（4003 hub_paused），/v1/devices 返回 503；设备各自继续工作。",
@@ -137,7 +137,7 @@
     bucket: { 0: "¥0", lt1: "<¥1", "1to5": "¥1–5", "5to10": "¥5–10", ge10: "≥¥10" },
     sortBy: { active: "最近活跃", joined: "注册时间", spent: "累计花费", today: "今天花费", tokens: "tokens", requests: "请求数", left: "剩余额度", region: "地区" },
     cSignups: "注册", cRegions: "地区分布", cRegionsIn: (c) => `${c} · 分布`, cSpend: "花费分布", cActivity: "活跃度", cChannel: "渠道", cClients: "客户端", cClickNote: "图上的每一块都是筛选条件：点一下只看它，再点一下取消。", up: "上一级",
-    thRegion: "地区", moreRows: (n) => `再显示 ${fmt(n)} 个`, exportCsv: "导出 CSV", csvNote: "导出的是当前筛选结果，和表格一样含完整的手机号 / 邮箱——文件只留在你手里。",
+    thRegion: "地区", moreRows: (n) => `再显示 ${fmt(n)} 个`, exportCsv: "导出 CSV", csvNote: "导出的是当前筛选结果，和表格一样含完整的手机号 / 邮箱，文件只留在你手里。",
     byDayLabel: "按天", byWeekLabel: "按周",
     pMetric: "按什么计", pTopCountries: "国家 / 地区", pTopProvinces: "省 / 州", pRowHint: "点一行，到「用户」里只看这个地区的账号。",
     kindAll: "全部类型", mShare: "花费构成", mTop: "花费最多的账号", mPrices: "单价",
@@ -146,10 +146,10 @@
     cSearch: "搜索模型…", cOnlyVision: "只看能看图的",
     hOk: "一切正常", hProblems: "需要看一下", hInFlight: "在飞的请求", hInFlightSub: (a, l) => `${fmt(a)} 个账号 · ${l > 0 ? `每账号最多 ${l}` : "不限"}`, hHub: "设备通道", hOnline: "在线连接", hAccountsOnline: "在线账号", hPending: "等回复的调用", hDropped: "丢掉的帧", hFlood: "因刷屏断开", hLastHour: "最近一小时", hRequests: "请求", hUpstreamErrors: "上游错误", hRefused: "超额被拒", hSignIns: "登录", hFailures: "登录失败", hDb: "数据库", hWritable: "可写", hNotWritable: "不可写", hUpstream: "上游 key", hHave: "已配置", hMissing: "没有", hServerTime: "服务器时间", hAuto: "每 30 秒自动刷新", hNote: "同一份数据，服务器上的自检定时器每 10 分钟也读一次（journalctl -t nanomuse-selfcheck）；问题持续时按配置的 ALERT_URL 通知。",
   } : {
-    title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The line in /opt/nanomuse/relay/ADMIN_TOKEN.txt on the server; it stays in this tab only.",
+    title: "nanoMuse Cloud admin", tokenLabel: "Admin token", tokenHint: "The value of CLOUD_ADMIN_TOKEN in the relay's .env; it stays in this tab only.",
     enter: "Open", wrong: "That token is not right.", offline: "Cannot reach the server.", refresh: "Refresh", lock: "Lock", loading: "Loading…",
     today: "Today", week: "Last 7 days", period: (d) => `Last ${d} days`,
-    kSamples: "Kept turns", kSamplesSub: (n) => `${n} accounts with “help improve” on`, exportSamples: "Export JSONL", exportFailed: (why) => `The export did not go through: ${why}. Try once more; if it keeps happening, see docker logs nanomuse-relay on the server.`, exportCut: "the download broke off", exportEmpty: "Nothing to export yet.", contributes: "helps improve", samples: "Kept conversations (recent)", samplesNote: "Kept only for accounts with “Help improve nanoMuse's AI models” on: what the person wrote, what the model answered and the tools it called — not the system prompt, tool results or pictures; the export carries no account ids.", user: "user", assistant: "reply", more: "Show more", noSamples: "None yet",
+    kSamples: "Kept turns", kSamplesSub: (n) => `${n} accounts with “help improve” on`, exportSamples: "Export JSONL", exportFailed: (why) => `The export did not go through: ${why}. Try once more; if it keeps happening, see docker logs nanomuse-relay on the server.`, exportCut: "the download broke off", exportEmpty: "Nothing to export yet.", contributes: "helps improve", samples: "Kept conversations (recent)", samplesNote: "Kept only for accounts with “Help improve nanoMuse's AI models” on: what the person wrote, what the model answered and the tools it called; not the system prompt, tool results or pictures; the export carries no account ids.", user: "user", assistant: "reply", more: "Show more", noSamples: "None yet",
     kAccounts: "Accounts", kAccountsSub: (c) => `${c.with_password || 0} with a password · ${c.unlimited || 0} members · ${c.disabled || 0} disabled`,
     kActive: "Active accounts", kActiveSub: (n) => `${n} new`, kSpent: "Spent", kSpentSub: (r, t) => `${fmt(r)} requests · ${fmt(t)} tokens`,
     kOnline: "Devices online", kOnlineSub: (k, s) => `${k} remembered · ${s} live sign-ins`, kSignals: "Signals today",
@@ -185,7 +185,7 @@
     allowed: "Members (no cap)", allowedNone: "(none)", sender: "Code sender", models: "Models", prices: "Prices (¥)", rate: "Rate", rateLine: (r) => `1 USD = ${r} CNY (display only)`,
     perMinute: (n) => (n > 0 ? `${n} a minute` : "no rate limit"), capLine: (c, u, b) => (c > 0 ? `¥${c} (≈ $${u}) in all for non-members · +¥${b} an invite, to both sides` : "no spend limit"), signupOpen: "sign-up open", signupClosed: "members only",
     realtime: "Real-time calls", on: "on", off: "off", pwMin: (n) => `passwords ≥ ${n} chars`,
-    rtTitle: "Allowance (in force at once)", rtNote: "Change it here and every client follows at once — new sign-ups get the new allowance, and the account pages, the sign-in pages and the used-up notice all read the server's figures; no release, nothing for anyone to do. Empty puts the environment's value back. A lower figure only changes what new accounts get; nothing is taken from anyone's pool.",
+    rtTitle: "Allowance (in force at once)", rtNote: "Change it here and every client follows at once: new sign-ups get the new allowance, and the account pages, the sign-in pages and the used-up notice all read the server's figures; no release, nothing for anyone to do. Empty puts the environment's value back. A lower figure only changes what new accounts get; nothing is taken from anyone's pool.",
     rtAllowance: "Free allowance for each new account (¥)", rtBonus: "Invite bonus (¥, to both sides)", rtSignup: "Sign-up open", rtSignupOff: "Closed, only members and the list may sign in; whoever is signed in is unaffected.",
     rtEnv: (v) => `environment: ${v}`, rtSet: "set here", rtSave: "Save", rtSaved: "Saved and in force.", rtApply: (n) => `Bring ${n} older account${n === 1 ? "" : "s"} up to the current allowance`, rtApplyNone: "Every account has at least the current allowance.",
     rtApplyConfirm: (n, c) => `Top up the ${n} account(s) that were given less than ¥${c}? Each gets a ledger line saying so.`, rtApplied: (n) => `${n} account(s) topped up.`,
@@ -209,7 +209,7 @@
     syTitle: "Conversation sync", syOn: "Accounts with sync on", syOnSub: (off) => `${fmt(off)} turned it off`, syWith: "Accounts with synced data", syConvs: "Conversations", syMsgs: "Messages", syMsgsSub: (limit) => `at most ${fmt(limit)} per account`, syBytes: "Text stored", syNote: "0.19: the text of conversations synced between an account's devices. User and assistant texts and attachment names and sizes only; no files, no images. Only totals are shown here, never a text; the relay deletes at once when the switch goes off or the person asks.",
     mTurns: "Kept turns", mTurnAccounts: "Accounts with turns kept", mOn: "Turned on", mDefaultOn: "On by default (new accounts)", mOff: "Turned off", mDeleted: "Deleted", dModels: "By model", dApps: "By app", dRecent: "Newest kept turns (open the account for all of them)", dPlatforms: { android: "Android", windows: "runtime on Windows", macos: "runtime on macOS", linux: "runtime on Linux", runtime: "runtime", browser: "browser", other: "other" },
     webTitle: "nanoMuse Web (nanomuse.cn/web)", webLine: (w) => (w ? `${fmt(w.accounts)} accounts with a Muse of their own (cap ${fmt(w.max_accounts)}) · ${fmt(w.running)} running (cap ${fmt(w.max_running)})` : "Not connected: set the relay's WEB_INFO_URL to the gateway's /api/web/info."), webOff: "nanoMuse Web is off",
-    places: (d) => `Where from · last ${d} days`, placesNote: "Guessed from the address (ip2region's offline database: city level in China, country / state elsewhere); no third party is asked. It is where the network exit is — mobile data and proxies skew it.", placesOff: "The location database is not here yet: the relay fetches ip2region_v4.xdb (about 11 MB) into its data directory after start; CLOUD_GEOIP=0 turns this off.", placesFetching: "Fetching the location database…", placesError: (e) => `The location database could not be fetched: ${e}`,
+    places: (d) => `Where from · last ${d} days`, placesNote: "Guessed from the address (ip2region's offline database: city level in China, country / state elsewhere); no third party is asked. It is where the network exit is; mobile data and proxies skew it.", placesOff: "The location database is not here yet: the relay fetches ip2region_v4.xdb (about 11 MB) into its data directory after start; CLOUD_GEOIP=0 turns this off.", placesFetching: "Fetching the location database…", placesError: (e) => `The location database could not be fetched: ${e}`,
     pCountry: "Country / region", pProvince: "Province / state", pAccounts: "Accounts", pNew: "New", pSignins: "Sign-ins", pRequests: "Requests", pDemo: "Demo visitors", pUnknown: "unknown", pLocal: "local network", pNone: "No visits recorded yet.", pAccountsNote: "accounts by their latest address",
     catalog: "Model catalog", catalogNote: "The models under the key beyond the menu: the relay asks each one a one-word question and then shows it a small magenta picture, to learn whether it answers and whether it sees; the answers stand for seven days. The “sees pictures” the apps show is what is here.", catalogOff: "The catalog is off (CLOUD_CATALOG=0).", catalogNames: "Guessed from names, not checked one by one (CLOUD_CATALOG_PROBE=0).", catalogProbing: "Checking…", catalogPending: (n) => `${fmt(n)} to check`, catalogFetched: (t) => `list read ${t}`, catalogError: (e) => `The list could not be read: ${e}`,
     cModel: "Model", cKind: "Kind", cSees: "Sees pictures", cVerified: "Checked", cYes: "yes", cNo: "no", cUnusable: "Models the provider refuses (not offered to the apps)", cNoUnusable: "None refused.", cCount: (n, v) => `${fmt(n)} chat models · ${fmt(v)} see pictures`,
@@ -218,8 +218,8 @@
       title: "Controls", note: "Each switch applies at once and survives a restart; who changed what, and when, is in the log below. A switch says exactly what turning it off does before it flips.",
       names: { free_allowance: "Free allowance", signups: "Sign-ups", cloud_service: "Cloud service", sync: "Conversation sync", hub: "Device hub" },
       what: {
-        free_allowance: "Off: a limited account without a model key of its own is refused the models — HTTP 429, code allowance_exhausted with paused: true, and a message saying the allowance is paused. Members are unaffected; sign-in, devices and sync keep working.",
-        signups: "Off: a phone number or e-mail address without an account is refused a code and a sign-in — HTTP 403, code signup_closed. Existing accounts sign in and work as before.",
+        free_allowance: "Off: a limited account without a model key of its own is refused the models (HTTP 429, code allowance_exhausted with paused: true, and a message saying the allowance is paused). Members are unaffected; sign-in, devices and sync keep working.",
+        signups: "Off: a phone number or e-mail address without an account is refused a code and a sign-in (HTTP 403, code signup_closed). Existing accounts sign in and work as before.",
         cloud_service: "Off: every API call but the health check, /v1/config and this console answers HTTP 503 (code service_paused); every hub socket is closed (4003 hub_paused). Nothing is deleted.",
         sync: "Off: conversation sync pushes and pulls answer HTTP 503 (code sync_paused); what is stored stays, each device keeps working on its own.",
         hub: "Off: the device hub refuses new sockets and closes the open ones (4003 hub_paused); /v1/devices answers 503. Each device keeps working on its own.",
@@ -253,7 +253,7 @@
     bucket: { 0: "¥0", lt1: "<¥1", "1to5": "¥1–5", "5to10": "¥5–10", ge10: "≥¥10" },
     sortBy: { active: "last active", joined: "joined", spent: "spent", today: "spent today", tokens: "tokens", requests: "requests", left: "left", region: "region" },
     cSignups: "Sign-ups", cRegions: "By region", cRegionsIn: (c) => `${c} · by region`, cSpend: "By spend", cActivity: "By activity", cChannel: "By channel", cClients: "By client", cClickNote: "Every piece of a chart is a filter: click it to see only that, click again to let go.", up: "Up a level",
-    thRegion: "Region", moreRows: (n) => `Show ${fmt(n)} more`, exportCsv: "Export CSV", csvNote: "The current selection as the table shows it, phone numbers and addresses included — keep the file to yourself.",
+    thRegion: "Region", moreRows: (n) => `Show ${fmt(n)} more`, exportCsv: "Export CSV", csvNote: "The current selection as the table shows it, phone numbers and addresses included; keep the file to yourself.",
     byDayLabel: "by day", byWeekLabel: "by week",
     pMetric: "Count", pTopCountries: "Countries / regions", pTopProvinces: "Provinces / states", pRowHint: "Click a row to see only that region's accounts under People.",
     kindAll: "All kinds", mShare: "Where the money went", mTop: "Top accounts", mPrices: "Prices",
@@ -953,7 +953,7 @@
   /** Every turn one account kept, newest first, page by page to the first; each row is the whole turn (sampleRow). */
   function samplesBox(accountId) {
     const box = h("div", {}, h("div", { class: "empty" }, T.loading));
-    let before = 0, shown = 0, total = 0;
+    let before = 0, beforeId = "", shown = 0, total = 0;
     const list = h("div", {});
     const foot = h("div", { class: "pager fine" });
     const paint = () => {
@@ -962,13 +962,16 @@
     };
     const load = async () => {
       try {
-        const r = await api("GET", `/v1/admin/samples?account_id=${encodeURIComponent(accountId)}&limit=20${before ? `&before=${before}` : ""}`);
+        // keyset paging on (ts, id): several turns in one second are not skipped
+        const page = before ? `&before=${before}&before_id=${encodeURIComponent(beforeId)}` : "";
+        const r = await api("GET", `/v1/admin/samples?account_id=${encodeURIComponent(accountId)}&limit=20${page}`);
         const items = r.samples || [];
         total = r.total || 0;
         if (shown === 0) box.replaceChildren(...[items.length ? list : h("div", { class: "empty" }, T.noSamples), total ? foot : null].filter(Boolean));
         list.append(...items.map((smp) => sampleRow(smp)));
         shown += items.length;
         before = items.length ? items[items.length - 1].ts : 0;
+        beforeId = items.length ? items[items.length - 1].id : "";
         if (!items.length) total = shown;
         paint();
       } catch (e) { box.replaceChildren(h("div", { class: "hint bad" }, e.message)); }

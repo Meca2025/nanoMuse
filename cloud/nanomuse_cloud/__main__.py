@@ -2,7 +2,8 @@
 
 0.22: `nanomuse-cloud admin controls list|set <switch> on|off` talks to a running relay's
 admin API (so its in-memory switches change at once), with `--base` / `--token` or
-PUBLIC_BASE / CLOUD_ADMIN_TOKEN from the environment (`cloud/.env` is read).
+PUBLIC_BASE / CLOUD_ADMIN_TOKEN from the environment (inside the container they are
+already set from `.env`; from a shell, source it first).
 """
 
 from __future__ import annotations

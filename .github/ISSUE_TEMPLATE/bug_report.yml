@@ -6,8 +6,8 @@ body:
     attributes:
       value: |
         Thanks for taking the time. A bug report we can reproduce is usually fixed within days.
-        **Security issues** (a way past the Sentinel, a leaked secret, an SSRF) go to the address in
-        [SECURITY.md](../blob/main/SECURITY.md), not here.
+        **Security issues** (a way past the Sentinel, a leaked secret, an SSRF) go through GitHub's
+        private reporting, see [SECURITY.md](../blob/main/SECURITY.md), not here.
   - type: textarea
     id: what
     attributes:

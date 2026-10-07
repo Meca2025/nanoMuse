@@ -669,9 +669,9 @@ METRICS: list[Metric] = [
         "errors_daily",
         "Errors by day and code",
         "错误 · 每日按代码",
-        "Per UTC day: every error the relay answered, by its `code` (the relay's own refusals — bad_key, allowance_exhausted, rate_limited, service_paused … — and the provider's, upstream_*), counted as they are sent. "
+        "Per UTC day: every error the relay answered, by its `code` (the relay's own refusals, such as bad_key, allowance_exhausted, rate_limited and service_paused, and the provider's, upstream_*), counted as they are sent. "
         "total = all codes; the twelve most frequent codes of the period get a column, the rest are “other”.",
-        "按 UTC 日：中继返回的每个错误按 code 计数（中继自己的拒绝——bad_key、allowance_exhausted、rate_limited、service_paused…——和服务商的 upstream_*），发送时记入。total = 全部；本期最常见的 12 个 code 各一列，其余归入 other。",
+        "按 UTC 日：中继返回的每个错误按 code 计数（中继自己的拒绝，如 bad_key、allowance_exhausted、rate_limited、service_paused，以及服务商的 upstream_*），发送时记入。total = 全部；本期最常见的 12 个 code 各一列，其余归入 other。",
         "series",
         (DAY, Column("total", "Total", "合计", N)),
         _errors_daily,
@@ -682,9 +682,9 @@ METRICS: list[Metric] = [
         "api_daily",
         "API calls by day",
         "API 请求 · 每日",
-        "Per UTC day: every HTTP request the relay answered, grouped by route — auth (/v1/auth/*), account (/v1/me*, /v1/estimate), chat, images, video (/api/v1/*), models, sync, devices, "
-        "public (/v1/config, /v1/nudges), admin, health, other — counted in the middleware whatever the status. The console's own files (/app/*) and hub WebSocket frames are not API calls and are not here.",
-        "按 UTC 日：中继应答的每个 HTTP 请求按路由分组——auth、account、chat、images、video、models、sync、devices、public、admin、health、other——在中间件里计数，不论状态码。控制台自身的文件（/app/*）和设备通道的 WebSocket 帧不是 API 请求，不在此列。",
+        "Per UTC day: every HTTP request the relay answered, grouped by route: auth (/v1/auth/*), account (/v1/me*, /v1/estimate), chat, images, video (/api/v1/*), models, sync, devices, "
+        "public (/v1/config, /v1/nudges), admin, health, other; counted in the middleware whatever the status. The console's own files (/app/*) and hub WebSocket frames are not API calls and are not here.",
+        "按 UTC 日：中继应答的每个 HTTP 请求按路由分组（auth、account、chat、images、video、models、sync、devices、public、admin、health、other），在中间件里计数，不论状态码。控制台自身的文件（/app/*）和设备通道的 WebSocket 帧不是 API 请求，不在此列。",
         "series",
         (
             DAY,

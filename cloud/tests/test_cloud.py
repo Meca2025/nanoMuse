@@ -1882,6 +1882,31 @@ async def test_requests_under_way_are_held_against_the_allowance():
     assert r.status_code == 429 and r.json()["error"]["code"] == "too_many_in_flight"
 
 
+async def test_samples_page_by_ts_and_id_so_a_busy_second_loses_nothing(stack):
+    """The export reads 1000 rows a page and the console 20; both used to page by `ts<last`,
+    which skipped every other row written in the same second as the page's last one."""
+    app, client, sender, up, cloud = stack
+    data = await sign_up(client, sender)
+    aid = data["account"]["id"]
+    ids = [cloud.db.add_sample(aid, "m", '[{"role":"user","content":"hi"}]', str(i), 1, 1) for i in range(2300)]
+    # all of them land within a second or two: the paging has to cope with a page ending mid-second,
+    # and the order stays newest first by the order they happened, not by the random id
+    lines = [json.loads(ln) for ln in "".join(cloud.export_samples()).splitlines() if ln]
+    assert [ln["id"] for ln in lines] == ids[::-1]
+    # the console's paged view, through the API, same thing
+    admin = {"X-Admin-Token": "admin"}
+    seen: list[str] = []
+    before, before_id = 0, ""
+    while True:
+        q = f"/v1/admin/samples?account_id={aid}&limit=700" + (f"&before={before}&before_id={before_id}" if before else "")
+        items = (await client.get(q, headers=admin)).json()["samples"]
+        if not items:
+            break
+        seen += [s["id"] for s in items]
+        before, before_id = items[-1]["ts"], items[-1]["id"]
+    assert seen == ids[::-1]
+
+
 async def test_admin_health_is_aggregates_only(stack):
     app, client, sender, up, cloud = stack
     admin = {"X-Admin-Token": "admin"}
@@ -2171,7 +2196,7 @@ async def test_me_says_where_the_person_is_and_orders_the_ways_on_by_it(tmp_path
     assert err["guidance"]["region"] == "cn" and err["guidance"]["providers"][0]["id"] == "bailian"
     err = await exhaust(us, "8.8.8.8")
     assert err["region"] == "intl" and [w["id"] for w in err["ways"]] == ["openrouter", "bailian", "invite"]
-    assert "OpenRouter (one account, one key, pay as you go) or OpenAI first" in err["message"]
+    assert "OpenRouter, with one account, one key and pay as you go, or OpenAI first" in err["message"]
     assert "Alibaba Cloud Bailian only signs up accounts from mainland China" in err["message"]
     assert "a plan you already pay for (ChatGPT, Claude or Kimi" in err["message"]
     assert err["openrouter_url"] == "https://openrouter.ai/keys" and err["own_key_docs"] == "https://nanomuse.cn/own-key"

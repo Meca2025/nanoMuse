@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks. A report we can reproduce on a phone is usually fixed in the next version.
-        **Security issues** go to the address in [SECURITY.md](../blob/main/SECURITY.md), not here.
+        **Security issues** go through GitHub's private reporting, see [SECURITY.md](../blob/main/SECURITY.md), not here.
         Do not paste API keys or private conversations.
   - type: textarea
     id: what
