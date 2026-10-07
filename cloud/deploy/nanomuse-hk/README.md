@@ -105,7 +105,7 @@ or `SIGNUP_OPEN=0` in `.env` and `docker compose up -d` to make it the
 default a restart comes back to.
 
 Pausing — the switches under *Controls* on the admin page, or
-`python -m nanomuse_cloud admin controls off <switch> --note "…"` from the
+`python -m nanomuse_cloud admin controls set <switch> off --note "…"` from the
 relay's shell ([docs/cloud.md › Controls](../../../docs/cloud.md#controls)):
 *Free allowance* stops the spending while sign-in, the hub and sync keep
 working (the apps say so and offer the other ways on); *Cloud service*

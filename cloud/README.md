@@ -61,6 +61,16 @@ Errors carry a stable `code` the app can turn into a sentence:
 | 400 | `bad_identifier` | not a phone number or e-mail address |
 | 400 | `phone_region` | a number the SMS sender cannot reach (号码认证 sends to mainland China only); e-mail works everywhere |
 | 400 | `code_wrong` / `code_expired` | verification code |
+| 400 | `channel_unsupported` | this relay's `CODE_SENDER` does not send codes that way (SMS or e-mail); the sentence says which |
+| 502 | `send_failed` | the SMS or mail provider refused or did not answer; the code was not sent |
+| 400 | `bad_credentials` / `no_password` / `password_short` / `password_long` / `password_weak` / `password_wrong` / `password_required` | the password sign-in and the password form (`bad_credentials` is 401; `locked` is 429 after too many wrong passwords) |
+| 404 | `no_session` | the sign-in to revoke no longer exists |
+| 409 | `device_online` | `DELETE /v1/devices/{id}` (or the hub's `forget`) for a device that is connected right now; sign out on it first |
+| 409 | `sync_off` | a `/v1/sync/*` call while the person has conversation sync turned off |
+| 413 | `too_large` | the body is over `MAX_REQUEST_BYTES`, or a profile over its limit; `too_many_conversations` / `too_many_messages` are the sync push's own 413s |
+| 400 | `bad_request` | the body did not parse or a field is wrong; the message says which |
+| 400 | `client_disconnected` | the app went away while its request body was still arriving; nothing reached the provider |
+| 404 | `no_task` | an image or video job id the relay does not know (or not this account's) |
 | 401 | `bad_key` | unknown or revoked key — the phone keeps the account's data aside for the next sign-in |
 | 401 | `account_deleted` | the key's account was deleted (0.1.40; remembered for 90 days) — the phone may delete the account's data |
 | 402 | `out_of_tokens` | grant used up — top up with the admin endpoint |

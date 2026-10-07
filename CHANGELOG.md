@@ -13,6 +13,9 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - Completed the hub protocol page: every error code, the close codes `4001 account_gone` and `4008`, the `actions` and `ip` fields of a device row, and what a client does on each close.
 - Fixed the training-set export (`GET /v1/admin/samples/export`) and the console's turn list skipping turns written in the same second as the last one of a page; both now page by time and id (`before_id`), so a busy second loses nothing.
 - Set the database to `synchronous=NORMAL` under WAL (one fsync per checkpoint instead of per commit) and added indexes for the console's timeline by kind and for the sync tombstone sweep that runs on every push.
+- Fixed the web console showing the server's English line to a disabled account: its table had the sentence under `disabled` while the relay sends `account_disabled`. Added sentences in both languages for `bad_request`, `too_large`, `no_session`, `device_online`, `sync_off`, `invite_code` and `not_found`; a sign-in made by nanoMuse Web is labelled web rather than code; a failed step in the device chat is marked with a word instead of an exclamation mark.
+- Removed the em dashes from the consoles' copy, the statistics' explanations, the threshold notice's subject and the `allowance_exhausted` sentence older apps print as it is; the admin page's token hint names `CLOUD_ADMIN_TOKEN` instead of one deployment's file path.
+- The relay README's error table lists every code the relay sends; `.env.example` names `ALERT_URL` (read by the self-check script) and describes the SMS sender correctly; the deploy README's `admin controls set <switch> off` example matches the CLI.
 
 ### Runtime
 

@@ -43,13 +43,42 @@ def test_web_console_translates_every_refusal_in_both_languages():
     tables = re.findall(r"errors: \{(.*?)\},\n", source, flags=re.S)
     assert len(tables) == 2, "one error table for 简体中文, one for English"
     zh, en = tables
-    for code in CODES_0_22 + ["allowance_exhausted", "bad_key", "phone_region", "disabled"]:
+    # account_disabled is the code the relay sends (service.sign_in); the table once said
+    # "disabled", which nothing sends, so a disabled person read the server's English
+    for code in CODES_0_22 + [
+        "allowance_exhausted",
+        "bad_key",
+        "phone_region",
+        "account_disabled",
+        "bad_request",
+        "too_large",
+        "no_session",
+        "device_online",
+        "sync_off",
+        "invite_code",
+    ]:
         assert f"{code}:" in zh, f"{code} has no Chinese sentence"
         assert f"{code}:" in en, f"{code} has no English sentence"
+    assert "disabled:" not in zh.replace("account_disabled:", "") and "disabled:" not in en.replace("account_disabled:", "")
+    # the step marker for a failed step is a word in each language, not a punctuation mark
+    assert len(re.findall(r"\bfailed: \"", source)) == 2 and 'k: "!"' not in source
     # a paused allowance (429 with paused: true) is said as paused, not as spent
     assert zh.count("e.paused") == 1 and en.count("e.paused") == 1
     # no exclamation marks in what a person reads
     assert "!" not in re.sub(r"[!=]==?|!\w", "", zh + en) and "！" not in zh
+
+
+def test_console_copy_has_no_dashes_in_sentences():
+    """The house rule: what a person reads carries no em dash. Checked on the two string
+    tables (`const T = zh ? {...} : {...}`) of each console; the one-character placeholder
+    for an empty cell (`none: "—"`, `"—"`) is a glyph, not a sentence, and is let through."""
+    for path in (CONSOLE / "app.js", CONSOLE / "admin" / "admin.js"):
+        source = path.read_text(encoding="utf-8")
+        m = re.search(r"const T = zh \? \{(.*?)\n  \};", source, flags=re.S)
+        assert m, f"{path.name}: the T tables were not found"
+        tables = m.group(1).replace('"—"', "")
+        for line in tables.splitlines():
+            assert "—" not in line, f"{path.name}: an em dash in a sentence: {line.strip()[:80]}"
 
 
 def test_admin_console_names_the_star_card_text_in_both_languages():

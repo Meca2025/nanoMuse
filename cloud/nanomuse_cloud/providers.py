@@ -136,20 +136,20 @@ def exhausted_key_line(region: str) -> str:
     that print the relay's sentence as it is."""
     if region == "cn":
         return (
-            "add your own model key — Alibaba Cloud Bailian (阿里云百炼) covers chat, hands, pictures and clips "
+            "add your own model key (Alibaba Cloud Bailian, 阿里云百炼, covers chat, hands, pictures and clips "
             "with one key and has a free tier for mainland China accounts; DeepSeek, Kimi, Zhipu, SiliconFlow, "
-            "Volcengine and MiniMax work too (chat and hands; some draw pictures) — or sign in with a plan you "
+            "Volcengine and MiniMax work too, for chat and hands, and some draw pictures), or sign in with a plan you "
             "already pay for (ChatGPT, Claude or Kimi, where the app has the sign-in)"
         )
     if region == "intl":
         return (
-            "add your own model key — OpenRouter (one account, one key, pay as you go) or OpenAI first; "
+            "add your own model key (OpenRouter, with one account, one key and pay as you go, or OpenAI first; "
             "Anthropic, Gemini, xAI, Groq, Mistral, DeepSeek, Kimi and MiniMax work too, each covering what its "
-            "models can do — or sign in with a plan you already pay for (ChatGPT, Claude or Kimi, where the app "
+            "models can do), or sign in with a plan you already pay for (ChatGPT, Claude or Kimi, where the app "
             "has the sign-in); Alibaba Cloud Bailian only signs up accounts from mainland China"
         )
     return (
         "add your own model key (OpenRouter or OpenAI outside mainland China, Alibaba Cloud Bailian inside, "
-        "or any of the providers the app lists with what each covers) — or sign in with a plan you already "
+        "or any of the providers the app lists with what each covers), or sign in with a plan you already "
         "pay for (ChatGPT, Claude or Kimi, where the app has the sign-in)"
     )
