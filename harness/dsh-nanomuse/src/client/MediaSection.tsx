@@ -65,7 +65,8 @@ export function makeMediaSection(t: Translate) {
     const setModel = (provider: string, id: string) => {
       setBusy('model')
       setError('')
-      void call<MediaView>('media', id === 'off' ? { videoModel: 'off' } : { videoModel: id, videoProvider: provider })
+      // `auto` drops the stored choice (an empty model); the slot follows the order again
+      void call<MediaView>('media', id === 'off' ? { videoModel: 'off' } : id === 'auto' ? { videoModel: '' } : { videoModel: id, videoProvider: provider })
         .then((v) => { setView(v); models.reload() })
         .catch((err: unknown) => setError((err as Error).message))
         .finally(() => setBusy(null))
@@ -73,7 +74,7 @@ export function makeMediaSection(t: Translate) {
     const setImage = (provider: string, id: string) => {
       setBusy('image')
       setError('')
-      void call('image-model', { model: id, provider })
+      void call('image-model', id === 'auto' ? { model: '' } : { model: id, provider })
         .then(() => { reload(); models.reload() })
         .catch((err: unknown) => setError((err as Error).message))
         .finally(() => setBusy(null))

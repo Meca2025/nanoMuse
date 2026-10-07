@@ -28,6 +28,16 @@ export interface SlotView {
   chosen: boolean
   /** The clips are switched off (the video slot only). */
   off?: boolean
+  /** What *Automatic* resolves to right now (the three dependent slots); `model` '' when nothing can. Absent on an older host. */
+  auto?: { provider: string; providerLabel: string; model: string }
+}
+
+/** The slots that follow the order unless the person chose: everything but chat, the anchor. */
+export const DEPENDENT: readonly Slot[] = ['hands', 'image', 'video']
+
+/** `<provider> · <model>`, as the page writes a value. */
+export function valueText(provider: string, providerLabel: string, model: string): string {
+  return `${providerLabel || provider} · ${model}`
 }
 
 /** `GET /models`. */
@@ -77,11 +87,14 @@ export function useModels(): { view: ModelsView | undefined; error: string | und
  * One picker: `nanoMuse Cloud` first (its recommended model marked), then one group per own
  * provider. The value is `<provider>\0<model>`; a current model the list does not carry (an
  * older choice, a model the provider stopped listing) is shown as its own option so the
- * picker never looks empty.
+ * picker never looks empty. The three dependent slots have *Automatic* first: selected when
+ * no choice is stored, and picking it drops the stored choice (`onPick('', 'auto')`) so the
+ * slot follows the order again; the video slot's *Off* sits under it.
  */
 export function SlotPicker({ t, slot, view, disabled, onPick }: { t: Translate; slot: Slot; view: SlotView; disabled: boolean; onPick(provider: string, model: string): void }): ReactNode {
-  const value = view.off ? 'off' : view.model ? `${view.provider}${SEP}${view.model}` : ''
-  const known = value === 'off' || view.options.some((o) => `${o.provider}${SEP}${o.id}` === value)
+  const automatic = DEPENDENT.includes(slot)
+  const value = view.off ? 'off' : automatic && !view.chosen ? 'auto' : view.model ? `${view.provider}${SEP}${view.model}` : ''
+  const known = value === 'off' || value === 'auto' || view.options.some((o) => `${o.provider}${SEP}${o.id}` === value)
   const groups = new Map<string, ModelOption[]>()
   for (const o of view.options) groups.set(o.providerLabel, [...(groups.get(o.providerLabel) ?? []), o])
   return h('select', {
@@ -93,10 +106,12 @@ export function SlotPicker({ t, slot, view, disabled, onPick }: { t: Translate; 
     onChange: (e: { currentTarget: HTMLSelectElement }) => {
       const [provider, model] = e.currentTarget.value.split(SEP)
       if (slot === 'video' && e.currentTarget.value === 'off') onPick('', 'off')
+      else if (automatic && e.currentTarget.value === 'auto') onPick('', 'auto')
       else if (provider && model) onPick(provider, model)
     },
   },
-    known ? null : h('option', { value }, value ? `${view.providerLabel || view.provider} · ${view.model}` : t('mdPick')),
+    known ? null : h('option', { value }, value ? valueText(view.provider, view.providerLabel, view.model) : t('mdPick')),
+    automatic ? h('option', { value: 'auto' }, t('mlAutomatic')) : null,
     slot === 'video' ? h('option', { value: 'off' }, t('mdVideoOff')) : null,
     [...groups.entries()].map(([label, options]) => h('optgroup', { key: label, label }, options.map((o) => h('option', { key: `${o.provider}${SEP}${o.id}`, value: `${o.provider}${SEP}${o.id}` }, o.recommended ? `${o.name} · ${t('mlRecommended')}` : o.name)))))
 }
@@ -115,10 +130,11 @@ export function makeModelsSection(t: Translate) {
     const pick = (slot: Slot, provider: string, model: string) => {
       setBusy(slot)
       setFailed(undefined)
-      call<SlotView>(ROUTE[slot], model === 'off' ? { model: 'off' } : { model, provider })
+      // `auto` drops the stored choice (`model: ''`), nothing else; the row then says what the order gives
+      call<SlotView>(ROUTE[slot], model === 'off' ? { model: 'off' } : model === 'auto' ? { model: '' } : { model, provider })
         .then((row) => {
           if (view && (slot === 'image' || slot === 'video') && row && 'options' in row) setView({ ...view, slots: { ...view.slots, [slot]: row } })
-          setSaid((prev) => ({ ...prev, [slot]: slot === 'chat' ? t('mlAppliesNew') : slot === 'hands' ? t('mlHandsLive') : t('mlSaved') }))
+          setSaid((prev) => ({ ...prev, [slot]: model === 'auto' ? undefined : slot === 'chat' ? t('mlAppliesNew') : slot === 'hands' ? t('mlHandsLive') : t('mlSaved') }))
           reload()
         })
         .catch((err: unknown) => setFailed(t('failed', { message: (err as Error).message })))
@@ -137,7 +153,10 @@ export function makeModelsSection(t: Translate) {
         const sentence = gate ? t(slot === 'chat' ? 'ownKeyNoChat' : slot === 'hands' ? 'ownKeyNoVision' : slot === 'image' ? 'ownKeyNoImage' : 'ownKeyNoVideo', { providers: providersNamed(t, gate, CAPABILITY[slot]) }) : ''
         sub = h(Fragment, null, sentence, sentence ? ' ' : null, addLink)
       } else if (said[slot]) sub = said[slot]
-      else sub = slotSub(t, slot)
+      else if (DEPENDENT.includes(slot) && !row.chosen && !row.off && row.auto?.model) {
+        // on *Automatic*: what the order gives right now, under the row's sentence
+        sub = `${slotSub(t, slot)} ${t('mlCurrently', { model: valueText(row.auto.provider, row.auto.providerLabel, row.auto.model) })}`
+      } else sub = slotSub(t, slot)
       return h('div', { key: slot, className: 'nm-row', 'data-testid': `nm-ml-row-${slot}` },
         h('span', { className: 'nm-row-icon' }, slotIcon(slot)),
         h('div', { className: 'nm-row-main' },

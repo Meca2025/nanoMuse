@@ -315,6 +315,8 @@ export interface SlotView {
   chosen: boolean
   /** The clips are switched off (the video slot only). */
   off?: boolean
+  /** What *Automatic* resolves to right now (the three dependent slots): the order without the stored choice; `model` '' when nothing can. */
+  auto?: { provider: string; providerLabel: string; model: string }
 }
 
 /** `GET /models`: the page in one read. */
@@ -1060,8 +1062,9 @@ export default class NanomuseCloud extends Service {
    * runtime only speaks OpenAI's shape (and the ChatGPT backend), so an Anthropic or
    * native-Gemini row never drives the hands.
    */
-  handsChoice(): { provider: string; model: string } {
-    const chosen = this.state.handsModel
+  handsChoice(opts: { auto?: boolean } = {}): { provider: string; model: string } {
+    // `auto`: the order as if nothing were chosen (what the *Automatic* entry would give)
+    const chosen = opts.auto ? undefined : this.state.handsModel
     const own = this.state.providers ?? {}
     if (chosen && this.state.handsProvider) {
       const row = own[this.state.handsProvider]
@@ -1568,13 +1571,22 @@ export default class NanomuseCloud extends Service {
     const video = await this.videoEndpoint()
     const media = this.state.media ?? {}
     const slot = (provider: string, model: string, options: ModelOption[], chosen: boolean): SlotView => ({ provider, providerLabel: provider ? this.labelOf(provider) : '', model, options, chosen })
+    // what *Automatic* gives right now: the order with the stored choice set aside
+    const auto = (provider: string, model: string): NonNullable<SlotView['auto']> => ({ provider, providerLabel: provider ? this.labelOf(provider) : '', model })
+    const handsAuto = this.handsChoice({ auto: true })
+    const imageAuto = await this.imageEndpoint({ auto: true })
+    const videoAuto = await this.videoEndpoint({ auto: true })
+    // `chosen`: a stored choice that is the one in use (a stale one, say of a row that went, counts as automatic)
+    const handsChosen = Boolean(this.state.handsModel) && hands.model === this.state.handsModel && hands.provider === (this.state.handsProvider ?? PROVIDER_ID)
+    const imageChosen = Boolean(media.imageModel) && image?.model === media.imageModel && image?.instanceId === (media.imageProvider ?? PROVIDER_ID)
+    const videoChosen = Boolean(media.videoModel) && media.videoModel !== VIDEO_OFF && video?.model === media.videoModel && (!media.videoProvider || video?.instanceId === media.videoProvider)
     return {
       signedIn,
       slots: {
         chat: slot(chat.provider, chat.model, this.chatOptions(), Boolean(chat.provider)),
-        hands: slot(hands.provider, hands.model, this.handsOptions(), Boolean(this.state.handsModel)),
-        image: slot(image?.instanceId ?? '', image?.model ?? '', this.imageOptions(), Boolean(media.imageModel)),
-        video: { ...slot(video?.instanceId ?? '', video?.model ?? '', await this.videoOptions(), Boolean(media.videoModel)), ...(media.videoModel === VIDEO_OFF ? { off: true } : {}) },
+        hands: { ...slot(hands.provider, hands.model, this.handsOptions(), handsChosen), auto: auto(handsAuto.provider, handsAuto.model) },
+        image: { ...slot(image?.instanceId ?? '', image?.model ?? '', this.imageOptions(), imageChosen), auto: auto(imageAuto?.instanceId ?? '', imageAuto?.model ?? '') },
+        video: { ...slot(video?.instanceId ?? '', video?.model ?? '', await this.videoOptions(), videoChosen), ...(media.videoModel === VIDEO_OFF ? { off: true } : {}), auto: auto(videoAuto?.instanceId ?? '', videoAuto?.model ?? '') },
       },
       handsExcluded: this.handsExcluded(),
     }
@@ -1818,7 +1830,7 @@ export default class NanomuseCloud extends Service {
    * own row with image models. `cloud: true` asks for the account whatever the order says
    * (*Use nanoMuse Cloud this time*). Nothing when no source has one.
    */
-  async imageEndpoint(opts: { cloud?: boolean } = {}): Promise<ImageEndpoint | undefined> {
+  async imageEndpoint(opts: { cloud?: boolean; auto?: boolean } = {}): Promise<ImageEndpoint | undefined> {
     const cloud = async (model = this.imageModel()): Promise<ImageEndpoint | undefined> => {
       const token = this.signedInCache && this.state.account ? await this.token() : undefined
       if (!token || !model) return undefined
@@ -1833,7 +1845,7 @@ export default class NanomuseCloud extends Service {
       if (!apiKey && row.keyRef) return undefined
       return { shape: imageShapeOf(row.provider, row.baseURL), baseURL: row.baseURL, apiKey, model, label: row.label, instanceId: id }
     }
-    if (media.imageModel) {
+    if (media.imageModel && !opts.auto) {
       if (!media.imageProvider || media.imageProvider === PROVIDER_ID) {
         if ((this.state.models ?? []).some((m) => m.kind === 'image' && m.id === media.imageModel)) {
           const ep = await cloud(media.imageModel)
@@ -1989,9 +2001,9 @@ export default class NanomuseCloud extends Service {
    * or no key speaks DashScope (OpenRouter and the like have no video API). `cloud: true` asks
    * for the account whatever the order says.
    */
-  async videoEndpoint(opts: { cloud?: boolean } = {}): Promise<VideoEndpoint | undefined> {
+  async videoEndpoint(opts: { cloud?: boolean; auto?: boolean } = {}): Promise<VideoEndpoint | undefined> {
     const media = this.state.media ?? {}
-    if (media.videoModel === VIDEO_OFF && !opts.cloud) return undefined
+    if (media.videoModel === VIDEO_OFF && !opts.cloud && !opts.auto) return undefined
     const token = this.signedInCache && this.state.account ? await this.token() : undefined
     const cloudModels = this.cloudVideoModels()
     const cloud = (wanted?: string): VideoEndpoint | undefined => {
@@ -2011,7 +2023,7 @@ export default class NanomuseCloud extends Service {
       }
       return { host: row.host, apiKey: row.apiKey, model, label: row.label, instanceId: row.id }
     }
-    if (media.videoModel && media.videoModel !== VIDEO_OFF) {
+    if (media.videoModel && media.videoModel !== VIDEO_OFF && !opts.auto) {
       if (media.videoProvider === PROVIDER_ID) {
         const ep = cloud(media.videoModel)
         if (ep) return ep
