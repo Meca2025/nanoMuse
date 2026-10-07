@@ -20,6 +20,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### iOS
 
+- **The model pickers fold long groups and can be searched.** Each provider group on *Settings › Models* shows at most eight models (the provider's catalogue default for that job first, then the one chosen, then the rest as the provider lists them) and ends in *Show n more* when it has more; once the groups together hold more than eight, a *Search models* field under the Automatic row filters every group live by model id or display name, shows every match, hides groups without one, and says *No model matches* when nothing fits. A key like OpenRouter or SiliconFlow no longer turns the picker into an endless list.
+
 ### Project
 
 ## [0.1.41] - 2026-10-07 · Choice

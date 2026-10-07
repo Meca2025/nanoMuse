@@ -84,6 +84,9 @@ struct NanoMuseSlotProvider: Equatable, Sendable {
     var defaults: [String: String]
     /// The models the app can list for each slot, the recommended one first.
     var models: [NanoMuseSlot: [String]]
+    /// A model's display name where the provider gave one that differs from the id; the
+    /// picker's search matches on both.
+    var names: [String: String] = [:]
 
     func models(for slot: NanoMuseSlot) -> [String] { models[slot] ?? [] }
 
@@ -143,6 +146,61 @@ enum NanoMuseSlotResolver {
     static func automatic(slot: NanoMuseSlot, chatProviderId: String?, providers: [NanoMuseSlotProvider]) -> NanoMuseSlotChoice? {
         resolve(slot: slot, chosen: nil, chatProviderId: chatProviderId, providers: providers)
     }
+}
+
+// MARK: - The picker's groups (pure, tested)
+
+/// How a picker lays out one provider's models so a key with hundreds of them does not
+/// become an endless list (the same contract on Android, the desktop and the web): a group
+/// shows at most `fold` rows until its *Show n more* row is tapped, the provider's default
+/// for the slot first, then the chosen model, then the rest as the list came; a search field
+/// appears once the groups together hold more than `fold` rows and filters every group by a
+/// case-insensitive substring of the model id or its display name, with no cap while a query
+/// is present.
+enum NanoMusePickerList {
+    /// The most rows a group shows before it is expanded.
+    static let fold = 8
+
+    /// A group's rows in the picker's order: `preferred` (the provider's default for the
+    /// slot; the relay's recommended one for Cloud) first when it is in the list, then
+    /// `chosen` when it is in the list and not already placed, then the rest in the order
+    /// they came. Nothing is added that was not in `models`.
+    static func ordered(_ models: [String], preferred: String?, chosen: String?) -> [String] {
+        var out: [String] = []
+        for top in [preferred, chosen] {
+            if let top, models.contains(top), !out.contains(top) { out.append(top) }
+        }
+        return out + models.filter { !out.contains($0) }
+    }
+
+    /// The rows a collapsed group shows: the first `fold` of `ordered`, or all of them when
+    /// `expanded`. `hidden` is how many the *Show n more* row stands for; 0 means no such row.
+    static func collapsed(_ ordered: [String], expanded: Bool) -> (shown: [String], hidden: Int) {
+        if expanded || ordered.count <= fold { return (ordered, 0) }
+        return (Array(ordered.prefix(fold)), ordered.count - fold)
+    }
+
+    /// The query as the filter reads it: trimmed and lowercased; empty means no query.
+    static func normalized(_ query: String) -> String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    /// Whether a model stays in view for `query` (already normalized): the id or the display
+    /// name contains it, case-insensitively. An empty query keeps everything.
+    static func matches(_ model: String, name: String?, query: String) -> Bool {
+        if query.isEmpty { return true }
+        if model.lowercased().contains(query) { return true }
+        if let name, name.lowercased().contains(query) { return true }
+        return false
+    }
+
+    /// The matches of a group for `query` (normalized), all of them, in `ordered`'s order.
+    static func filtered(_ ordered: [String], names: [String: String], query: String) -> [String] {
+        ordered.filter { matches($0, name: names[$0], query: query) }
+    }
+
+    /// Whether the picker shows its search field: the groups together hold more than `fold` rows.
+    static func offersSearch(total: Int) -> Bool { total > fold }
 }
 
 // MARK: - The relay's menu, kept on the phone (pure parts tested)
@@ -257,10 +315,14 @@ enum NanoMuseModelSlots {
         let menu = NanoMuseRelayMenu.cached
         var models: [NanoMuseSlot: [String]] = [:]
         var defaults: [String: String] = [:]
+        var names: [String: String] = [:]
         if !menu.isEmpty {
             for slot in NanoMuseSlot.allCases {
                 models[slot] = NanoMuseRelayMenu.models(for: slot, in: menu)
                 if let top = NanoMuseRelayMenu.recommended(for: slot, in: menu) { defaults[slot.defaultsKey] = top }
+            }
+            for m in menu {
+                if let id = m["id"] as? String, let name = m["name"] as? String, !name.isEmpty, name != id { names[id] = name }
             }
         } else {
             let entries = ProviderConfigStore.shared.visibleEntries(for: inst.id)
@@ -269,10 +331,19 @@ enum NanoMuseModelSlots {
             models[.hands] = chat.filter(sees).map(\.model.id)
             models[.image] = entries.filter { NanoMuseImageGen.drawsNatively($0.model.id) || ($0.model.modalityOverride ?? $0.model.capabilities.supportedModalities) == [.textInput, .imageOutput] }.map(\.model.id)
             models[.video] = entries.filter { NanoMuseVideoGen.looksLikeVideoModel($0.model.id) }.map(\.model.id)
+            names = displayNames(entries)
         }
         // the relay chats, sees, draws and makes clips for every account; the menu only names the models
         let capabilities = Set(NanoMuseSlot.allCases.map(\.capability))
-        return NanoMuseSlotProvider(id: inst.id, label: NanoMuseCloud.label, isCloud: true, capabilities: capabilities, defaults: defaults, models: models)
+        return NanoMuseSlotProvider(id: inst.id, label: NanoMuseCloud.label, isCloud: true, capabilities: capabilities, defaults: defaults, models: models, names: names)
+    }
+
+    /// The display names the entries carry where they differ from the id, for the picker's search.
+    private static func displayNames(_ entries: [ModelEntry]) -> [String: String] {
+        entries.reduce(into: [String: String]()) { out, e in
+            let name = e.model.displayName
+            if !name.isEmpty, name != e.model.id { out[e.model.id] = name }
+        }
     }
 
     /// A provider of the person's own as a slot provider: its catalogue entry's capabilities
@@ -298,7 +369,7 @@ enum NanoMuseModelSlots {
             let known = inst.credentialType == .oauth ? vendor.capabilitiesFor(vendor.signIn) : vendor.capabilities
             capabilities = capabilities.intersection(known)
         }
-        return NanoMuseSlotProvider(id: inst.id, label: inst.label, isCloud: false, capabilities: capabilities, defaults: vendor?.defaults ?? [:], models: models)
+        return NanoMuseSlotProvider(id: inst.id, label: inst.label, isCloud: false, capabilities: capabilities, defaults: vendor?.defaults ?? [:], models: models, names: displayNames(entries))
     }
 
     /// Every provider the pickers list: nanoMuse Cloud first when signed in, then the person's own in the order they were added.
