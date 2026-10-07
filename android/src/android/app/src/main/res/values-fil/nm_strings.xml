@@ -983,6 +983,8 @@
     <string name="nm_connectors_client_copy">Kopyahin</string>
     <string name="nm_connectors_client_id">Client ID ng OAuth</string>
     <string name="nm_connectors_client_secret">Client secret ng OAuth (kung mayroon)</string>
+    <string name="nm_secret_show">Ipakita ang key</string>
+    <string name="nm_secret_hide">Itago ang key</string>
     <string name="nm_connectors_connected_sub">Konektado bilang MCP server na “%1$s”. Available ang mga tool nito sa bawat chat.</string>
     <string name="nm_connectors_cat_work">Trabaho</string>
     <string name="nm_connectors_cat_talk">Pagmemensahe</string>

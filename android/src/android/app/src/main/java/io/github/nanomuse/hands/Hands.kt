@@ -11,7 +11,10 @@ import com.openminis.app.data.model.ProviderInstance
 import com.openminis.app.data.model.hasImageInput
 import com.openminis.app.data.repository.ProviderRepository
 import io.github.nanomuse.cloud.NanoMuseCloud
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -35,6 +38,17 @@ object Hands {
 
     fun enabled(context: Context): Boolean = prefs(context).getBoolean(KEY_ENABLED, false)
     fun setEnabled(context: Context, on: Boolean) { prefs(context).edit().putBoolean(KEY_ENABLED, on).apply() }
+
+    /** The switch as a flow: the current value, then every change, wherever it is made. */
+    fun enabledFlow(context: Context): Flow<Boolean> = callbackFlow {
+        val p = prefs(context.applicationContext)
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == KEY_ENABLED) trySend(p.getBoolean(KEY_ENABLED, false))
+        }
+        p.registerOnSharedPreferenceChangeListener(listener)
+        trySend(p.getBoolean(KEY_ENABLED, false))
+        awaitClose { p.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 
     /** The chosen screen model's entry id; null means "pick one" ([screenModel]). */
     fun modelEntryId(context: Context): String? = prefs(context).getString(KEY_MODEL, null)?.takeIf { it.isNotBlank() }

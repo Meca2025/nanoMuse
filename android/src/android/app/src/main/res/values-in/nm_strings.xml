@@ -979,6 +979,8 @@
     <string name="nm_connectors_client_copy">Salin</string>
     <string name="nm_connectors_client_id">Client ID OAuth</string>
     <string name="nm_connectors_client_secret">Client secret OAuth (jika ada)</string>
+    <string name="nm_secret_show">Tampilkan kunci</string>
+    <string name="nm_secret_hide">Sembunyikan kunci</string>
     <string name="nm_connectors_connected_sub">Terhubung sebagai server MCP “%1$s”. Alat-alatnya tersedia di setiap chat.</string>
     <string name="nm_connectors_cat_work">Kerja</string>
     <string name="nm_connectors_cat_talk">Perpesanan</string>

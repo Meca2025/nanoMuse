@@ -979,6 +979,8 @@
     <string name="nm_connectors_client_copy">Salin</string>
     <string name="nm_connectors_client_id">ID klien OAuth</string>
     <string name="nm_connectors_client_secret">Rahsia klien OAuth (jika ada)</string>
+    <string name="nm_secret_show">Tunjukkan kunci</string>
+    <string name="nm_secret_hide">Sembunyikan kunci</string>
     <string name="nm_connectors_connected_sub">Bersambung sebagai pelayan MCP “%1$s”. Alatnya tersedia dalam setiap sembang.</string>
     <string name="nm_connectors_cat_work">Kerja</string>
     <string name="nm_connectors_cat_talk">Pemesejan</string>

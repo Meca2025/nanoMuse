@@ -979,6 +979,8 @@
     <string name="nm_connectors_client_copy">คัดลอก</string>
     <string name="nm_connectors_client_id">Client ID ของ OAuth</string>
     <string name="nm_connectors_client_secret">OAuth client secret (ถ้ามี)</string>
+    <string name="nm_secret_show">แสดงคีย์</string>
+    <string name="nm_secret_hide">ซ่อนคีย์</string>
     <string name="nm_connectors_connected_sub">เชื่อมต่อแล้วในชื่อเซิร์ฟเวอร์ MCP “%1$s” เครื่องมือของมันใช้ได้ในทุกแชท</string>
     <string name="nm_connectors_cat_work">งาน</string>
     <string name="nm_connectors_cat_talk">การส่งข้อความ</string>

@@ -64,6 +64,8 @@ object HubActions {
     private val GATED = setOf("shell", "files", "file.get", "file.put", "open", "screen")
     /** Cards of tasks running here that travelled to the device that asked (card id → device id). */
     private val relayed = java.util.concurrent.ConcurrentHashMap<String, String>()
+    /** Tasks running here for other devices, so `stop` can find them. */
+    private val running = HubTasks()
 
     fun handle(context: Context, call: IncomingCall) {
         if (call.action == "info") { call.result(info(context)); return }
@@ -84,7 +86,7 @@ object HubActions {
                 "notify" -> call.result(notify(context, call.args.optString("text"), call.args.optString("title").ifBlank { "nanoMuse" }, call.senderName))
                 "task" -> task(context, call)
                 "approve" -> approve(call)
-                "stop" -> call.result(JSONObject().put("stopped", false))
+                "stop" -> call.result(JSONObject().put("stopped", stop(context, call)))
                 else -> call.fail("unknown_action", "this phone does not do '${call.action}'")
             }
         } catch (e: Refused) {
@@ -278,20 +280,25 @@ object HubActions {
         if (text.isEmpty()) { call.fail("usage", "text is required"); return }
         val app = context.applicationContext as? MinisApp
         if (app == null || !app.subsystemsReady()) { call.fail("not_ready", "nanoMuse on the phone is still starting"); return }
-        val conversation = call.args.optString("conversation").ifBlank { "from-" + call.from.optString("id").ifBlank { "unknown" } }
+        val senderId = call.from.optString("id")
+        val conversation = running.conversationKey(senderId, call.args.optString("conversation"))
         val sessionId = runBlocking { sessionFor(app, conversation, call.senderName) }
         if (sessionId == null) { call.fail("no_model", "the phone has no model to think with; sign in to nanoMuse Cloud there"); return }
         call.event(JSONObject().put("stage", "thinking").put("session", sessionId))
         AgentForegroundService.startService(app, sessionCount = 1, toolStatus = context.getString(R.string.nm_hub_task_from, call.senderName))
         val prompt = if (call.senderKind == "web") text else context.getString(R.string.nm_hub_task_prefix, call.senderName) + "\n\n" + text
         val relay = relayApprovals(context, call, sessionId)
+        running.started(call.id, senderId, conversation, sessionId)
+        val stopped: Boolean
         val result = try {
             runBlocking {
                 HeadlessChatRunner.prompt(context = app, sessionId = sessionId, text = prompt, attachments = emptyList(), thinkingLevel = null, wait = true, timeoutMs = TASK_TIMEOUT_MS)
             }
         } finally {
             relay.cancel()
+            stopped = running.finished(call.id)
         }
+        if (stopped) { call.fail("cancelled", "${call.senderName} stopped this task"); return }
         val answer = result.responseText?.trim().orEmpty()
         if (result.timedOut) { call.fail("timeout", "the phone's agent did not finish within ten minutes"); return }
         if (result.status == "Error" && answer.isEmpty()) { call.fail("failed", "the phone's agent could not run this"); return }
@@ -339,6 +346,18 @@ object HubActions {
             }
         }
         return scope
+    }
+
+    /**
+     * `stop {call}` or `stop {conversation}` from the device that asked for a task: ends the run
+     * here after the step in flight, the way Stop in the chat does; the task then answers
+     * `cancelled`. Only the asker's own runs; `{stopped: false}` when there is nothing to end.
+     */
+    private fun stop(context: Context, call: IncomingCall): Boolean {
+        val sessionId = running.find(call.from.optString("id"), call.args.optString("call"), call.args.optString("conversation")) ?: return false
+        val ended = runBlocking { runCatching { HeadlessChatRunner.cancel(context, sessionId) }.getOrDefault(false) }
+        if (ended) running.markStopped(sessionId)
+        return ended
     }
 
     /**

@@ -2,6 +2,7 @@ package io.github.nanomuse.library
 
 import android.content.Context
 import com.openminis.app.data.repository.ChatRepository
+import io.github.nanomuse.account.AccountData
 import com.openminis.app.ui.sandbox.FileItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,6 +26,11 @@ data class LibraryEntry(
  * (`minis-sessions/<id>/workspace` = `/var/minis/workspace`) or the shared folder
  * (`minis-global/shared` = `/var/minis/shared`), newest first. Muse splits this into
  * "artifacts" and "media"; so do we, by extension.
+ *
+ * Whose files: the same rule as the chat list (contract C12, [AccountScope]). A workspace is
+ * listed when its session is one the lists show, the signed-in account's own (or, signed out,
+ * the local ones); another account's sessions and workspaces whose session is gone stay out.
+ * The shared folder is the account's too: [AccountData.leave] puts it aside with the account.
  */
 object LibraryIndex {
     private const val MAX_DEPTH = 4
@@ -38,10 +44,11 @@ object LibraryIndex {
     suspend fun scan(context: Context, chatRepository: ChatRepository): List<LibraryEntry> = withContext(Dispatchers.IO) {
         val titles = runCatching { chatRepository.dao.listSessions().associate { it.id to (it.title ?: "") } }
             .getOrDefault(emptyMap())
+        val hidden = runCatching { AccountData.reconcile(context) }.getOrDefault(emptySet())
         val out = ArrayList<LibraryEntry>()
         val sessionsRoot = File(context.filesDir, "minis-sessions")
         sessionsRoot.listFiles()?.forEach { sessionDir ->
-            if (!sessionDir.isDirectory || sessionDir.name.startsWith("__new__")) return@forEach
+            if (!sessionDir.isDirectory || !shows(sessionDir.name, titles.keys, hidden)) return@forEach
             val ws = File(sessionDir, "workspace")
             if (ws.isDirectory) {
                 walk(ws, 0) { f ->
@@ -56,6 +63,14 @@ object LibraryIndex {
         out.sortByDescending { it.item.modifiedMs }
         out.take(MAX_ENTRIES)
     }
+
+    /**
+     * Whether the workspace of [sessionId] is listed: a session the chat list has ([known])
+     * and does not hide for the signed-in account ([hidden]). A directory with no session
+     * behind it (a chat deleted, a `__new__` draft) is not.
+     */
+    fun shows(sessionId: String, known: Set<String>, hidden: Set<String>): Boolean =
+        sessionId in known && sessionId !in hidden
 
     private fun entry(f: File, root: File, linuxRoot: String, sessionId: String?, title: String?): LibraryEntry {
         val item = FileItem.from(f) ?: FileItem(f, f.name, false, false, f.length(), f.lastModified())

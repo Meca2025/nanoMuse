@@ -979,6 +979,8 @@
     <string name="nm_connectors_client_copy">コピー</string>
     <string name="nm_connectors_client_id">OAuth クライアント ID</string>
     <string name="nm_connectors_client_secret">OAuth クライアントシークレット（あれば）</string>
+    <string name="nm_secret_show">キーを表示</string>
+    <string name="nm_secret_hide">キーを隠す</string>
     <string name="nm_connectors_connected_sub">MCP サーバー「%1$s」として接続済み。そのツールはすべてのチャットで使えます。</string>
     <string name="nm_connectors_cat_work">仕事</string>
     <string name="nm_connectors_cat_talk">メッセージ</string>

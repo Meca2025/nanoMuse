@@ -950,6 +950,8 @@
     <string name="nm_connectors_client_copy">複製</string>
     <string name="nm_connectors_client_id">OAuth 用戶端 ID</string>
     <string name="nm_connectors_client_secret">OAuth 用戶端密鑰（如有）</string>
+    <string name="nm_secret_show">顯示金鑰</string>
+    <string name="nm_secret_hide">隱藏金鑰</string>
     <string name="nm_connectors_connected_sub">已作為 MCP 伺服器「%1$s」連接。它的工具在每個對話裡都可用。</string>
     <string name="nm_connectors_cat_work">工作</string>
     <string name="nm_connectors_cat_talk">溝通</string>
