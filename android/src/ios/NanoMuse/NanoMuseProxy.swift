@@ -225,6 +225,43 @@ enum NanoMuseProxy {
         return s
     }
 
+    /// A session with timeouts of its own that follows the proxy setting the same way
+    /// `session` does: the image and video generators hold one each, so a picture drawn with
+    /// a key of one's own goes the way the person set under Network, like a chat turn does.
+    /// Rebuilt when the setting or the routed hosts change; the old one finishes its tasks.
+    final class SessionSlot: @unchecked Sendable {
+        let requestTimeout: TimeInterval
+        let resourceTimeout: TimeInterval
+        private let lock = NSLock()
+        private var cached: (config: Config, hosts: [String], session: URLSession)?
+
+        init(requestTimeout: TimeInterval, resourceTimeout: TimeInterval) {
+            self.requestTimeout = requestTimeout
+            self.resourceTimeout = resourceTimeout
+        }
+
+        var session: URLSession {
+            let c = NanoMuseProxy.config()
+            let hosts = c.usable ? NanoMuseProxy.routedHosts() : []
+            lock.lock(); defer { lock.unlock() }
+            if let s = cached, s.config == c, s.hosts == hosts { return s.session }
+            let configuration = URLSessionConfiguration.default
+            configuration.urlCache = nil
+            configuration.timeoutIntervalForRequest = requestTimeout
+            configuration.timeoutIntervalForResource = resourceTimeout
+            if c.usable {
+                configuration.connectionProxyDictionary = [
+                    "ProxyAutoConfigEnable": 1,
+                    "ProxyAutoConfigJavaScript": NanoMuseProxy.pacScript(c, hosts: hosts),
+                ]
+            }
+            let s = URLSession(configuration: configuration)
+            cached?.session.finishTasksAndInvalidate()
+            cached = (c, hosts, s)
+            return s
+        }
+    }
+
     // MARK: - The Test row
 
     struct Probe: Sendable {

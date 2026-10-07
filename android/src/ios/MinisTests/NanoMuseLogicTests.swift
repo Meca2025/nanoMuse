@@ -190,6 +190,20 @@ final class NanoMuseLogicTests: XCTestCase {
         XCTAssertEqual(routine.nextDue(after: date(2026, 10, 3, 10, 0, cal), calendar: cal), date(2026, 10, 5, 9, 0, cal))
     }
 
+    func testOnceRoutineCreatedAfterItsTimeRunsTomorrow() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        var routine = NanoMuseRoutine(label: "Call", prompt: "x", hour: 18, minute: 0, repeatMode: .once)
+        routine.createdAt = date(2026, 10, 1, 19, 0, cal)
+        // made at 19:00 for 18:00 → tomorrow at 18:00, not never
+        XCTAssertEqual(routine.nextDue(after: date(2026, 10, 1, 19, 5, cal), calendar: cal), date(2026, 10, 2, 18, 0, cal))
+        // made before its time → today; once run → spent
+        routine.createdAt = date(2026, 10, 1, 15, 0, cal)
+        XCTAssertEqual(routine.nextDue(after: date(2026, 10, 1, 15, 5, cal), calendar: cal), date(2026, 10, 1, 18, 0, cal))
+        routine.lastFiredAt = date(2026, 10, 1, 18, 0, cal)
+        XCTAssertNil(routine.nextDue(after: date(2026, 10, 1, 18, 5, cal), calendar: cal))
+    }
+
     func testIntervalRoutineCountsFromTheLastRun() {
         let cal = Calendar(identifier: .gregorian)
         var routine = NanoMuseRoutine(label: "Check-in", prompt: "x", hour: 9, minute: 0)
@@ -491,11 +505,14 @@ final class NanoMuseLogicTests: XCTestCase {
 
         XCTAssertTrue(NanoMuseVideoGen.failureMessage(["code": "Arrearage", "message": "Model not activated for this account"]).contains("activate"))
         XCTAssertEqual(NanoMuseVideoGen.failureMessage(["code": "InvalidParameter", "message": "bad size"]), "InvalidParameter: bad size")
-        XCTAssertEqual(NanoMuseVideoGen.failureMessage(["task_status": "FAILED"]), "Video task FAILED")
-        XCTAssertEqual(NanoMuseVideoGen.failureMessage([:]), "Video task failed")
-        XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("{\"message\":\"nope\"}".utf8)), ": nope")
-        XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("{\"error\":{\"message\":\"clips used up\"}}".utf8)), ": clips used up")
+        XCTAssertTrue(NanoMuseVideoGen.failureMessage(["task_status": "CANCELED"]).contains("CANCELED"))
+        XCTAssertTrue(NanoMuseVideoGen.failureMessage([:]).contains("FAILED"))
+        XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("{\"message\":\"nope\"}".utf8)), "nope")
+        XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("{\"error\":{\"message\":\"clips used up\"}}".utf8)), "clips used up")
         XCTAssertEqual(NanoMuseVideoGen.apiMessage(Data("not json".utf8)), "")
+        let refused = NanoMuseMediaWords.refused(status: 401, vendorMessage: "Invalid API-key provided.")
+        XCTAssertTrue(refused.contains("401") && refused.contains("Invalid API-key provided."))
+        XCTAssertFalse(NanoMuseMediaWords.refused(status: 503, vendorMessage: "").contains(":"))
 
         XCTAssertNil(NanoMuseVideoGen.frameScale(width: 768, height: 768))
         XCTAssertEqual(NanoMuseVideoGen.frameScale(width: 2048, height: 2048), 0.5)

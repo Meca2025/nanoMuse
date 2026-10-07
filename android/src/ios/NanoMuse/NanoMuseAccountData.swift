@@ -355,14 +355,20 @@ final class NanoMuseAccountData {
 
     private func load() {
         guard !loaded else { return }
-        loaded = true
-        if let data = try? Data(contentsOf: Self.fileURL), let saved = try? JSONDecoder().decode(Owners.self, from: data) {
-            owners = saved.owners
+        let url = Self.fileURL
+        if let data = try? Data(contentsOf: url) {
+            if let saved = try? JSONDecoder().decode(Owners.self, from: data) { owners = saved.owners }
+        } else if FileManager.default.fileExists(atPath: url.path) {
+            // The file is there but could not be read (the phone is locked, the app woke in the
+            // background): keep it, and read again on the next call rather than start empty and
+            // write that over it.
+            return
         }
+        loaded = true
     }
 
     private func save() {
-        guard let data = try? JSONEncoder().encode(Owners(owners: owners)) else { return }
-        try? data.write(to: Self.fileURL, options: [.atomic, .completeFileProtection])
+        guard loaded, let data = try? JSONEncoder().encode(Owners(owners: owners)) else { return }
+        try? data.write(to: Self.fileURL, options: .atomic)
     }
 }
