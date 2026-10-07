@@ -41,6 +41,7 @@ export function ChatScreen() {
   const working = useLiveWorking(state.working[activeThread]);
 
   const listRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const [showJump, setShowJump] = useState(false);
 
@@ -97,7 +98,20 @@ export function ChatScreen() {
     if (fresh) setDayCount(days);
   }, []);
 
-  const onScroll = useCallback(() => {
+  // Pinned to the bottom while the person is there (within 120px of it); the *Latest* pill
+  // only once they have scrolled more than 400px away. The pin is redone whenever the list
+  // or its content changes size (a bubble finding its height, an image or a code block
+  // arriving after the render, the window resized): the first version pinned once per
+  // event and left the gap that opened afterwards, so the view sat short of the bottom and
+  // the pill showed with nobody having scrolled.
+  const pin = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    setShowJump(false);
+  }, []);
+
+  const measure = useCallback(() => {
     const el = listRef.current;
     if (!el) return;
     const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -105,14 +119,29 @@ export function ChatScreen() {
     setShowJump(gap > 400);
   }, []);
 
+  // a chat opens at its latest message whatever the previous chat's position was; the pill
+  // of the previous chat never carries over
+  const shownThread = useRef<string | null>(null);
   useLayoutEffect(() => {
-    const el = listRef.current;
-    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
-  }, [events, stream?.text, activeThread]);
+    if (shownThread.current !== activeThread) {
+      shownThread.current = activeThread;
+      stickToBottom.current = true;
+    }
+    if (stickToBottom.current) pin();
+  }, [events, stream?.text, activeThread, pin]);
 
   useEffect(() => {
-    stickToBottom.current = true;
-  }, [activeThread]);
+    const el = listRef.current;
+    const content = contentRef.current;
+    if (!el || !content || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (stickToBottom.current) pin();
+      else measure();
+    });
+    ro.observe(el);
+    ro.observe(content);
+    return () => ro.disconnect();
+  }, [pin, measure]);
 
   const jumpToBottom = () => {
     const el = listRef.current;
@@ -184,56 +213,58 @@ export function ChatScreen() {
       />
 
       {/* Timeline */}
-      <div ref={listRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
-        {state.hasMore[activeThread] && events.length > 0 && (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="text-[12.5px] text-accent px-3 py-1 rounded-full bg-surface-2"
-              onClick={() => void loadEvents(activeThread, events[0]?.id)}
-            >
-              {t("Load earlier messages")}
-            </button>
-          </div>
-        )}
-        {/* The first conversation's opening, where the history begins: the app speaks first */}
-        {bound && eventsLoaded && !state.hasMore[activeThread] && intro && <IntroLines lines={intro.lines} />}
-        {eventsLoaded && events.length === 0 && !stream && !bound && (
-          <EmptyChat
-            name={name}
-            device={thread?.device ? thread.device_name || thread.device : undefined}
-            onSend={(text) => send(activeThread, text).catch((e: Error) => toast(e.message || t("Could not send")))}
-          />
-        )}
-        {shown.map((ev, i) => (
-          <EventView
-            key={ev.id}
-            event={ev}
-            prev={shown[i - 1]}
-            name={name}
-            onDecide={(approved, scope) =>
-              decide(ev.id, approved, scope).catch((e: Error) => toast(e.message || t("Could not send decision")))
-            }
-            onOpenFile={openFile}
-            onOpenBrowser={setBrowserView}
-            files={files}
-          />
-        ))}
-        {stream && stream.text && (
-          <AssistantBubble text={stream.text} streaming files={files} onOpenFile={openFile} />
-        )}
-        {(thread?.busy || status.state !== "idle") && !stream?.text && status.state !== "waiting" && (
-          <TypingIndicator label={thread?.queued ? t("{n} queued", { n: thread.queued }) : undefined} />
-        )}
-        {/* the chooser for the agent's name, under the latest reply, until a pick or a typed name */}
-        {bound && fr.phase === "ask_agent_name" && !thread?.busy && (
-          <NamingCard chips={fr.chips} chosen={fr.chosen} onPick={pickName} onElse={focusComposer} />
-        )}
-        {/* A message written on another device is never this device's unfinished turn (C9):
-            nothing here ever offers to continue it. While that device works, this says so. */}
-        {working && !thread?.busy && <WorkingLine who={working} />}
-        {!thread?.busy && status.state === "idle" && taskCount !== null && <StarNudgeOnce moment="tasks" n={taskCount} className="mx-1 my-2" />}
-        {!thread?.busy && status.state === "idle" && dayCount !== null && <StarNudgeOnce moment="days_used" n={dayCount} className="mx-1 my-2" />}
+      <div ref={listRef} onScroll={measure} className="relative flex-1 overflow-y-auto px-3 py-3">
+        <div ref={contentRef} className="space-y-2.5">
+          {state.hasMore[activeThread] && events.length > 0 && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                className="text-[12.5px] text-accent px-3 py-1 rounded-full bg-surface-2"
+                onClick={() => void loadEvents(activeThread, events[0]?.id)}
+              >
+                {t("Load earlier messages")}
+              </button>
+            </div>
+          )}
+          {/* The first conversation's opening, where the history begins: the app speaks first */}
+          {bound && eventsLoaded && !state.hasMore[activeThread] && intro && <IntroLines lines={intro.lines} />}
+          {eventsLoaded && events.length === 0 && !stream && !bound && (
+            <EmptyChat
+              name={name}
+              device={thread?.device ? thread.device_name || thread.device : undefined}
+              onSend={(text) => send(activeThread, text).catch((e: Error) => toast(e.message || t("Could not send")))}
+            />
+          )}
+          {shown.map((ev, i) => (
+            <EventView
+              key={ev.id}
+              event={ev}
+              prev={shown[i - 1]}
+              name={name}
+              onDecide={(approved, scope) =>
+                decide(ev.id, approved, scope).catch((e: Error) => toast(e.message || t("Could not send decision")))
+              }
+              onOpenFile={openFile}
+              onOpenBrowser={setBrowserView}
+              files={files}
+            />
+          ))}
+          {stream && stream.text && (
+            <AssistantBubble text={stream.text} streaming files={files} onOpenFile={openFile} />
+          )}
+          {(thread?.busy || status.state !== "idle") && !stream?.text && status.state !== "waiting" && (
+            <TypingIndicator label={thread?.queued ? t("{n} queued", { n: thread.queued }) : undefined} />
+          )}
+          {/* the chooser for the agent's name, under the latest reply, until a pick or a typed name */}
+          {bound && fr.phase === "ask_agent_name" && !thread?.busy && (
+            <NamingCard chips={fr.chips} chosen={fr.chosen} onPick={pickName} onElse={focusComposer} />
+          )}
+          {/* A message written on another device is never this device's unfinished turn (C9):
+              nothing here ever offers to continue it. While that device works, this says so. */}
+          {working && !thread?.busy && <WorkingLine who={working} />}
+          {!thread?.busy && status.state === "idle" && taskCount !== null && <StarNudgeOnce moment="tasks" n={taskCount} className="mx-1 my-2" />}
+          {!thread?.busy && status.state === "idle" && dayCount !== null && <StarNudgeOnce moment="days_used" n={dayCount} className="mx-1 my-2" />}
+        </div>
         {showJump && (
           <button
             type="button"

@@ -124,7 +124,9 @@ export interface BrowserControl {
   url?: string;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** One call to the runtime: the bearer token, JSON in and out, 401 as `AuthError`, the
+ *  server's `detail` as the error's text. `channels-api.ts` shares it. */
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;

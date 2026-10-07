@@ -3,7 +3,7 @@
  * Kept apart from api.ts so the channels screen can be wired in with one import. Secrets are
  * written here and never read back: a secret field only says `has_value`.
  */
-import { AuthError, getToken } from "./api";
+import { request } from "./api";
 
 export interface ChannelField {
   key: string;
@@ -82,31 +82,6 @@ export interface LoginPoll {
   status: "pending" | "succeeded" | "failed";
   app_id?: string;
   error?: string;
-}
-
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  if (init.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
-  let res: Response;
-  try {
-    res = await fetch(path, { ...init, headers });
-  } catch {
-    throw new Error("Cannot reach your nanoMuse right now.");
-  }
-  if (res.status === 401) throw new AuthError();
-  if (!res.ok) {
-    let detail = res.statusText;
-    try {
-      const data = await res.json();
-      detail = data.detail ?? JSON.stringify(data);
-    } catch {
-      /* ignore */
-    }
-    throw new Error(detail);
-  }
-  return (await res.json()) as T;
 }
 
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
