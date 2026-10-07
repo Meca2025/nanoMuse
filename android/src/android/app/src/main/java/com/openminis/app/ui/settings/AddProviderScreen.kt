@@ -590,7 +590,7 @@ private fun ColumnScope.ApiKeyConfigSection(
             "The URL is used verbatim. Include the full path up to (but not including) the endpoint."
         }
         // nanoMuse: plain http:// only for addresses on the local network (io.github.nanomuse.net.LanOnly)
-        val baseUrlProblem = io.github.nanomuse.net.LanOnly.problem(customBaseURL)
+        val baseUrlProblem = io.github.nanomuse.net.LanOnly.refusedHost(customBaseURL)?.let { stringResource(R.string.nm_lan_only_https, it) }
         SettingsSection(
             header = stringResource(R.string.add_provider_endpoint),
             footer = baseUrlProblem ?: baseUrlFooter,
@@ -676,7 +676,8 @@ private fun ColumnScope.ApiKeyConfigSection(
         // (custom base URL filled in) — ollama / LM Studio / LiteLLM /
         // private relays need no key. Official endpoints and OAuth flows
         // keep requiring a credential. Mirrors iOS AddProviderView.
-        enabled = io.github.nanomuse.net.LanOnly.problem(customBaseURL) == null && (
+        // nanoMuse: no saving while the endpoint is a plain http:// address off the local network
+        enabled = io.github.nanomuse.net.LanOnly.refusedHost(customBaseURL) == null && (
             apiKey.isNotBlank() || (
                 customBaseURL.isNotBlank() &&
                     (providerType == ProviderType.openAI || providerType == ProviderType.anthropic)
@@ -898,7 +899,7 @@ private fun ColumnScope.OAuthConfigSection(
             ProviderType.unsupported -> ""
         }
         // nanoMuse: plain http:// only for addresses on the local network
-        val manualBaseProblem = io.github.nanomuse.net.LanOnly.problem(customBaseURL)
+        val manualBaseProblem = io.github.nanomuse.net.LanOnly.refusedHost(customBaseURL)?.let { stringResource(R.string.nm_lan_only_https, it) }
         SettingsSection(
             header = stringResource(R.string.add_provider_or_configure_manually),
             footer = manualBaseProblem ?: stringResource(R.string.add_provider_for_third_party_coding_plans_e_g_minimax),

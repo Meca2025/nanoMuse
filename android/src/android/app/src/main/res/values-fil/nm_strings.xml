@@ -15,13 +15,13 @@
     <string name="nm_status_replying">Sinusulat ang sagot</string>
     <string name="nm_status_on">Ginagawa: %1$s</string>
     <string name="nm_status_working">Ginagawa na</string>
-    <string name="nm_home_not_ready">Sandali lang — naglo-load pa ang chat.</string>
+    <string name="nm_home_not_ready">Sandali lang, naglo-load pa ang chat.</string>
 
     <!-- The ask for a star: at the first sign-in, after the first task, when the allowance is used up -->
     <string name="nm_star_title">Nakakatulong ang star sa GitHub</string>
     <string name="nm_star_action">Mag-star sa GitHub</string>
     <string name="nm_star_later">Hindi ngayon</string>
-    <string name="nm_star_signed_in">Maligayang pagdating. Libre, open source at non-profit ang nanoMuse — isang personal na agent para sa sinumang magpapatakbo nito. Kung may halaga ito sa iyo, ang star sa GitHub ang paraan para mahanap ito ng susunod na tao.</string>
+    <string name="nm_star_signed_in">Maligayang pagdating. Libre, open source at non-profit ang nanoMuse: isang personal na agent para sa sinumang magpapatakbo nito. Kung may halaga ito sa iyo, ang star sa GitHub ang paraan para mahanap ito ng susunod na tao.</string>
     <plurals name="nm_star_tasks">
         <item quantity="one">Isang gawain ang tapos na. Kung nakatulong ang nanoMuse, sinasabi ng star sa GitHub sa mga gumagawa nito na nakatulong nga ito.</item>
         <item quantity="other">%1$d gawain ang tapos na. Kung kapaki-pakinabang ang nanoMuse, nakakatulong ang star sa GitHub para mahanap ito ng susunod na tao.</item>
@@ -34,7 +34,7 @@
     </plurals>
     <string name="nm_star_goal_done">Naabot ang layunin. Kung nakatulong ang nanoMuse para marating mo ito, sinasabi iyon ng star sa GitHub sa mga gumagawa nito.</string>
     <string name="nm_star_new_look">Isang bagong mukha, iginuhit para sa iyo. Kung gusto mo ang tinatahak ng nanoMuse, nakakatulong ang star sa GitHub para mas marami ang makahanap nito.</string>
-    <string name="nm_star_exhausted">Naubos na ang libreng allowance — salamat sa pagdating hanggang dito. Kung karapat-dapat ang nanoMuse, pinapanatili ng star sa GitHub ang proyekto sa paningin ng susunod na tao.</string>
+    <string name="nm_star_exhausted">Naubos na ang libreng allowance. Salamat sa pagdating hanggang dito. Kung karapat-dapat ang nanoMuse, pinapanatili ng star sa GitHub ang proyekto sa paningin ng susunod na tao.</string>
     <string name="nm_chat_menu_rename">Palitan ang pangalan ng chat</string>
 
     <!-- Foreground-service notification title while no tool is running -->
@@ -42,8 +42,8 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Hi, ako si nanoMuse, ang assistant na nakatira sa telepono mo. Hayaan mong bawasan ko ang mga inaasikaso mo.</string>
-    <string name="nm_intro_how_i_work">Kaunti tungkol sa kung paano ako gumagana:\n\n- May sarili akong computer — isang Linux sandbox at isang browser — kaya kaya kong magpatakbo ng mga command, magbukas ng mga website at magpuno ng mga form.\n- Kaya kong basahin at ayusin ang mga file at larawang imo-mount mo para sa akin, at asikasuhin ang mga paalala at naka-iskedyul na gawain.\n- Bago ang anumang mahalagang hakbang, magtatanong muna ako sa iyo.\n- Lahat ay tumatakbo sa teleponong ito. Ang mga mensahe mo ay napupunta sa modelong itinakda mo; kapag naka-sign in sa nanoMuse Cloud, sumusunod din ang usapang ito sa iba mo pang device — maaari itong patayin sa Mga kontrol sa data.</string>
-    <string name="nm_intro_ask_name">Bago tayo magsimula — ano ang itatawag ko sa iyo?</string>
+    <string name="nm_intro_how_i_work">Kaunti tungkol sa kung paano ako gumagana:\n\n- May sarili akong computer (isang Linux sandbox at isang browser), kaya kaya kong magpatakbo ng mga command, magbukas ng mga website at magpuno ng mga form.\n- Kaya kong basahin at ayusin ang mga file at larawang imo-mount mo para sa akin, at asikasuhin ang mga paalala at naka-iskedyul na gawain.\n- Bago ang anumang mahalagang hakbang, magtatanong muna ako sa iyo.\n- Lahat ay tumatakbo sa teleponong ito. Ang mga mensahe mo ay napupunta sa modelong itinakda mo; kapag naka-sign in sa nanoMuse Cloud, sumusunod din ang usapang ito sa iba mo pang device; maaari itong patayin sa Mga kontrol sa data.</string>
+    <string name="nm_intro_ask_name">Bago tayo magsimula, ano ang itatawag ko sa iyo?</string>
 
     <!-- First conversation: the name chooser -->
     <string name="nm_naming_title">Bigyan mo ako ng pangalan</string>
@@ -138,7 +138,7 @@
     <string name="nm_idea_action_chat">Ipadala sa chat</string>
     <string name="nm_idea_action_routine">Gumawa ng routine</string>
     <string name="nm_idea_action_goal">Simulan ang layunin</string>
-    <string name="nm_idea_routine_created">Nagawa ang routine — itakda ang oras at mga detalye.</string>
+    <string name="nm_idea_routine_created">Nagawa ang routine. Itakda ang oras at mga detalye.</string>
 
     <!-- Library tab -->
     <string name="nm_library_artifacts">Mga artifact</string>
@@ -215,14 +215,14 @@
     <string name="nm_feed_prompt">Isulat ang feed ngayong araw.</string>
     <string name="nm_feed_default_preferences">Gumawa ng feed para sa akin tungkol sa mga bagay na mahalaga sa akin. Maikli at diretso, madaling basahin nang mabilis, walang clickbait.</string>
     <string name="nm_feed_intro_title">Tungkol sa feed</string>
-    <string name="nm_feed_intro_desc">Mga maiikling post na isinusulat ng agent mo para sa iyo mula sa mga naaalala nito — ang mga memory file mo, ang diary ng nakaraang linggo, ang mga layunin mo. Ang pangungusap sa ibaba ang gumagabay sa bawat post mula ngayon; i-edit ito anumang oras.</string>
+    <string name="nm_feed_intro_desc">Mga maiikling post na isinusulat ng agent mo para sa iyo mula sa mga naaalala nito: ang mga memory file mo, ang diary ng nakaraang linggo, ang mga layunin mo. Ang pangungusap sa ibaba ang gumagabay sa bawat post mula ngayon; i-edit ito anumang oras.</string>
     <string name="nm_feed_edit">I-edit</string>
     <string name="nm_feed_got_it">Sige</string>
     <string name="nm_feed_save">I-save</string>
     <string name="nm_feed_settings_title">Feed</string>
     <string name="nm_feed_routine_switch">Isulat ito araw-araw</string>
     <string name="nm_feed_routine_time">Araw-araw nang %1$s · i-tap para palitan</string>
-    <string name="nm_feed_routine_needs_model">Magdagdag muna ng modelo — ang agent mo ang sumusulat ng feed.</string>
+    <string name="nm_feed_routine_needs_model">Magdagdag muna ng modelo; ang agent mo ang sumusulat ng feed.</string>
     <string name="nm_feed_write_now">Isulat ito ngayon</string>
     <string name="nm_feed_generating">Sinusulat…</string>
     <string name="nm_feed_discuss">Pag-usapan</string>
@@ -239,7 +239,7 @@
     <string name="nm_feed_type_memory">Memorya</string>
     <string name="nm_feed_type_note">Tala</string>
     <string name="nm_feed_empty_title">Wala pang laman ang feed</string>
-    <string name="nm_feed_empty_body">Habang nagkakakilala tayo, lalabas dito ang mga bagong post. Araw-araw nang %1$s, binabasa ko ang mga naaalala ko tungkol sa iyo — ang mga memory file mo, ang diary ng nakaraang linggo, ang mga layunin mo — at sumusulat ako ng ilang maiikling post.</string>
+    <string name="nm_feed_empty_body">Habang nagkakakilala tayo, lalabas dito ang mga bagong post. Araw-araw nang %1$s, binabasa ko ang mga naaalala ko tungkol sa iyo (ang mga memory file mo, ang diary ng nakaraang linggo, ang mga layunin mo) at sumusulat ako ng ilang maiikling post.</string>
     <string name="nm_feed_empty_how_title">Gabayan ito sa isang pangungusap</string>
     <string name="nm_feed_empty_how_body">I-tap ang mga slider sa kanang itaas para sabihin sa akin kung ano ang gusto mong madagdagan, i-off ang araw-araw na routine, o ipasulat na sa akin ngayon ang unang araw.</string>
     <string name="nm_feed_card_posted">Naidagdag sa feed mo</string>
@@ -270,13 +270,13 @@
     <string name="nm_sysfiles_sort_recent">Kamakailang binago</string>
     <string name="nm_sysfiles_sort_toggle">Palitan ang pagkakasunod</string>
     <string name="nm_sysfiles_open_memory">Buksan ang memorya</string>
-    <string name="nm_sysfiles_footer">Sa agent ang mga file na ito: kung sino ito, ano ang alam nito tungkol sa iyo, ano ang naaalala nito, ano ang isinusulat nito para sa iyo at kailan ito gumigising. Nakatago ang mga ito sa storage ng telepono mo — binabasa at ine-edit ng agent ang mga ito mula sa shell nito sa ilalim ng /var/minis/memory, at maaari mong i-edit ang kahit ano dito.</string>
+    <string name="nm_sysfiles_footer">Sa agent ang mga file na ito: kung sino ito, ano ang alam nito tungkol sa iyo, ano ang naaalala nito, ano ang isinusulat nito para sa iyo at kailan ito gumigising. Nakatago ang mga ito sa storage ng telepono mo; binabasa at ine-edit ng agent ang mga ito mula sa shell nito sa ilalim ng /var/minis/memory, at maaari mong i-edit ang kahit ano dito.</string>
     <string name="nm_sysfile_about_lead">Tungkol sa file na ito.</string>
     <string name="nm_sysfile_about_soul">Ito ang persona ng agent: ang mga pinahahalagahan at gawi na sinisikap nitong panghawakan sa bawat usapan, ang pangalan nito, at ang istilo ng pagsagot nito. Nagsisimula ito mula sa template na kasama ng nanoMuse; maaaring pinuhin ito ng agent sa paglipas ng panahon at sasabihin nito sa iyo kapag ginawa iyon. Maaari mo itong i-edit anumang oras. Hindi bahagi ng file ang talang ito.</string>
     <string name="nm_sysfile_about_user">Itinatago ng agent ang file na ito bilang mga working note nito tungkol sa iyo: ang pangalan mo, kung paano mo gustong tawagin ka, ang timezone mo, at ang kontekstong kailangan nito para maging kapaki-pakinabang, tulad ng pinagkakaabalahan mo. Pinupunan ito nito sa paglipas ng panahon mula sa mga usapan ninyo at binabasa ito sa simula ng bawat isa. Sumasalamin ito sa kasalukuyang pagkaunawa ng agent, kaya maaari itong kulang o luma na. Maaari mong i-edit ang kahit ano dito, at susundin ng agent ang isinulat mo. Hindi bahagi ng file ang talang ito.</string>
-    <string name="nm_sysfile_about_memory">Mga pangmatagalang tala na iniingatan ng agent sa kabila ng mga usapan — ang mga bagay na sulit tandaan, sa sarili nitong mga salita, kasama ang anumang na-import mo mula sa ibang assistant. Ang pang-araw-araw na diary ay nasa tabi nito sa memory folder. Binabasa sa simula ng bawat usapan kapag naka-on ang memorya. Hindi bahagi ng file ang talang ito.</string>
+    <string name="nm_sysfile_about_memory">Mga pangmatagalang tala na iniingatan ng agent sa kabila ng mga usapan: ang mga bagay na sulit tandaan, sa sarili nitong mga salita, kasama ang anumang na-import mo mula sa ibang assistant. Ang pang-araw-araw na diary ay nasa tabi nito sa memory folder. Binabasa sa simula ng bawat usapan kapag naka-on ang memorya. Hindi bahagi ng file ang talang ito.</string>
     <string name="nm_sysfile_about_feed">Isang talata na gumagabay sa feed: ano ang gusto mong madagdagan, ano ang lalaktawan, gaano dapat kahaba ang mga post. Binabasa ito ng araw-araw na feed routine bago sumulat. Hindi bahagi ng file ang talang ito.</string>
-    <string name="nm_sysfile_about_heartbeat">Kung kailan gumigising nang kusa ang agent: bawat routine at bawat pagsusuri ng layunin, kasama ang iskedyul nito at kung paano natapos ang huling pagtakbo. Nire-render mula sa mga routine, kaya read-only ito dito — palitan ang mga iyon mula sa Mga Layunin → Mga routine. Hindi bahagi ng file ang talang ito.</string>
+    <string name="nm_sysfile_about_heartbeat">Kung kailan gumigising nang kusa ang agent: bawat routine at bawat pagsusuri ng layunin, kasama ang iskedyul nito at kung paano natapos ang huling pagtakbo. Nire-render mula sa mga routine, kaya read-only ito dito; palitan ang mga iyon mula sa Mga Layunin → Mga routine. Hindi bahagi ng file ang talang ito.</string>
     <string name="nm_sysfile_edit">I-edit</string>
     <string name="nm_sysfile_copy">Kopyahin ang nilalaman</string>
     <string name="nm_sysfile_share">Ibahagi</string>
@@ -294,12 +294,12 @@
 
     <!-- 0.1.5: memory import -->
     <string name="nm_import_title">I-import ang memorya</string>
-    <string name="nm_import_intro">Dalhin dito ang alam na ng ibang assistant tungkol sa iyo. Tanungin ito gamit ang prompt sa ibaba, i-paste ang sagot nito dito, at idadagdag ito sa GLOBAL.md sa ilalim ng “Na-import” — kung saan binabasa ito ng agent mo sa simula ng bawat usapan.</string>
+    <string name="nm_import_intro">Dalhin dito ang alam na ng ibang assistant tungkol sa iyo. Tanungin ito gamit ang prompt sa ibaba, i-paste ang sagot nito dito, at idadagdag ito sa GLOBAL.md sa ilalim ng “Na-import”, kung saan binabasa ito ng agent mo sa simula ng bawat usapan.</string>
     <string name="nm_import_step1">Tanungin ang iba mong assistant</string>
     <string name="nm_import_step2">I-paste ang sagot nito</string>
     <string name="nm_import_prompt">Pakitipon ang lahat ng naaalala mo tungkol sa akin sa isang maikling listahan ng mga bullet point: kung sino ako, paano ko gustong tawagin ako, saan ako nakatira at ang timezone ko, ano ang ginagawa ko, ano ang pinagkakaabalahan ko ngayon, ang mga kagustuhan at gawi ko, at anumang sinabi sa iyong laging gawin o huwag kailanman gawin. Plain text, walang heading, walang sikreto o password.</string>
     <string name="nm_import_copy_prompt">Kopyahin ang prompt</string>
-    <string name="nm_import_from_hint">Mula sa (opsyonal) — hal. ChatGPT, Claude</string>
+    <string name="nm_import_from_hint">Mula sa (opsyonal), hal. ChatGPT, Claude</string>
     <string name="nm_import_paste_hint">I-paste ang listahan dito</string>
     <string name="nm_import_heading">Na-import</string>
     <string name="nm_import_append">Idagdag sa memorya</string>
@@ -348,7 +348,7 @@
     <string name="nm_avatar_pick_title">Pumili ng isa</string>
     <string name="nm_avatar_pick_body">Maaari kang gumuhit ng apat pa anumang oras; itinatago ang mga luma hanggang gawin mo iyon.</string>
     <string name="nm_avatar_use_this">Gamitin ito</string>
-    <string name="nm_avatar_use_this_hint">Ang mga mood — gumagawa, naghihintay, tapos na, nagkamali — ay iguguhit mula rito sa susunod, sa background.</string>
+    <string name="nm_avatar_use_this_hint">Ang mga mood (gumagawa, naghihintay, tapos na, nagkamali) ay iguguhit mula rito sa susunod, sa background.</string>
     <string name="nm_avatar_footer">Nakatago ang mga larawan sa teleponong ito sa ilalim ng minis-global/nanomuse/avatar. Ang bawat mukha ay nagkakahalaga ng limang larawan mula sa provider mo: isang pinili mo at apat na mood.</string>
 
     <!-- First run (Muse-style welcome; the steps are OpenMinis' provider and model screens) -->
@@ -371,20 +371,20 @@
     <string name="nm_settings_version">nanoMuse %1$s (%2$d)</string>
     <string name="nm_version_title">Bersyon</string>
     <string name="nm_version_checking">Sinusuri ang pinakabagong release…</string>
-    <string name="nm_version_have">Pinakabago ang %1$s — nasa iyo na ito</string>
+    <string name="nm_version_have">Pinakabago ang %1$s, nasa iyo na ito</string>
     <string name="nm_version_out">Labas na ang %1$s</string>
-    <string name="nm_version_out_update">Labas na ang %1$s — i-tap para mag-update</string>
+    <string name="nm_version_out_update">Labas na ang %1$s, i-tap para mag-update</string>
     <string name="nm_version_update">I-update</string>
-    <string name="nm_version_failed">Hindi masuri — i-tap para subukan ulit</string>
+    <string name="nm_version_failed">Hindi masuri, i-tap para subukan ulit</string>
     <string name="nm_appearance_section_home">Home</string>
     <string name="nm_appearance_header_model_title">Ipakita ang modelo sa ilalim ng pangalan</string>
     <string name="nm_appearance_header_model_footer">Pangalan lang ang ipinapakita ng Muse. I-on ito para makita ang grupo ng modelo at provider · modelo sa ilalim nito; i-tap ang mga ito para lumipat. Kapag naka-off, nasa ••• → Modelo at sa Mga setting ang modelo.</string>
     <string name="nm_appearance_section_chat">Usapan</string>
     <string name="nm_appearance_steps_title">Ipakita ang mga hakbang ng agent</string>
-    <string name="nm_appearance_steps_footer">Kapag naka-off, mga sagot lang ang pinapanatili ng chat, at sinasabi ng linya sa ilalim ng mukha kung ano ang ginagawa ng agent ngayon. Kapag naka-on, lumalabas sa chat ang bawat hakbang — bawat tool na ginagamit nito, ang pangangatwiran nito, at isang bar sa ibabaw ng composer na nagbubukas ng mga detalye ng hakbang.</string>
+    <string name="nm_appearance_steps_footer">Kapag naka-off, mga sagot lang ang pinapanatili ng chat, at sinasabi ng linya sa ilalim ng mukha kung ano ang ginagawa ng agent ngayon. Kapag naka-on, lumalabas sa chat ang bawat hakbang: bawat tool na ginagamit nito, ang pangangatwiran nito, at isang bar sa ibabaw ng composer na nagbubukas ng mga detalye ng hakbang.</string>
     <string name="nm_chat_menu_model">Modelo</string>
     <string name="nm_model_switched">Lumipat sa %1$s para sa chat na ito</string>
-    <string name="nm_model_switched_sticky">Lumipat sa %1$s — gagamitin din ito ng mga bagong chat</string>
+    <string name="nm_model_switched_sticky">Lumipat sa %1$s; gagamitin din ito ng mga bagong chat</string>
     <string name="nm_picker_more_models">Higit pang modelo sa account mo</string>
     <string name="nm_picker_more_models_note">Wala sa menu, pero magagamit sa account mo; sinisingil tulad ng pinakamalapit na modelo sa menu. Binabasa ang screen gamit ang isa sa mga ito kapag pinili mo lang ito.</string>
     <string name="nm_attach_commands">Mga command</string>
@@ -428,27 +428,27 @@
     <string name="nm_avatar_status_options">Gumagawa ng mga opsyon</string>
     <string name="nm_avatar_status_finalizing">Tinatapos ang avatar</string>
     <string name="nm_avatar_options_drawing">Gumuguhit ng apat na bersyon ng \"%1$s\"…</string>
-    <string name="nm_avatar_options_pick_hint">I-tap ang gusto mo, o sabihin sa akin — \"ang pangalawa\".</string>
+    <string name="nm_avatar_options_pick_hint">I-tap ang gusto mo, o sabihin sa akin: \"ang pangalawa\".</string>
     <string name="nm_avatar_options_failed">Hindi dumating ang mga larawan. Suriin ang image model sa ilalim ng ••• → Studio ng avatar at subukan ulit.</string>
-    <string name="nm_avatar_provider_busy">Abala ngayon ang image provider — subukan ulit sa loob ng isang minuto.</string>
+    <string name="nm_avatar_provider_busy">Abala ngayon ang image provider; subukan ulit sa loob ng isang minuto.</string>
     <string name="nm_avatar_options_again">Ulitin</string>
     <string name="nm_avatar_options_keep">Panatilihin ang kasalukuyan</string>
     <string name="nm_avatar_option_n">Opsyon %1$d</string>
     <string name="nm_avatar_option_retry">Subukan ulit</string>
-    <string name="nm_avatar_options_ready">Narito ang ilang bersyon ng \"%1$s\" — piliin ang pinakagusto mo.</string>
-    <string name="nm_avatar_drawing_now">Gumuguhit na ako ngayon ng ilang bersyon ng \"%1$s\". Medyo matagal ang mga larawan — sasabihin ko sa iyo kapag handa na.</string>
-    <string name="nm_avatar_drawing_again">Isa pang round — sandali lang.</string>
-    <string name="nm_avatar_adopted">Tapos na — nakasuot na ang bago kong itsura. Ako na si %1$s ngayon.</string>
+    <string name="nm_avatar_options_ready">Narito ang ilang bersyon ng \"%1$s\": piliin ang pinakagusto mo.</string>
+    <string name="nm_avatar_drawing_now">Gumuguhit na ako ngayon ng ilang bersyon ng \"%1$s\". Medyo matagal ang mga larawan; sasabihin ko sa iyo kapag handa na.</string>
+    <string name="nm_avatar_drawing_again">Isa pang round, sandali lang.</string>
+    <string name="nm_avatar_adopted">Tapos na, nakasuot na ang bago kong itsura. Ako na si %1$s ngayon.</string>
     <string name="nm_avatar_pick_line">Opsyon %1$d</string>
     <string name="nm_avatar_cannot_start">Hindi pa ako makakaguhit ng bagong itsura: %1$s</string>
     <string name="nm_avatar_memory_line">- %1$s: pinalitan ng user ang avatar ko ng \"%2$s\".</string>
-    <string name="nm_avatar_share_text">Ang bago kong itsura — %1$s. Tingnan mo.</string>
+    <string name="nm_avatar_share_text">Ang bago kong itsura: %1$s. Tingnan mo.</string>
     <string name="nm_avatar_share_button">Ibahagi ang avatar</string>
     <string name="nm_avatar_share_later">Mamaya</string>
     <string name="nm_avatar_share_title">Ibahagi ang avatar ko</string>
     <string name="nm_avatar_share_subtitle">Pumili ng card. Ipapadala ito sa pamamagitan ng share sheet ng system.</string>
     <string name="nm_avatar_share_system">Ibahagi</string>
-    <string name="nm_avatar_share_bubble">Hi, ako si %1$s, isang personal na AI agent. Kilalanin ang nanoMuse — open source, tumatakbo sa telepono mo.</string>
+    <string name="nm_avatar_share_bubble">Hi, ako si %1$s, isang personal na AI agent. Kilalanin ang nanoMuse: open source, tumatakbo sa telepono mo.</string>
     <string name="nm_avatar_share_tagline">Ang personal mong AI agent, open source · github.com/nano-muse/nanoMuse</string>
 
     <!-- 0.1.10 · Motion -->
@@ -461,7 +461,7 @@
     <string name="nm_media_image_off">Hangga\'t walang nakatakda, hindi mapapalitan ang avatar at walang maiguguhit na larawan. Sasabihin ito ng agent kung hihingi ka.</string>
     <string name="nm_media_need_model">I-type ang pangalan ng modelo sa ibaba</string>
     <string name="nm_media_section_video">Video model</string>
-    <string name="nm_media_video_footer">Nagpapagalaw sa avatar — isang maikling umuulit na clip para sa bawat state — at anumang clip na hihingin mo. Alibaba Cloud Model Studio: wan2.2-i2v-flash (inirerekomenda, ¥0.10 bawat segundo sa 480P), ibang Wan model o MiniMax/MiniMax-H3; ipinapakita ng listahan ang mga magagamit ng key na ito, bawat isa ay ina-activate nang isang beses sa card ng modelo sa Model Studio console. Sinisingil bawat segundo ng video; apat na clip na ilang segundo ang kailangan ng isang avatar.</string>
+    <string name="nm_media_video_footer">Nagpapagalaw sa avatar (isang maikling umuulit na clip para sa bawat state) at anumang clip na hihingin mo. Alibaba Cloud Model Studio: wan2.2-i2v-flash (inirerekomenda, ¥0.10 bawat segundo sa 480P), ibang Wan model o MiniMax/MiniMax-H3; ipinapakita ng listahan ang mga magagamit ng key na ito, bawat isa ay ina-activate nang isang beses sa card ng modelo sa Model Studio console. Sinisingil bawat segundo ng video; apat na clip na ilang segundo ang kailangan ng isang avatar.</string>
     <string name="nm_media_video_off">Opsyonal. Kung wala, nananatiling hindi gumagalaw ang avatar at walang magagawang clip.</string>
     <string name="nm_media_video_off_option">Walang video model</string>
     <string name="nm_media_not_set">Hindi nakatakda</string>
@@ -482,7 +482,7 @@
     <string name="nm_media_video_none_found">Walang video model na sumagot para sa key na ito. Mag-type ng isa sa ibaba, o suriin ulit.</string>
     <string name="nm_media_other_model">Ibang pangalan ng modelo</string>
     <string name="nm_avatar_status_animating">Ina-animate %1$d/%2$d…</string>
-    <string name="nm_avatar_clips_coming">Gagawa rin ako ng apat na maiikling clip para makagalaw ako — ilang minuto sa background, sa pamamagitan ng video model mo.</string>
+    <string name="nm_avatar_clips_coming">Gagawa rin ako ng apat na maiikling clip para makagalaw ako: ilang minuto sa background, sa pamamagitan ng video model mo.</string>
 
     <!-- Hands (0.1.12): the phone's screen as a hand -->
     <string name="nm_hands_title">Mga kamay</string>
@@ -492,7 +492,7 @@
     <string name="nm_hands_intro">Para sa mga app na walang API, ginagamit nito ang telepono tulad ng ginagawa mo: isang screenshot, saka mga tap, pag-type at pag-swipe. Nauuna ang mga skill, command at ang browser; ang screen ang huling paraan. Naka-off hanggang i-on mo.</string>
     <string name="nm_hands_switch">Hayaang gamitin ng agent ang screen</string>
     <string name="nm_hands_switch_footer">Habang gumagawa ito, ipinapakita ng isang capsule sa itaas ng screen ang bawat hakbang at isang button na Itigil. Laging sa iyo ang mga login, password at code.</string>
-    <string name="nm_hands_status_off">Naka-off — sasabihin ng agent kapag kailangan ng gawain ang screen</string>
+    <string name="nm_hands_status_off">Naka-off; sasabihin ng agent kapag kailangan ng gawain ang screen</string>
     <string name="nm_hands_status_ready">Handa na</string>
     <string name="nm_hands_status_missing">Naka-on, pero may kulang pa sa ibaba</string>
     <string name="nm_hands_status_working">Gumagawa sa screen ngayon</string>
@@ -512,7 +512,7 @@
     <string name="nm_hands_need_ok">Handa na</string>
     <string name="nm_hands_need_set_up">I-set up</string>
     <string name="nm_hands_section_model">Modelo ng mga kamay</string>
-    <string name="nm_hands_model_auto">Awtomatiko — qwen3.8-27b (sa nanoMuse Cloud, o sa ilalim ng sarili mong key), kung hindi ay ang chat model na pinili mo kapag nakakakita ito, kung hindi ay ang Vision Group</string>
+    <string name="nm_hands_model_auto">Awtomatiko: qwen3.8-27b (sa nanoMuse Cloud, o sa ilalim ng sarili mong key), kung hindi ay ang chat model na pinili mo kapag nakakakita ito, kung hindi ay ang Vision Group</string>
     <string name="nm_hands_model_footer">Bawat hakbang ay nagpapadala ng isang screenshot sa modelong ito; isa itong setting na hiwalay sa chat model. Sapat na dito ang mas maliliit na vision model at mas mura. Ginagamit lang ang modelo mula sa mas malawak na catalog ng Cloud kapag pinili mo ito.</string>
     <string name="nm_hands_why_chosen">pinili dito</string>
     <string name="nm_hands_why_default">ang default ng mga kamay sa ilalim ng sarili mong key</string>
@@ -523,7 +523,7 @@
     <string name="nm_hands_why_any">ang tanging naka-enable na modelong nakakakita</string>
     <string name="nm_hands_section_rules">Paano ito kumikilos</string>
     <string name="nm_hands_rule_ladder">Nahuhuli ang screen: isang skill, isang command o ang browser muna.</string>
-    <string name="nm_hands_rule_secrets">Hindi kailanman nagta-type ng mga password, code o numero ng card — iniaabot nito sa iyo ang telepono.</string>
+    <string name="nm_hands_rule_secrets">Hindi kailanman nagta-type ng mga password, code o numero ng card; iniaabot nito sa iyo ang telepono.</string>
     <string name="nm_hands_rule_approvals">Ang pagbabayad, pagpapadala, pag-post o pagbura ay naghihintay ng pag-apruba mo, tulad sa shell at sa browser.</string>
     <string name="nm_hands_rule_stop">Laging nasa screen ang Itigil; walang nagpapatuloy pagkatapos nito.</string>
     <string name="nm_hands_rule_screenshots">Ang screenshot ng bawat hakbang ay itinatago kasama ng usapan at ipinapadala lang sa sarili mong modelo.</string>
@@ -537,9 +537,9 @@
     <string name="nm_hands_your_turn">Ikaw na</string>
     <string name="nm_hands_your_turn_detail">Gawin mo mismo ang bahaging ito, saka i-tap ang Magpatuloy.</string>
     <string name="nm_hands_protected_screen">Protektado ang screen na ito at hindi mababasa. Tapusin mo mismo ang bahaging ito, saka i-tap ang Magpatuloy.</string>
-    <string name="nm_hands_secret_field">Isang field ng password o code — pakipunan mo mismo, saka i-tap ang Magpatuloy.</string>
+    <string name="nm_hands_secret_field">Isang field ng password o code: pakipunan mo mismo, saka i-tap ang Magpatuloy.</string>
     <string name="nm_hands_approval_title">Naghihintay ng pag-apruba mo</string>
-    <string name="nm_hands_approval_detail">I-tap ang “%1$s” — kumpirmahin sa nanoMuse (hihingin nito ang screen lock mo).</string>
+    <string name="nm_hands_approval_detail">I-tap ang “%1$s”: kumpirmahin sa nanoMuse (hihingin nito ang screen lock mo).</string>
     <string name="nm_hands_approval_here">I-tap ang “%1$s”?</string>
     <string name="nm_hands_allow_once">Payagan</string>
     <string name="nm_hands_deny">Tanggihan</string>
@@ -578,15 +578,15 @@
     <string name="nm_pc_section_paired">Mga computer sa account na ito</string>
     <string name="nm_pc_none">Wala pang computer</string>
     <string name="nm_pc_none_footer">Hangga\'t walang computer na nag-sign in gamit ang account na ito, sasabihin ng agent kapag ang isang gawain ay nararapat sa computer mo.</string>
-    <string name="nm_pc_paired_footer">I-tap ang isang computer para suriin kung sumasagot ito. Ang computer na wala dito ay kadalasang nag-sign in gamit ang ibang account — ang pahiwatig sa itaas ang dapat gamitin.</string>
+    <string name="nm_pc_paired_footer">I-tap ang isang computer para suriin kung sumasagot ito. Ang computer na wala dito ay kadalasang nag-sign in gamit ang ibang account; ang pahiwatig sa itaas ang dapat gamitin.</string>
     <string name="nm_pc_last_seen">nakita %1$s</string>
     <string name="nm_pc_offline">offline</string>
     <string name="nm_pc_online">online</string>
     <string name="nm_pc_account_none">Hindi pa naka-sign in sa nanoMuse Cloud ang teleponong ito; mag-sign in muna, saka ang computer gamit ang parehong account.</string>
-    <string name="nm_pc_account_hint">Naka-sign in ang teleponong ito bilang %1$s — dapat mag-sign in ang computer gamit ang parehong account.</string>
+    <string name="nm_pc_account_hint">Naka-sign in ang teleponong ito bilang %1$s; dapat mag-sign in ang computer gamit ang parehong account.</string>
     <string name="nm_pc_checking">Sinusuri…</string>
     <string name="nm_pc_answering">Sumasagot ang %1$s</string>
-    <string name="nm_pc_not_answering">Hindi sumasagot ang %1$s — tumatakbo pa ba doon ang nanoMuse Desktop?</string>
+    <string name="nm_pc_not_answering">Hindi sumasagot ang %1$s. Tumatakbo pa ba doon ang nanoMuse Desktop?</string>
 
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">Sa computer na “%1$s”, hindi sa teleponong ito.</string>
@@ -602,7 +602,7 @@
 
     <!-- nanoMuse: the first-run pages -->
     <string name="nm_welcome_tagline">Isang open-source na personal na agent para sa bawat device na pag-aari mo.</string>
-    <string name="nm_welcome_email">Mag-sign in — libre</string>
+    <string name="nm_welcome_email">Mag-sign in (libre)</string>
     <string name="nm_welcome_fine_print">Isang account ang nagsasama-sama sa mga device mo at nagdadala ng libreng paggamit ng modelo; walang sinisingil. Maidaragdag ang sarili mong API key kaagad pagkatapos.</string>
     <string name="nm_setup_source_title">Aling modelo ang sasagot?</string>
     <string name="nm_setup_source_sub">May dala nang isa ang account mo. Maaari ka ring magdagdag ng sarili mong API key at lumipat anumang oras.</string>
@@ -615,21 +615,21 @@
     <string name="nm_setup_password_set">Itakda ang password</string>
     <string name="nm_setup_password_fine_print">Opsyonal. Maaari mo itong itakda o palitan mamaya sa ilalim ng Account.</string>
     <string name="nm_welcome_feat_chat">Chat, mga larawan, video</string>
-    <string name="nm_welcome_feat_chat_sub">Isang mahusay na modelo, paggawa ng larawan at video, mga tool, skill at memorya — sa telepono mo</string>
+    <string name="nm_welcome_feat_chat_sub">Isang mahusay na modelo, paggawa ng larawan at video, mga tool, skill at memorya, sa telepono mo</string>
     <string name="nm_welcome_feat_hands">Mga kamay: ginagamit nito ang telepono mo</string>
-    <string name="nm_welcome_feat_hands_sub">Nagbu-book ng tren, umoorder ng pagkain, naghahanap ng isang bagay sa isang app — nanonood ka, at maaari mo itong itigil anumang oras</string>
+    <string name="nm_welcome_feat_hands_sub">Nagbu-book ng tren, umoorder ng pagkain, naghahanap ng isang bagay sa isang app; nanonood ka, at maaari mo itong itigil anumang oras</string>
     <string name="nm_welcome_feat_reach">Abot: ang mga computer mo, mula rito</string>
     <string name="nm_welcome_feat_reach_sub">Ipares ang isang Mac, Windows o Linux machine at bigyan ito ng trabaho mula sa telepono</string>
-    <string name="nm_welcome_notice">Ang nanoMuse ay isang non-profit na open-source na proyekto ng komunidad — libre, habang-buhay. May kasamang libreng allowance ang modelo na binabayaran ng developer; pagkatapos niyon, ang sarili mong key. Walang ibinebenta; nasa patakaran sa privacy kung ano ang itinatago ng relay, at sa iyo ang Mga setting → Mga kontrol sa data.</string>
+    <string name="nm_welcome_notice">Ang nanoMuse ay isang non-profit na open-source na proyekto ng komunidad: libre, habang-buhay. May kasamang libreng allowance ang modelo na binabayaran ng developer; pagkatapos niyon, ang sarili mong key. Walang ibinebenta; nasa patakaran sa privacy kung ano ang itinatago ng relay, at sa iyo ang Mga setting → Mga kontrol sa data.</string>
     <string name="nm_welcome_hands_title">Hayaan itong gamitin ang telepono mo</string>
     <string name="nm_welcome_hands_sub">Sa dalawang pahintulot, kaya nitong magbukas ng mga app, mag-tap at mag-type para sa iyo. Nananatili sa screen ang isang capsule na may bawat hakbang at isang button na Itigil; laging sa iyo ang mga login, password at code.</string>
     <string name="nm_welcome_hands_turn_on">I-on</string>
     <string name="nm_welcome_skip">Laktawan muna</string>
     <string name="nm_welcome_hands_fine_print">Gumagana ang lahat ng iba pa kahit wala ang mga ito. Nasa Mga setting → Mga kamay ang mga ito kapag gusto mo.</string>
-    <string name="nm_welcome_meet_fine_print">Bago ang anumang hindi na nito mababawi — pagbura, pagpapadala, pagbabayad — humihinto ito at nagtatanong muna sa iyo.</string>
+    <string name="nm_welcome_meet_fine_print">Bago ang anumang hindi na nito mababawi (pagbura, pagpapadala, pagbabayad) humihinto ito at nagtatanong muna sa iyo.</string>
     <string name="nm_cloud_title">nanoMuse Cloud</string>
     <string name="nm_cloud_signin_title">Magsimula sa nanoMuse Cloud</string>
-    <string name="nm_cloud_signin_subtitle">Isang code sa telepono o inbox mo — o ang password mo, kapag nakapagtakda ka na.</string>
+    <string name="nm_cloud_signin_subtitle">Isang code sa telepono o inbox mo, o ang password mo, kapag nakapagtakda ka na.</string>
     <string name="nm_cloud_mode_code">Gamit ang code</string>
     <string name="nm_cloud_mode_password">Gamit ang password</string>
     <string name="nm_cloud_password">Password</string>
@@ -652,6 +652,7 @@
     <string name="nm_cloud_server_ok">Sumagot ang %1$s: relay %2$s.</string>
     <string name="nm_cloud_server_bad_url">Ilagay ang address ng relay, tulad ng https://relay.example.org.</string>
     <string name="nm_cloud_server_https">Gumamit ng https para sa server na nasa labas ng sarili mong network. Puwede ang http para sa pribadong address (10.x, 192.168.x, 172.16–31.x, localhost, isang .local o .ts.net na pangalan).</string>
+    <string name="nm_lan_only_https">Gumagana lang ang plain http:// para sa mga address sa sarili mong network (10.x, 172.16–31.x, 192.168.x, mga .local na pangalan); gamitin ang https:// para sa %1$s.</string>
     <string name="nm_cloud_server_unreachable">Walang relay na sumagot sa %1$s. Suriin ang address at kung tumatakbo ang relay.</string>
     <string name="nm_cloud_server_default">Bumalik sa nanoMuse Cloud</string>
     <string name="nm_cloud_server_row">Server</string>
@@ -683,7 +684,7 @@
     <string name="nm_cloud_row_sign_in">Mag-sign in</string>
     <string name="nm_cloud_err_bad_identifier">Hindi mukhang e-mail address iyan.</string>
     <string name="nm_cloud_err_code_wrong">Maling code.</string>
-    <string name="nm_cloud_err_code_expired">Paso na ang code na iyan — magpadala ng bago.</string>
+    <string name="nm_cloud_err_code_expired">Paso na ang code na iyan; magpadala ng bago.</string>
     <string name="nm_cloud_err_code_too_often">Masyadong maraming code nang sunod-sunod. Maghintay ng ilang minuto.</string>
     <string name="nm_cloud_err_not_invited">Pribado ang relay na ito; wala sa listahan nito ang address na iyan.</string>
     <string name="nm_cloud_err_send_failed">Hindi maipadala ang code. Subukan ulit mamaya.</string>
@@ -692,9 +693,9 @@
     <string name="nm_cloud_err_account_deleted">Binura na ang account na ito. Mag-sign in ulit para magsimula ng bago.</string>
     <string name="nm_cloud_err_out_of_tokens">Naubos na ang allowance.</string>
     <string name="nm_cloud_err_daily_cap">Naubos na ang token quota ngayong araw; babalik ito bukas.</string>
-    <string name="nm_cloud_err_allowance">Naubos na ang libreng allowance. Mag-imbita ng kaibigan (+¥%1$s para sa inyong dalawa) o magdagdag ng sarili mong key sa ilalim ng Mga setting → Mga provider — ang Alibaba Cloud Bailian ang mabilis na paraan.</string>
-    <string name="nm_cloud_err_allowance_abroad">Naubos na ang libreng allowance. Mag-imbita ng kaibigan (+¥%1$s para sa inyong dalawa) o magdagdag ng sarili mong key sa ilalim ng Mga setting → Mga provider — ang OpenRouter ang mabilis na paraan: isang account, isang key, bayad ayon sa gamit.</string>
-    <string name="nm_cloud_warn_line">Malapit nang maubos ang libreng allowance: ¥%1$s sa ¥%2$s ang natitira. Mag-imbita ng kaibigan (+¥%3$s para sa inyong dalawa) o magdagdag ng sarili mong key — pareho sa ilalim ng Account.</string>
+    <string name="nm_cloud_err_allowance">Naubos na ang libreng allowance. Mag-imbita ng kaibigan (+¥%1$s para sa inyong dalawa) o magdagdag ng sarili mong key sa ilalim ng Mga setting → Mga provider; ang Alibaba Cloud Bailian ang mabilis na paraan.</string>
+    <string name="nm_cloud_err_allowance_abroad">Naubos na ang libreng allowance. Mag-imbita ng kaibigan (+¥%1$s para sa inyong dalawa) o magdagdag ng sarili mong key sa ilalim ng Mga setting → Mga provider; ang OpenRouter ang mabilis na paraan: isang account, isang key, bayad ayon sa gamit.</string>
+    <string name="nm_cloud_warn_line">Malapit nang maubos ang libreng allowance: ¥%1$s sa ¥%2$s ang natitira. Mag-imbita ng kaibigan (+¥%3$s para sa inyong dalawa) o magdagdag ng sarili mong key, pareho sa ilalim ng Account.</string>
     <string name="nm_cloud_err_rate_limited">Masyadong maraming request nang sabay-sabay. Sandali lang.</string>
     <string name="nm_cloud_err_unreachable">Hindi maabot ang nanoMuse Cloud. Suriin ang koneksyon.</string>
     <string name="nm_cloud_err_generic">May nagkamali.</string>
@@ -711,7 +712,7 @@
     <string name="nm_cloud_err_provider_busy_wait">Abala ngayon ang provider ng model. Subukan muli pagkalipas ng %1$s.</string>
     <string name="nm_cloud_err_model_not_offered">Hindi na inaalok ng nanoMuse Cloud ang model na iyan. Pumili ng iba sa Settings → nanoMuse Cloud.</string>
     <string name="nm_cloud_err_relay_down">Hindi sumagot ang nanoMuse Cloud. Subukan muli maya-maya.</string>
-    <string name="nm_cloud_err_allowance_paused">Naka-pause muna ang libreng allowance sa relay na ito — hindi ito naubos. Magdagdag ng sarili mong key o mag-sign in gamit ang plan na binabayaran mo na, sa Settings → nanoMuse Cloud. Mananatili ang sign-in mo, ang mga device mo at ang natitira.</string>
+    <string name="nm_cloud_err_allowance_paused">Naka-pause muna ang libreng allowance sa relay na ito, hindi ito naubos. Magdagdag ng sarili mong key o mag-sign in gamit ang plan na binabayaran mo na, sa Settings → nanoMuse Cloud. Mananatili ang sign-in mo, ang mga device mo at ang natitira.</string>
     <string name="nm_cloud_err_service_paused">Naka-pause muna ang nanoMuse Cloud ng operator nito; nakatago ang sign-in at data mo. Subukan muli mamaya.</string>
     <string name="nm_cloud_err_sync_paused">Naka-pause muna ang pag-sync ng mga usapan sa relay na ito; nananatili ang nakatago, at gumagana pa rin ang mga device mo nang mag-isa.</string>
     <string name="nm_cloud_err_hub_paused">Naka-pause muna ang ugnayan ng mga device sa relay na ito; gumagana pa rin ang bawat device nang mag-isa.</string>
@@ -742,21 +743,21 @@
     <string name="nm_face_cost_checking">Sinusuri ang allowance ngayong araw…</string>
     <string name="nm_face_cost_what">Ang bagong mukha ay %1$d larawan</string>
     <string name="nm_face_cost_what_clips">Ang bagong mukha ay %1$d larawan at %2$d maiikling clip</string>
-    <string name="nm_face_cost_about">%1$s — mga ¥%2$s mula sa allowance mo.</string>
+    <string name="nm_face_cost_about">%1$s: mga ¥%2$s mula sa allowance mo.</string>
     <string name="nm_face_cost_left">May ¥%1$s ka pang natitira sa allowance.</string>
     <string name="nm_face_cost_short">Higit iyan sa natitira. Mag-imbita ng kaibigan (+¥%1$s para sa inyong dalawa) o magdagdag ng sarili mong key sa ilalim ng Mga setting → Mga provider.</string>
     <string name="nm_face_cost_unknown">%1$s. Hindi masuri ngayon ang allowance ngayong araw.</string>
     <string name="nm_face_cost_go">Iguhit</string>
     <string name="nm_face_cost_anyway">Subukan pa rin</string>
     <string name="nm_face_cost_not_now">Hindi ngayon</string>
-    <string name="nm_face_cost_declined">Sige — mananatili ang mukha kung ano ito.</string>
+    <string name="nm_face_cost_declined">Sige, mananatili ang mukha kung ano ito.</string>
     <string name="nm_cloud_invite_title">Mag-imbita ng kaibigan</string>
-    <string name="nm_cloud_invite_why">Bawat bagong taong mag-sign up gamit ang code mo ay nagdaragdag ng ¥%1$s sa allowance mo — at ¥%1$s sa kanila. Hindi ito nag-e-expire.</string>
+    <string name="nm_cloud_invite_why">Bawat bagong taong mag-sign up gamit ang code mo ay nagdaragdag ng ¥%1$s sa allowance mo, at ¥%1$s sa kanila. Hindi ito nag-e-expire.</string>
     <string name="nm_cloud_invite_code">Ang code mo</string>
     <string name="nm_cloud_invite_share">Ibahagi ang link</string>
     <string name="nm_cloud_invite_copy">Kopyahin</string>
     <string name="nm_cloud_invite_copied">Nakopya</string>
-    <string name="nm_cloud_invite_share_text">Subukan ang nanoMuse kasama ko — isang ganap na open-source na personal na agent, libreng gamitin. Mag-sign up gamit ang code kong %1$s: %2$s</string>
+    <string name="nm_cloud_invite_share_text">Subukan ang nanoMuse kasama ko: isang ganap na open-source na personal na agent, libreng gamitin. Mag-sign up gamit ang code kong %1$s: %2$s</string>
     <string name="nm_cloud_invite_count">%1$d kaibigan ang sumali</string>
     <string name="nm_cloud_invite_earned">¥%1$s ang naidagdag mula sa mga imbitasyon</string>
     <string name="nm_cloud_invite_have">May invite code ka?</string>
@@ -765,9 +766,9 @@
     <string name="nm_notice_issue">Mag-ulat ng bug o humiling ng feature</string>
     <string name="nm_ways_title_out">Naubos na ang libreng allowance.</string>
     <string name="nm_ways_title_warn">Malapit nang maubos: ¥%1$s sa ¥%2$s ang natitira.</string>
-    <string name="nm_ways_title_paused">Naka-pause muna ang libreng allowance sa relay na ito — hindi ito naubos.</string>
+    <string name="nm_ways_title_paused">Naka-pause muna ang libreng allowance sa relay na ito, hindi ito naubos.</string>
     <string name="nm_ways_paused_sub">Nananatili ang natitira; gumagana na ngayon ang mga paraan sa ibaba.</string>
-    <string name="nm_ways_sub">Dalawang paraan para magpatuloy — gumagana pa rin ang sign-in at mga device mo alinman ang piliin.</string>
+    <string name="nm_ways_sub">Dalawang paraan para magpatuloy; gumagana pa rin ang sign-in at mga device mo alinman ang piliin.</string>
     <string name="nm_ways_key_title">Gamitin ang sarili mong model key</string>
     <string name="nm_ways_key_guide">Gabay nang sunod-sunod</string>
     <string name="nm_ways_region_cn">Alibaba Cloud Bailian muna: isang key para sa chat, screen, mga larawan at mga clip, at tumatanggap ito ng mga account mula sa mainland China. Sinasabi ng bawat provider sa ibaba kung ano ang sakop nito.</string>
@@ -785,10 +786,10 @@
     <string name="nm_cap_screen">screen</string>
     <string name="nm_cap_pictures">mga larawan</string>
     <string name="nm_cap_clips">mga clip</string>
-    <string name="nm_cap_pictures_unavailable">Kailangan ng mga larawan ng provider na may image model — Bailian, OpenAI, Gemini o OpenRouter.</string>
-    <string name="nm_cap_clips_unavailable">Kailangan ng mga clip ng provider na may video model — Alibaba Cloud Bailian.</string>
-    <string name="nm_cap_hands_unavailable">Kailangan ng mga kamay ng modelong nakakakita ng screen — Bailian, OpenRouter, OpenAI, Anthropic, Gemini, o anumang provider na may vision model.</string>
-    <string name="nm_cap_chat_unavailable">Kailangan ng chat ng provider na may chat model — magdagdag ng key, o mag-sign in.</string>
+    <string name="nm_cap_pictures_unavailable">Kailangan ng mga larawan ng provider na may image model: Bailian, OpenAI, Gemini o OpenRouter.</string>
+    <string name="nm_cap_clips_unavailable">Kailangan ng mga clip ng provider na may video model: Alibaba Cloud Bailian.</string>
+    <string name="nm_cap_hands_unavailable">Kailangan ng mga kamay ng modelong nakakakita ng screen: Bailian, OpenRouter, OpenAI, Anthropic, Gemini, o anumang provider na may vision model.</string>
+    <string name="nm_cap_chat_unavailable">Kailangan ng chat ng provider na may chat model: magdagdag ng key, o mag-sign in.</string>
     <string name="nm_ways_invite_title">Mag-imbita ng kaibigan: +¥%1$s para sa iyo at +¥%2$s para sa kanila, sa bawat bagong taong mag-sign up gamit ang link mo.</string>
     <string name="nm_ways_invite_share">Ibahagi ang link</string>
     <string name="nm_ways_invite_copy">Kopyahin ang link</string>
@@ -798,7 +799,7 @@
     <string name="nm_cloud_ev_contribute_default">Mga kontrol sa data: naka-on para sa mga bagong account</string>
     <string name="nm_data_title">Mga kontrol sa data</string>
     <string name="nm_data_improve">Tumulong na pagbutihin ang mga AI model ng nanoMuse</string>
-    <string name="nm_data_why">Habang naka-on ito, ang teksto ng mga chat mo sa mga modelo ng nanoMuse Cloud — ang isinulat mo, ang isinagot nito at ang mga tool na pinili nitong tawagin — ay itinatago sa relay para sanayin ang sariling open model ng komunidad. Hindi ang memorya o SOUL mo (ang system prompt), hindi ang ibinalik ng mga tool, hindi ang mga larawan, at hindi kailanman katabi ng kung sino ka. Hindi kailanman dumadaan sa relay ang sarili mong API key.</string>
+    <string name="nm_data_why">Habang naka-on ito, ang teksto ng mga chat mo sa mga modelo ng nanoMuse Cloud (ang isinulat mo, ang isinagot nito at ang mga tool na pinili nitong tawagin) ay itinatago sa relay para sanayin ang sariling open model ng komunidad. Hindi ang memorya o SOUL mo (ang system prompt), hindi ang ibinalik ng mga tool, hindi ang mga larawan, at hindi kailanman katabi ng kung sino ka. Hindi kailanman dumadaan sa relay ang sarili mong API key.</string>
     <string name="nm_data_default_on">Nagsisimulang naka-on ito sa mga bagong account.</string>
     <string name="nm_data_default_off">Nagsisimulang naka-off ito sa mga bagong account.</string>
     <string name="nm_data_kept">%1$d turn na ang naitago.</string>
@@ -842,7 +843,7 @@
     <string name="nm_cloud_ev_password_cleared">Naalis ang password</string>
     <string name="nm_cloud_ev_sign_out">Nag-sign out</string>
     <string name="nm_cloud_ev_sign_out_all">Nag-sign out sa lahat ng device</string>
-    <string name="nm_cloud_ev_budget_refused">Tinanggihan ang request — naubos na ang allowance</string>
+    <string name="nm_cloud_ev_budget_refused">Tinanggihan ang request: naubos na ang allowance</string>
     <string name="nm_cloud_ev_upstream_error">Nagbalik ng error ang provider ng modelo</string>
     <string name="nm_cloud_sign_out_here">Mag-sign out sa teleponong ito</string>
     <string name="nm_cloud_sign_out_everywhere">Mag-sign out sa lahat ng device</string>
@@ -851,13 +852,13 @@
     <string name="nm_cloud_delete_account_confirm">Buburahin sa relay ang account, ang mga sign-in, paggamit at history nito, at aalisin sa teleponong ito ang mga chat, memorya, feed, layunin at mukha ng account na ito. Hindi na ito maibabalik.</string>
     <string name="nm_cloud_keep_chats">Panatilihin sa device na ito ang mga chat ng account na ito</string>
     <string name="nm_cloud_keep_chats_sub">Naka-off: aalisin sa teleponong ito ang mga chat, memorya, feed, layunin at mukha ng account na ito. Kung naka-on ang sync, nasa relay pa rin ang mga chat para sa susunod na pag-sign in.</string>
-    <string name="nm_cloud_sign_in_ended">Natapos ang pag-sign in mo sa teleponong ito — mag-sign in ulit para magpatuloy; hanggang doon ay nananatili sa device na ito ang mga chat mo.</string>
+    <string name="nm_cloud_sign_in_ended">Natapos ang pag-sign in mo sa teleponong ito. Mag-sign in ulit para magpatuloy; hanggang doon ay nananatili sa device na ito ang mga chat mo.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Mga coding agent</string>
-    <string name="nm_coding_intro">Cursor, Codex at Claude Code sa mga computer mo: ang mga session nila, ang huling sagot nila, at isang mensahe sa alinman sa kanila — mula rito. Walang kinokopya mula sa kanila papunta sa telepono.</string>
+    <string name="nm_coding_intro">Cursor, Codex at Claude Code sa mga computer mo: ang mga session nila, ang huling sagot nila, at isang mensahe sa alinman sa kanila, mula rito. Walang kinokopya mula sa kanila papunta sa telepono.</string>
     <string name="nm_coding_no_computer">Walang online na computer na may coding agent. Patakbuhin ang nanoMuse sa computer kung saan naka-install ang Cursor, Codex o Claude Code, naka-sign in gamit ang account na ito.</string>
-    <string name="nm_coding_account_hint">Naka-sign in ang teleponong ito bilang %1$s — dapat gamitin ng computer ang parehong account.</string>
+    <string name="nm_coding_account_hint">Naka-sign in ang teleponong ito bilang %1$s; dapat gamitin ng computer ang parehong account.</string>
     <string name="nm_coding_refresh">I-refresh</string>
     <string name="nm_coding_all">Lahat</string>
     <string name="nm_coding_new">Magsimula ng bago</string>
@@ -886,11 +887,11 @@
     <string name="nm_cloud_allowance_used">Nagamit ¥%1$s · $%2$s</string>
     <string name="nm_cloud_allowance_of">sa ¥%1$s · $%2$s, habang-buhay</string>
     <string name="nm_cloud_allowance_left">¥%1$s · $%2$s ang natitira</string>
-    <string name="nm_cloud_allowance_why">¥%1$s sa simula, +¥%2$s para sa bawat kaibigang iimbitahin mo — at +¥%2$s para sa kanila; pagkatapos niyon, ang sarili mong key ang magpapatuloy sa modelo.</string>
+    <string name="nm_cloud_allowance_why">¥%1$s sa simula, +¥%2$s para sa bawat kaibigang iimbitahin mo, at +¥%2$s para sa kanila; pagkatapos niyon, ang sarili mong key ang magpapatuloy sa modelo.</string>
     <string name="nm_cloud_tokens_line">%1$s token sa kabuuan · %2$s ngayong araw</string>
     <string name="nm_cloud_notice_title">Libre, open source, non-profit</string>
     <string name="nm_cloud_notice_closing">May nakitang bug, gustong feature, may patch? Ang GitHub repository ang lugar para doon.</string>
-    <string name="nm_cloud_notice">Ang nanoMuse ay isang non-profit na open-source na proyekto ng komunidad — libre, habang-buhay. May kasamang libreng allowance ang modelo na binabayaran ng developer; pagkatapos niyon, ang sarili mong key. Walang ibinebenta; nasa patakaran sa privacy kung ano ang itinatago ng relay, at sa iyo ang Mga setting → Mga kontrol sa data. Burahin ang account kailan mo man gusto.</string>
+    <string name="nm_cloud_notice">Ang nanoMuse ay isang non-profit na open-source na proyekto ng komunidad: libre, habang-buhay. May kasamang libreng allowance ang modelo na binabayaran ng developer; pagkatapos niyon, ang sarili mong key. Walang ibinebenta; nasa patakaran sa privacy kung ano ang itinatago ng relay, at sa iyo ang Mga setting → Mga kontrol sa data. Burahin ang account kailan mo man gusto.</string>
 
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">Mga mensahe mula sa mga device mo</string>
@@ -908,7 +909,7 @@
     <string name="nm_hub_session_title">Mula sa %1$s</string>
     <string name="nm_hub_service_alone_short">Ito lang</string>
     <string name="nm_devices_title">Mga device</string>
-    <string name="nm_devices_intro">Bawat device na naka-sign in sa account na ito — ang teleponong ito, ang mga computer mo, ang web console — ay maaaring humiling sa iba, sa anumang network.</string>
+    <string name="nm_devices_intro">Bawat device na naka-sign in sa account na ito (ang teleponong ito, ang mga computer mo, ang web console) ay maaaring humiling sa iba, sa anumang network.</string>
     <string name="nm_devices_join">Maaabot mula sa mga device mo</string>
     <string name="nm_devices_join_sub">Pinapanatiling konektado ang teleponong ito para makahiling dito ang iba mong device. May tahimik na notification habang naka-on ito.</string>
     <string name="nm_devices_remote_control">Hayaang patakbuhin ng ibang device ang teleponong ito</string>
@@ -939,11 +940,11 @@
     <string name="nm_hub_err_unknown_action">Mas lumang nanoMuse ang tumatakbo sa computer na hindi nakakakilala sa aksyong ito.</string>
     <string name="nm_hub_err_bad_key">Na-sign out sa relay; mag-sign in ulit.</string>
     <string name="nm_hub_err_generic">Hindi ito nagawa ng computer.</string>
-    <string name="nm_devices_refused">Tinanggihan ng relay — mag-sign in ulit</string>
+    <string name="nm_devices_refused">Tinanggihan ng relay; mag-sign in ulit</string>
     <string name="nm_devices_notifications_hint">Payagan ang mga notification para manatiling maaabot ang telepono sa background.</string>
     <string name="nm_library_share_failed">Hindi maibahagi ang file.</string>
 
-    <!-- 0.1.32: Settings → Connectors — the services the agent can be let into (the desktop's catalogue) -->
+    <!-- 0.1.32: Settings → Connectors: the services the agent can be let into (the desktop's catalogue) -->
     <string name="nm_connectors_title">Mga connector</string>
     <string name="nm_connectors_intro">Papasukin ang agent sa mga serbisyong ginagamit mo. Bawat isa ay sariling remote MCP server ng vendor; karamihan ay nagsa-sign in gamit ang account na mayroon ka na, ang ilan ay nangangailangan ng key. Ang konektadong serbisyo ay isang MCP server entry na magagamit ng agent sa anumang chat.</string>
     <string name="nm_connectors_connected_n">%1$d ang konektado</string>
@@ -956,12 +957,12 @@
     <string name="nm_connectors_docs">Ang pahina ng vendor tungkol sa server na ito</string>
     <string name="nm_connectors_how_oauth">Nagsa-sign in gamit ang %1$s account mo sa browser; nagrerehistro ang nanoMuse ng sarili nito sa serbisyo, kaya walang ita-type. Nananatili sa teleponong ito ang token.</string>
     <string name="nm_connectors_how_key">Nangangailangan ng key mula sa serbisyo: %1$s. Itinatago lang ito sa MCP entry sa teleponong ito.</string>
-    <string name="nm_connectors_how_none">Bukas sa lahat — hindi kailangang mag-sign in.</string>
+    <string name="nm_connectors_how_none">Bukas sa lahat; hindi kailangang mag-sign in.</string>
     <string name="nm_connectors_how_auto">Sinusuri muna kung ano ang kailangan ng server: wala, isang sign-in, o isang key.</string>
     <string name="nm_connectors_key_placeholder">I-paste ang key</string>
     <string name="nm_handover_title">Ikaw na</string>
-    <string name="nm_handover_body">Kailangan ka ng pahina: %1$s. Gawin ito sa browser dito — parehong pahina, parehong session — saka i-tap ang Tapos na at magpapatuloy ang agent mula sa iniwan mo.</string>
-    <string name="nm_handover_body_generic">Kailangan ka ng pahina — isang sign-in o isang code. Gawin ito sa browser dito, saka i-tap ang Tapos na at magpapatuloy ang agent mula sa iniwan mo.</string>
+    <string name="nm_handover_body">Kailangan ka ng pahina: %1$s. Gawin ito sa browser dito (parehong pahina, parehong session), saka i-tap ang Tapos na at magpapatuloy ang agent mula sa iniwan mo.</string>
+    <string name="nm_handover_body_generic">Kailangan ka ng pahina: isang sign-in o isang code. Gawin ito sa browser dito, saka i-tap ang Tapos na at magpapatuloy ang agent mula sa iniwan mo.</string>
     <string name="nm_handover_open">Buksan ang pahina</string>
     <string name="nm_handover_done">Tapos na, magpatuloy</string>
     <string name="nm_handover_banner">Ikaw na: %1$s. I-tap ang Tapos na kapag handa na ang pahina.</string>
@@ -972,13 +973,13 @@
 
     <!-- Connections the account's other devices hold (the relay profile carries which device connected what; credentials stay where they were made) -->
     <string name="nm_connectors_elsewhere_title">Sa iba mong device</string>
-    <string name="nm_connectors_elsewhere_sign_in">Konektado sa %1$s — mag-sign in dito para magamit ito sa teleponong ito.</string>
+    <string name="nm_connectors_elsewhere_sign_in">Konektado sa %1$s; mag-sign in dito para magamit ito sa teleponong ito.</string>
     <string name="nm_connectors_elsewhere_only">Konektado sa %1$s. Wala sa catalogue ng teleponong ito; idagdag ito sa ilalim ng Mga sarili mong server kung kailangan mo ito dito.</string>
     <string name="nm_connectors_elsewhere_device">ibang device</string>
     <string name="nm_connectors_own_n">%1$d na sarili mo · idagdag gamit ang address, command o JSON</string>
     <string name="nm_connectors_how_client">Hindi nagrerehistro ng mga app nang kusa ang %1$s, kaya nangangailangan ito ng isang minutong pag-set up nang isang beses: gumawa ng sarili mong OAuth app sa developer settings nito, ibigay dito ang callback address sa ibaba, at i-paste dito ang client ID ng app (at ang secret nito, kung mayroon). Nananatili pareho sa teleponong ito.</string>
     <string name="nm_connectors_client_developer">Buksan ang developer settings ng %1$s</string>
-    <string name="nm_connectors_client_redirect">Callback (redirect) address para sa app — i-tap para kopyahin:</string>
+    <string name="nm_connectors_client_redirect">Callback (redirect) address para sa app, i-tap para kopyahin:</string>
     <string name="nm_connectors_client_copy">Kopyahin</string>
     <string name="nm_connectors_client_id">Client ID ng OAuth</string>
     <string name="nm_connectors_client_secret">Client secret ng OAuth (kung mayroon)</string>
@@ -1005,7 +1006,7 @@
     <string name="nm_sync_delete_confirm">Aalisin ang mga usapang itinago sa nanoMuse Cloud. Mananatili kung ano ang mga chat sa mga device mo.</string>
     <string name="nm_sync_deleted">Nabura ang mga na-sync na usapan.</string>
     <string name="nm_sync_from">Mula sa %1$s</string>
-    <string name="nm_sync_attachment_note">[Attachment %1$s — nananatili sa device kung saan ito ginawa]</string>
+    <string name="nm_sync_attachment_note">[Attachment %1$s, nananatili sa device kung saan ito ginawa]</string>
 
     <!-- Contract C9 (0.1.38): side chats stay local unless asked for; the device working on a line -->
     <string name="nm_sync_side_title">I-sync din ang mga side chat</string>

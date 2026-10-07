@@ -15,13 +15,13 @@
     <string name="nm_status_replying">Escrevendo a resposta</string>
     <string name="nm_status_on">Cuidando disso: %1$s</string>
     <string name="nm_status_working">Cuidando disso</string>
-    <string name="nm_home_not_ready">Um momento — a conversa ainda está carregando.</string>
+    <string name="nm_home_not_ready">Um momento, a conversa ainda está carregando.</string>
 
     <!-- The ask for a star: at the first sign-in, after the first task, when the allowance is used up -->
     <string name="nm_star_title">Uma estrela no GitHub ajuda</string>
     <string name="nm_star_action">Dar estrela no GitHub</string>
     <string name="nm_star_later">Agora não</string>
-    <string name="nm_star_signed_in">Bem-vindo. O nanoMuse é gratuito, de código aberto e sem fins lucrativos — um agente pessoal para quem quiser rodá-lo. Se isso vale algo para você, uma estrela no GitHub é como a próxima pessoa vai encontrá-lo.</string>
+    <string name="nm_star_signed_in">Bem-vindo. O nanoMuse é gratuito, de código aberto e sem fins lucrativos: um agente pessoal para quem quiser rodá-lo. Se isso vale algo para você, uma estrela no GitHub é como a próxima pessoa vai encontrá-lo.</string>
     <plurals name="nm_star_tasks">
         <item quantity="one">Uma tarefa concluída. Se o nanoMuse ajudou, uma estrela no GitHub diz isso a quem o constrói.</item>
         <item quantity="other">%1$d tarefas concluídas. Se o nanoMuse é útil, uma estrela no GitHub ajuda a próxima pessoa a encontrá-lo.</item>
@@ -34,7 +34,7 @@
     </plurals>
     <string name="nm_star_goal_done">Meta alcançada. Se o nanoMuse ajudou você a chegar lá, uma estrela no GitHub diz isso a quem o constrói.</string>
     <string name="nm_star_new_look">Um rosto novo, desenhado para você. Se gosta do rumo do nanoMuse, uma estrela no GitHub ajuda mais pessoas a encontrá-lo.</string>
-    <string name="nm_star_exhausted">A cota gratuita acabou — obrigado por chegar até aqui. Se o nanoMuse mereceu, uma estrela no GitHub mantém o projeto à vista para a próxima pessoa.</string>
+    <string name="nm_star_exhausted">A cota gratuita acabou. Obrigado por chegar até aqui. Se o nanoMuse mereceu, uma estrela no GitHub mantém o projeto à vista para a próxima pessoa.</string>
     <string name="nm_chat_menu_rename">Renomear conversa</string>
 
     <!-- Foreground-service notification title while no tool is running -->
@@ -42,8 +42,8 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Oi, eu sou o nanoMuse, o assistente que mora no seu celular. Deixe comigo algumas das suas tarefas.</string>
-    <string name="nm_intro_how_i_work">Um pouco sobre como eu trabalho:\n\n- Tenho meu próprio computador — um sandbox Linux e um navegador — então posso rodar comandos, abrir sites e preencher formulários.\n- Posso ler e organizar os arquivos e fotos que você montar para mim, e cuidar de lembretes e tarefas agendadas.\n- Antes de qualquer passo que importe, eu pergunto a você primeiro.\n- Tudo roda neste celular. Suas mensagens vão para o modelo que você configurou; com o nanoMuse Cloud, esta conversa também acompanha você nos seus outros aparelhos — em Controles de dados dá para desligar isso.</string>
-    <string name="nm_intro_ask_name">Antes de começar — como devo chamar você?</string>
+    <string name="nm_intro_how_i_work">Um pouco sobre como eu trabalho:\n\n- Tenho meu próprio computador (um sandbox Linux e um navegador), então posso rodar comandos, abrir sites e preencher formulários.\n- Posso ler e organizar os arquivos e fotos que você montar para mim, e cuidar de lembretes e tarefas agendadas.\n- Antes de qualquer passo que importe, eu pergunto a você primeiro.\n- Tudo roda neste celular. Suas mensagens vão para o modelo que você configurou; com o nanoMuse Cloud, esta conversa também acompanha você nos seus outros aparelhos; em Controles de dados dá para desligar isso.</string>
+    <string name="nm_intro_ask_name">Antes de começar, como devo chamar você?</string>
 
     <!-- First conversation: the name chooser -->
     <string name="nm_naming_title">Me dê um nome</string>
@@ -138,7 +138,7 @@
     <string name="nm_idea_action_chat">Enviar à conversa</string>
     <string name="nm_idea_action_routine">Criar rotina</string>
     <string name="nm_idea_action_goal">Começar meta</string>
-    <string name="nm_idea_routine_created">Rotina criada — defina o horário e os detalhes.</string>
+    <string name="nm_idea_routine_created">Rotina criada. Defina o horário e os detalhes.</string>
 
     <!-- Library tab -->
     <string name="nm_library_artifacts">Artefatos</string>
@@ -215,14 +215,14 @@
     <string name="nm_feed_prompt">Escreva o feed de hoje.</string>
     <string name="nm_feed_default_preferences">Monte um feed sobre o que me interessa. Curto e direto, fácil de passar os olhos, sem caça-cliques.</string>
     <string name="nm_feed_intro_title">Sobre o feed</string>
-    <string name="nm_feed_intro_desc">Posts curtos que seu agente escreve para você a partir do que lembra — seus arquivos de memória, a última semana do diário, suas metas. A frase abaixo orienta cada post daqui em diante; edite quando quiser.</string>
+    <string name="nm_feed_intro_desc">Posts curtos que seu agente escreve para você a partir do que lembra: seus arquivos de memória, a última semana do diário, suas metas. A frase abaixo orienta cada post daqui em diante; edite quando quiser.</string>
     <string name="nm_feed_edit">Editar</string>
     <string name="nm_feed_got_it">Entendi</string>
     <string name="nm_feed_save">Salvar</string>
     <string name="nm_feed_settings_title">Feed</string>
     <string name="nm_feed_routine_switch">Escrever todo dia</string>
     <string name="nm_feed_routine_time">Todo dia às %1$s · toque para mudar</string>
-    <string name="nm_feed_routine_needs_model">Adicione um modelo primeiro — o feed é escrito pelo seu agente.</string>
+    <string name="nm_feed_routine_needs_model">Adicione um modelo primeiro; o feed é escrito pelo seu agente.</string>
     <string name="nm_feed_write_now">Escrever agora</string>
     <string name="nm_feed_generating">Escrevendo…</string>
     <string name="nm_feed_discuss">Conversar</string>
@@ -239,7 +239,7 @@
     <string name="nm_feed_type_memory">Memória</string>
     <string name="nm_feed_type_note">Nota</string>
     <string name="nm_feed_empty_title">Nada no feed ainda</string>
-    <string name="nm_feed_empty_body">Conforme formos nos conhecendo, novos posts aparecem aqui. Todo dia às %1$s eu leio o que lembro sobre você — seus arquivos de memória, a última semana do diário, suas metas — e escrevo alguns posts curtos.</string>
+    <string name="nm_feed_empty_body">Conforme formos nos conhecendo, novos posts aparecem aqui. Todo dia às %1$s eu leio o que lembro sobre você (seus arquivos de memória, a última semana do diário, suas metas) e escrevo alguns posts curtos.</string>
     <string name="nm_feed_empty_how_title">Oriente com uma frase</string>
     <string name="nm_feed_empty_how_body">Toque nos controles no canto superior direito para me dizer do que quer mais, desligar a rotina diária ou pedir que eu escreva o primeiro dia agora.</string>
     <string name="nm_feed_card_posted">Adicionado ao seu feed</string>
@@ -270,13 +270,13 @@
     <string name="nm_sysfiles_sort_recent">Alterados recentemente</string>
     <string name="nm_sysfiles_sort_toggle">Mudar a ordem</string>
     <string name="nm_sysfiles_open_memory">Abrir memória</string>
-    <string name="nm_sysfiles_footer">Estes arquivos são do agente: quem ele é, o que sabe sobre você, o que lembra, o que escreve para você e quando acorda. Ficam no armazenamento do seu celular — o agente os lê e edita pelo shell em /var/minis/memory, e você pode editar qualquer coisa aqui.</string>
+    <string name="nm_sysfiles_footer">Estes arquivos são do agente: quem ele é, o que sabe sobre você, o que lembra, o que escreve para você e quando acorda. Ficam no armazenamento do seu celular; o agente os lê e edita pelo shell em /var/minis/memory, e você pode editar qualquer coisa aqui.</string>
     <string name="nm_sysfile_about_lead">Sobre este arquivo.</string>
     <string name="nm_sysfile_about_soul">Esta é a persona do agente: os valores e hábitos que ele tenta manter em toda conversa, seu nome e o estilo em que responde. Começa de um modelo que vem com o nanoMuse; o agente pode refiná-la com o tempo e avisa quando o faz. Você pode editá-la a qualquer momento. Esta nota não faz parte do arquivo.</string>
     <string name="nm_sysfile_about_user">O agente mantém este arquivo como suas anotações de trabalho sobre você: seu nome, como prefere ser chamado, seu fuso horário e o contexto de que ele precisa para ser útil, como aquilo em que você está trabalhando. Ele o preenche com o tempo a partir das suas conversas e o lê no início de cada uma. Reflete o entendimento atual do agente, então pode estar incompleto ou desatualizado. Você pode editar qualquer coisa aqui, e o agente seguirá o que você escrever. Esta nota não faz parte do arquivo.</string>
-    <string name="nm_sysfile_about_memory">Notas duradouras que o agente guarda entre conversas — o que vale lembrar, nas palavras dele, mais o que você importou de outro assistente. O diário dia a dia fica ao lado, na pasta de memória. Lido no início de toda conversa quando a memória está ligada. Esta nota não faz parte do arquivo.</string>
+    <string name="nm_sysfile_about_memory">Notas duradouras que o agente guarda entre conversas: o que vale lembrar, nas palavras dele, mais o que você importou de outro assistente. O diário dia a dia fica ao lado, na pasta de memória. Lido no início de toda conversa quando a memória está ligada. Esta nota não faz parte do arquivo.</string>
     <string name="nm_sysfile_about_feed">Um parágrafo que orienta o feed: do que você quer mais, o que pular, que tamanho os posts devem ter. A rotina diária do feed o lê antes de escrever. Esta nota não faz parte do arquivo.</string>
-    <string name="nm_sysfile_about_heartbeat">Quando o agente acorda por conta própria: cada rotina e cada checagem de meta, com o horário e como foi a última execução. Gerado a partir das rotinas, então aqui é só leitura — altere-as em Metas → Rotinas. Esta nota não faz parte do arquivo.</string>
+    <string name="nm_sysfile_about_heartbeat">Quando o agente acorda por conta própria: cada rotina e cada checagem de meta, com o horário e como foi a última execução. Gerado a partir das rotinas, então aqui é só leitura; altere-as em Metas → Rotinas. Esta nota não faz parte do arquivo.</string>
     <string name="nm_sysfile_edit">Editar</string>
     <string name="nm_sysfile_copy">Copiar conteúdo</string>
     <string name="nm_sysfile_share">Compartilhar</string>
@@ -294,12 +294,12 @@
 
     <!-- 0.1.5: memory import -->
     <string name="nm_import_title">Importar memória</string>
-    <string name="nm_import_intro">Traga o que outro assistente já sabe sobre você. Peça a ele com o prompt abaixo, cole a resposta aqui, e ela é acrescentada ao GLOBAL.md em “Importado” — onde seu agente a lê no início de toda conversa.</string>
+    <string name="nm_import_intro">Traga o que outro assistente já sabe sobre você. Peça a ele com o prompt abaixo, cole a resposta aqui, e ela é acrescentada ao GLOBAL.md em “Importado”, onde seu agente a lê no início de toda conversa.</string>
     <string name="nm_import_step1">Pergunte ao seu outro assistente</string>
     <string name="nm_import_step2">Cole a resposta</string>
     <string name="nm_import_prompt">Por favor, reúna tudo o que você lembra sobre mim em uma lista concisa de tópicos: quem eu sou, como prefiro ser chamado, onde moro e meu fuso horário, o que faço, no que estou trabalhando agora, minhas preferências e hábitos, e qualquer coisa que lhe pediram para sempre ou nunca fazer. Texto simples, sem títulos, sem segredos ou senhas.</string>
     <string name="nm_import_copy_prompt">Copiar prompt</string>
-    <string name="nm_import_from_hint">De (opcional) — ex.: ChatGPT, Claude</string>
+    <string name="nm_import_from_hint">De (opcional), ex.: ChatGPT, Claude</string>
     <string name="nm_import_paste_hint">Cole a lista aqui</string>
     <string name="nm_import_heading">Importado</string>
     <string name="nm_import_append">Adicionar à memória</string>
@@ -348,7 +348,7 @@
     <string name="nm_avatar_pick_title">Escolha um</string>
     <string name="nm_avatar_pick_body">Você pode desenhar mais quatro quando quiser; os antigos ficam guardados até lá.</string>
     <string name="nm_avatar_use_this">Usar este</string>
-    <string name="nm_avatar_use_this_hint">Os humores — trabalhando, esperando, concluído, ops — são desenhados a partir dele em seguida, em segundo plano.</string>
+    <string name="nm_avatar_use_this_hint">Os humores (trabalhando, esperando, concluído, ops) são desenhados a partir dele em seguida, em segundo plano.</string>
     <string name="nm_avatar_footer">As imagens ficam neste celular em minis-global/nanomuse/avatar. Cada rosto custa cinco imagens do seu provedor: a que você escolheu mais quatro humores.</string>
 
     <!-- First run (Muse-style welcome; the steps are OpenMinis' provider and model screens) -->
@@ -371,20 +371,20 @@
     <string name="nm_settings_version">nanoMuse %1$s (%2$d)</string>
     <string name="nm_version_title">Versão</string>
     <string name="nm_version_checking">Verificando a versão mais recente…</string>
-    <string name="nm_version_have">Mais recente %1$s — você já tem</string>
+    <string name="nm_version_have">Mais recente %1$s, você já tem</string>
     <string name="nm_version_out">%1$s saiu</string>
-    <string name="nm_version_out_update">%1$s saiu — toque para atualizar</string>
+    <string name="nm_version_out_update">%1$s saiu, toque para atualizar</string>
     <string name="nm_version_update">Atualizar</string>
-    <string name="nm_version_failed">Não foi possível verificar — toque para tentar de novo</string>
+    <string name="nm_version_failed">Não foi possível verificar, toque para tentar de novo</string>
     <string name="nm_appearance_section_home">Início</string>
     <string name="nm_appearance_header_model_title">Mostrar o modelo sob o nome</string>
     <string name="nm_appearance_header_model_footer">O Muse mostra só o nome. Ligue isto para ver o grupo de modelos e provedor · modelo embaixo; toque neles para trocar. Desligado, o modelo fica em ••• → Modelo e em Configurações.</string>
     <string name="nm_appearance_section_chat">Conversa</string>
     <string name="nm_appearance_steps_title">Mostrar os passos do agente</string>
-    <string name="nm_appearance_steps_footer">Desligado, a conversa mostra só as respostas, e a linha sob o rosto diz o que o agente está fazendo agora. Ligado, cada passo aparece na conversa — cada ferramenta usada, o raciocínio e uma barra sobre o campo de mensagem que abre os detalhes do passo.</string>
+    <string name="nm_appearance_steps_footer">Desligado, a conversa mostra só as respostas, e a linha sob o rosto diz o que o agente está fazendo agora. Ligado, cada passo aparece na conversa: cada ferramenta usada, o raciocínio e uma barra sobre o campo de mensagem que abre os detalhes do passo.</string>
     <string name="nm_chat_menu_model">Modelo</string>
     <string name="nm_model_switched">Trocado para %1$s nesta conversa</string>
-    <string name="nm_model_switched_sticky">Trocado para %1$s — novas conversas também o usam</string>
+    <string name="nm_model_switched_sticky">Trocado para %1$s; novas conversas também o usam</string>
     <string name="nm_picker_more_models">Mais modelos na sua conta</string>
     <string name="nm_picker_more_models_note">Fora do menu, mas utilizáveis com sua conta; cobrados como o modelo mais próximo do menu. A tela é lida com um destes só quando você o escolhe.</string>
     <string name="nm_attach_commands">Comandos</string>
@@ -428,27 +428,27 @@
     <string name="nm_avatar_status_options">Gerando opções</string>
     <string name="nm_avatar_status_finalizing">Finalizando avatar</string>
     <string name="nm_avatar_options_drawing">Desenhando quatro versões de \"%1$s\"…</string>
-    <string name="nm_avatar_options_pick_hint">Toque na que você gostar, ou me diga — \"a segunda\".</string>
+    <string name="nm_avatar_options_pick_hint">Toque na que você gostar, ou me diga: \"a segunda\".</string>
     <string name="nm_avatar_options_failed">As imagens não chegaram. Confira o modelo de imagem em ••• → Estúdio de avatar e tente de novo.</string>
-    <string name="nm_avatar_provider_busy">O provedor de imagens está ocupado agora — tente de novo em um minuto.</string>
+    <string name="nm_avatar_provider_busy">O provedor de imagens está ocupado agora; tente de novo em um minuto.</string>
     <string name="nm_avatar_options_again">De novo</string>
     <string name="nm_avatar_options_keep">Manter o atual</string>
     <string name="nm_avatar_option_n">Opção %1$d</string>
     <string name="nm_avatar_option_retry">Tentar de novo</string>
-    <string name="nm_avatar_options_ready">Aqui estão algumas versões de \"%1$s\" — escolha a que você mais gostar.</string>
-    <string name="nm_avatar_drawing_now">Estou desenhando algumas versões de \"%1$s\" agora. Imagens levam um tempinho — aviso quando estiverem prontas.</string>
-    <string name="nm_avatar_drawing_again">Mais uma rodada — me dê um instante.</string>
-    <string name="nm_avatar_adopted">Pronto — meu novo visual está ativo. Agora eu sou %1$s.</string>
+    <string name="nm_avatar_options_ready">Aqui estão algumas versões de \"%1$s\": escolha a que você mais gostar.</string>
+    <string name="nm_avatar_drawing_now">Estou desenhando algumas versões de \"%1$s\" agora. Imagens levam um tempinho; aviso quando estiverem prontas.</string>
+    <string name="nm_avatar_drawing_again">Mais uma rodada, me dê um instante.</string>
+    <string name="nm_avatar_adopted">Pronto, meu novo visual está ativo. Agora eu sou %1$s.</string>
     <string name="nm_avatar_pick_line">Opção %1$d</string>
     <string name="nm_avatar_cannot_start">Ainda não consigo desenhar um visual novo: %1$s</string>
     <string name="nm_avatar_memory_line">- %1$s: o usuário mudou meu avatar para \"%2$s\".</string>
-    <string name="nm_avatar_share_text">Meu novo visual — %1$s. Dê uma olhada.</string>
+    <string name="nm_avatar_share_text">Meu novo visual: %1$s. Dê uma olhada.</string>
     <string name="nm_avatar_share_button">Compartilhar avatar</string>
     <string name="nm_avatar_share_later">Depois</string>
     <string name="nm_avatar_share_title">Compartilhar meu avatar</string>
     <string name="nm_avatar_share_subtitle">Escolha um cartão. Ele sai pela tela de compartilhamento do sistema.</string>
     <string name="nm_avatar_share_system">Compartilhar</string>
-    <string name="nm_avatar_share_bubble">Oi, eu sou %1$s, um agente pessoal de IA. Conheça o nanoMuse — código aberto, roda no seu celular.</string>
+    <string name="nm_avatar_share_bubble">Oi, eu sou %1$s, um agente pessoal de IA. Conheça o nanoMuse: código aberto, roda no seu celular.</string>
     <string name="nm_avatar_share_tagline">Seu agente pessoal de IA, código aberto · github.com/nano-muse/nanoMuse</string>
 
     <!-- 0.1.10 · Motion -->
@@ -461,7 +461,7 @@
     <string name="nm_media_image_off">Até definir um, o avatar não pode ser mudado e nenhuma imagem pode ser desenhada. O agente avisará se você pedir.</string>
     <string name="nm_media_need_model">Digite o nome de um modelo abaixo</string>
     <string name="nm_media_section_video">Modelo de vídeo</string>
-    <string name="nm_media_video_footer">Faz o avatar se mover — um clipe curto em loop para cada estado — e qualquer clipe que você pedir. Alibaba Cloud Model Studio: wan2.2-i2v-flash (recomendado, ¥0,10 por segundo em 480P), outro modelo Wan ou MiniMax/MiniMax-H3; a lista mostra os que esta chave pode usar, cada um ativado uma vez na página do modelo no console do Model Studio. Cobrado por segundo de vídeo; um avatar leva quatro clipes de alguns segundos.</string>
+    <string name="nm_media_video_footer">Faz o avatar se mover (um clipe curto em loop para cada estado) e qualquer clipe que você pedir. Alibaba Cloud Model Studio: wan2.2-i2v-flash (recomendado, ¥0,10 por segundo em 480P), outro modelo Wan ou MiniMax/MiniMax-H3; a lista mostra os que esta chave pode usar, cada um ativado uma vez na página do modelo no console do Model Studio. Cobrado por segundo de vídeo; um avatar leva quatro clipes de alguns segundos.</string>
     <string name="nm_media_video_off">Opcional. Sem um, o avatar fica parado e nenhum clipe pode ser feito.</string>
     <string name="nm_media_video_off_option">Sem modelo de vídeo</string>
     <string name="nm_media_not_set">Não definido</string>
@@ -482,7 +482,7 @@
     <string name="nm_media_video_none_found">Nenhum modelo de vídeo respondeu para esta chave. Digite um abaixo, ou verifique de novo.</string>
     <string name="nm_media_other_model">Outro nome de modelo</string>
     <string name="nm_avatar_status_animating">Animando %1$d/%2$d…</string>
-    <string name="nm_avatar_clips_coming">Também vou fazer quatro clipes curtos para poder me mover — alguns minutos em segundo plano, pelo seu modelo de vídeo.</string>
+    <string name="nm_avatar_clips_coming">Também vou fazer quatro clipes curtos para poder me mover: alguns minutos em segundo plano, pelo seu modelo de vídeo.</string>
 
     <!-- Hands (0.1.12): the phone's screen as a hand -->
     <string name="nm_hands_title">Mãos</string>
@@ -492,7 +492,7 @@
     <string name="nm_hands_intro">Para apps sem API, ele usa o celular como você: uma captura de tela, depois toques, digitação e deslizes. Skills, comandos e o navegador vêm primeiro; a tela é o último recurso. Desligado até você ligar.</string>
     <string name="nm_hands_switch">Deixar o agente usar a tela</string>
     <string name="nm_hands_switch_footer">Enquanto trabalha, uma cápsula no topo da tela mostra cada passo e um botão Parar. Logins, senhas e códigos ficam sempre com você.</string>
-    <string name="nm_hands_status_off">Desligado — o agente avisará quando uma tarefa precisar da tela</string>
+    <string name="nm_hands_status_off">Desligado; o agente avisará quando uma tarefa precisar da tela</string>
     <string name="nm_hands_status_ready">Pronto</string>
     <string name="nm_hands_status_missing">Ligado, mas ainda falta algo abaixo</string>
     <string name="nm_hands_status_working">Trabalhando na tela agora</string>
@@ -512,7 +512,7 @@
     <string name="nm_hands_need_ok">Pronto</string>
     <string name="nm_hands_need_set_up">Configurar</string>
     <string name="nm_hands_section_model">Modelo das mãos</string>
-    <string name="nm_hands_model_auto">Automático — qwen3.8-27b (do nanoMuse Cloud, ou com sua própria chave), senão o modelo de chat que você escolheu quando ele enxerga, senão o Grupo de Visão</string>
+    <string name="nm_hands_model_auto">Automático: qwen3.8-27b (do nanoMuse Cloud, ou com sua própria chave), senão o modelo de chat que você escolheu quando ele enxerga, senão o Grupo de Visão</string>
     <string name="nm_hands_model_footer">Cada passo envia uma captura de tela a este modelo; é uma configuração separada do modelo de chat. Modelos de visão menores servem bem aqui e custam menos. Um modelo do catálogo mais amplo do Cloud só é usado quando você o escolhe.</string>
     <string name="nm_hands_why_chosen">escolhido aqui</string>
     <string name="nm_hands_why_default">o padrão das mãos com sua própria chave</string>
@@ -523,7 +523,7 @@
     <string name="nm_hands_why_any">o único modelo ativo que enxerga</string>
     <string name="nm_hands_section_rules">Como ele se comporta</string>
     <string name="nm_hands_rule_ladder">A tela vem por último: primeiro uma skill, um comando ou o navegador.</string>
-    <string name="nm_hands_rule_secrets">Nunca digita senhas, códigos ou números de cartão — ele passa o celular para você.</string>
+    <string name="nm_hands_rule_secrets">Nunca digita senhas, códigos ou números de cartão; ele passa o celular para você.</string>
     <string name="nm_hands_rule_approvals">Pagar, enviar, publicar ou excluir espera sua aprovação, como no shell e no navegador.</string>
     <string name="nm_hands_rule_stop">Parar está sempre na tela; nada continua depois dele.</string>
     <string name="nm_hands_rule_screenshots">A captura de tela de cada passo fica com a conversa e é enviada só ao seu próprio modelo.</string>
@@ -537,9 +537,9 @@
     <string name="nm_hands_your_turn">Sua vez</string>
     <string name="nm_hands_your_turn_detail">Faça esta parte você mesmo e depois toque em Continuar.</string>
     <string name="nm_hands_protected_screen">Esta tela é protegida e não pode ser lida. Termine esta parte você mesmo e depois toque em Continuar.</string>
-    <string name="nm_hands_secret_field">Um campo de senha ou código — preencha você mesmo e depois toque em Continuar.</string>
+    <string name="nm_hands_secret_field">Um campo de senha ou código: preencha você mesmo e depois toque em Continuar.</string>
     <string name="nm_hands_approval_title">Esperando sua aprovação</string>
-    <string name="nm_hands_approval_detail">Tocar em “%1$s” — confirme no nanoMuse (ele pede seu bloqueio de tela).</string>
+    <string name="nm_hands_approval_detail">Tocar em “%1$s”: confirme no nanoMuse (ele pede seu bloqueio de tela).</string>
     <string name="nm_hands_approval_here">Tocar em “%1$s”?</string>
     <string name="nm_hands_allow_once">Permitir</string>
     <string name="nm_hands_deny">Negar</string>
@@ -578,15 +578,15 @@
     <string name="nm_pc_section_paired">Computadores nesta conta</string>
     <string name="nm_pc_none">Nenhum computador ainda</string>
     <string name="nm_pc_none_footer">Até um computador entrar com esta conta, o agente avisará quando uma tarefa for do seu computador.</string>
-    <string name="nm_pc_paired_footer">Toque em um computador para conferir se ele responde. Um computador que falta aqui quase sempre entrou com outra conta — a dica acima é a certa.</string>
+    <string name="nm_pc_paired_footer">Toque em um computador para conferir se ele responde. Um computador que falta aqui quase sempre entrou com outra conta; a dica acima é a certa.</string>
     <string name="nm_pc_last_seen">visto %1$s</string>
     <string name="nm_pc_offline">offline</string>
     <string name="nm_pc_online">online</string>
     <string name="nm_pc_account_none">Este celular ainda não entrou no nanoMuse Cloud; entre primeiro, e depois o computador com a mesma conta.</string>
-    <string name="nm_pc_account_hint">Este celular está conectado como %1$s — o computador precisa entrar com a mesma conta.</string>
+    <string name="nm_pc_account_hint">Este celular está conectado como %1$s; o computador precisa entrar com a mesma conta.</string>
     <string name="nm_pc_checking">Verificando…</string>
     <string name="nm_pc_answering">%1$s responde</string>
-    <string name="nm_pc_not_answering">%1$s não responde — o nanoMuse Desktop ainda está rodando lá?</string>
+    <string name="nm_pc_not_answering">%1$s não responde. O nanoMuse Desktop ainda está rodando lá?</string>
 
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">No computador “%1$s”, não neste celular.</string>
@@ -602,7 +602,7 @@
 
     <!-- nanoMuse: the first-run pages -->
     <string name="nm_welcome_tagline">Um agente pessoal de código aberto para todos os seus dispositivos.</string>
-    <string name="nm_welcome_email">Entrar — grátis</string>
+    <string name="nm_welcome_email">Entrar (grátis)</string>
     <string name="nm_welcome_fine_print">Uma conta mantém seus dispositivos juntos e traz o uso gratuito do modelo; nada é cobrado. Sua própria chave de API pode ser adicionada logo depois.</string>
     <string name="nm_setup_source_title">Qual modelo responde?</string>
     <string name="nm_setup_source_sub">Sua conta já traz um. Você também pode adicionar sua própria chave de API e trocar a qualquer momento.</string>
@@ -615,21 +615,21 @@
     <string name="nm_setup_password_set">Definir a senha</string>
     <string name="nm_setup_password_fine_print">Opcional. Você pode definir ou mudar depois em Conta.</string>
     <string name="nm_welcome_feat_chat">Chat, imagens, vídeo</string>
-    <string name="nm_welcome_feat_chat_sub">Um modelo capaz, geração de imagem e vídeo, ferramentas, skills e memória — no seu celular</string>
+    <string name="nm_welcome_feat_chat_sub">Um modelo capaz, geração de imagem e vídeo, ferramentas, skills e memória, no seu celular</string>
     <string name="nm_welcome_feat_hands">Mãos: ele usa seu celular</string>
-    <string name="nm_welcome_feat_hands_sub">Reserva o trem, pede a comida, procura algo em um app — você acompanha e pode parar a qualquer momento</string>
+    <string name="nm_welcome_feat_hands_sub">Reserva o trem, pede a comida, procura algo em um app; você acompanha e pode parar a qualquer momento</string>
     <string name="nm_welcome_feat_reach">Alcance: seus computadores, daqui</string>
     <string name="nm_welcome_feat_reach_sub">Pareie um Mac, Windows ou Linux e passe trabalho a ele pelo celular</string>
-    <string name="nm_welcome_notice">O nanoMuse é um projeto comunitário de código aberto, sem fins lucrativos — gratuito, para sempre. O modelo vem com uma cota gratuita paga pelo desenvolvedor; depois dela, sua própria chave. Nada é vendido; o que o relay guarda está na política de privacidade, e Configurações → Controles de dados é seu.</string>
+    <string name="nm_welcome_notice">O nanoMuse é um projeto comunitário de código aberto, sem fins lucrativos: gratuito, para sempre. O modelo vem com uma cota gratuita paga pelo desenvolvedor; depois dela, sua própria chave. Nada é vendido; o que o relay guarda está na política de privacidade, e Configurações → Controles de dados é seu.</string>
     <string name="nm_welcome_hands_title">Deixe-o usar seu celular</string>
     <string name="nm_welcome_hands_sub">Com duas permissões ele pode abrir apps, tocar e digitar por você. Uma cápsula com cada passo e um botão Parar fica na tela; logins, senhas e códigos são sempre seus.</string>
     <string name="nm_welcome_hands_turn_on">Ligar</string>
     <string name="nm_welcome_skip">Pular por enquanto</string>
     <string name="nm_welcome_hands_fine_print">Todo o resto funciona sem isso. Elas ficam em Configurações → Mãos quando você quiser.</string>
-    <string name="nm_welcome_meet_fine_print">Antes de qualquer coisa que não dê para desfazer — excluir, enviar, pagar — ele para e pergunta a você primeiro.</string>
+    <string name="nm_welcome_meet_fine_print">Antes de qualquer coisa que não dê para desfazer (excluir, enviar, pagar) ele para e pergunta a você primeiro.</string>
     <string name="nm_cloud_title">nanoMuse Cloud</string>
     <string name="nm_cloud_signin_title">Comece com o nanoMuse Cloud</string>
-    <string name="nm_cloud_signin_subtitle">Um código no seu celular ou e-mail — ou sua senha, depois de definir uma.</string>
+    <string name="nm_cloud_signin_subtitle">Um código no seu celular ou e-mail, ou sua senha, depois de definir uma.</string>
     <string name="nm_cloud_mode_code">Com um código</string>
     <string name="nm_cloud_mode_password">Com uma senha</string>
     <string name="nm_cloud_password">Senha</string>
@@ -652,6 +652,7 @@
     <string name="nm_cloud_server_ok">%1$s respondeu: relay %2$s.</string>
     <string name="nm_cloud_server_bad_url">Digite o endereço do relay, como https://relay.example.org.</string>
     <string name="nm_cloud_server_https">Use https para um servidor fora da sua própria rede. http serve para um endereço privado (10.x, 192.168.x, 172.16–31.x, localhost, um nome .local ou .ts.net).</string>
+    <string name="nm_lan_only_https">http:// sem criptografia só funciona para endereços da sua própria rede (10.x, 172.16–31.x, 192.168.x, nomes .local); use https:// para %1$s.</string>
     <string name="nm_cloud_server_unreachable">Nenhum relay respondeu em %1$s. Confira o endereço e se o relay está rodando.</string>
     <string name="nm_cloud_server_default">Voltar ao nanoMuse Cloud</string>
     <string name="nm_cloud_server_row">Servidor</string>
@@ -683,7 +684,7 @@
     <string name="nm_cloud_row_sign_in">Entrar</string>
     <string name="nm_cloud_err_bad_identifier">Isso não parece um endereço de e-mail.</string>
     <string name="nm_cloud_err_code_wrong">Código errado.</string>
-    <string name="nm_cloud_err_code_expired">Esse código expirou — envie um novo.</string>
+    <string name="nm_cloud_err_code_expired">Esse código expirou; envie um novo.</string>
     <string name="nm_cloud_err_code_too_often">Códigos demais em sequência. Aguarde alguns minutos.</string>
     <string name="nm_cloud_err_not_invited">Este relay é privado; esse endereço não está na lista dele.</string>
     <string name="nm_cloud_err_send_failed">O código não pôde ser enviado. Tente de novo em instantes.</string>
@@ -692,9 +693,9 @@
     <string name="nm_cloud_err_account_deleted">Esta conta foi excluída. Entre de novo para começar uma nova.</string>
     <string name="nm_cloud_err_out_of_tokens">A cota acabou.</string>
     <string name="nm_cloud_err_daily_cap">A cota de tokens de hoje acabou; ela volta amanhã.</string>
-    <string name="nm_cloud_err_allowance">A cota gratuita acabou. Convide um amigo (+¥%1$s para cada um de vocês) ou adicione sua própria chave em Configurações → Provedores — o Alibaba Cloud Bailian é o caminho rápido.</string>
-    <string name="nm_cloud_err_allowance_abroad">A cota gratuita acabou. Convide um amigo (+¥%1$s para cada um de vocês) ou adicione sua própria chave em Configurações → Provedores — o OpenRouter é o caminho rápido: uma conta, uma chave, pague pelo uso.</string>
-    <string name="nm_cloud_warn_line">A cota gratuita está quase no fim: restam ¥%1$s de ¥%2$s. Convide um amigo (+¥%3$s para cada um de vocês) ou adicione sua própria chave — ambos em Conta.</string>
+    <string name="nm_cloud_err_allowance">A cota gratuita acabou. Convide um amigo (+¥%1$s para cada um de vocês) ou adicione sua própria chave em Configurações → Provedores; o Alibaba Cloud Bailian é o caminho rápido.</string>
+    <string name="nm_cloud_err_allowance_abroad">A cota gratuita acabou. Convide um amigo (+¥%1$s para cada um de vocês) ou adicione sua própria chave em Configurações → Provedores; o OpenRouter é o caminho rápido: uma conta, uma chave, pague pelo uso.</string>
+    <string name="nm_cloud_warn_line">A cota gratuita está quase no fim: restam ¥%1$s de ¥%2$s. Convide um amigo (+¥%3$s para cada um de vocês) ou adicione sua própria chave, ambos em Conta.</string>
     <string name="nm_cloud_err_rate_limited">Pedidos demais de uma vez. Um momento, por favor.</string>
     <string name="nm_cloud_err_unreachable">Não foi possível alcançar o nanoMuse Cloud. Confira a conexão.</string>
     <string name="nm_cloud_err_generic">Algo deu errado.</string>
@@ -711,7 +712,7 @@
     <string name="nm_cloud_err_provider_busy_wait">O provedor do modelo está ocupado agora. Tente de novo em %1$s.</string>
     <string name="nm_cloud_err_model_not_offered">O nanoMuse Cloud não oferece mais esse modelo. Escolha outro em Ajustes → nanoMuse Cloud.</string>
     <string name="nm_cloud_err_relay_down">O nanoMuse Cloud não respondeu. Tente de novo em instantes.</string>
-    <string name="nm_cloud_err_allowance_paused">O saldo gratuito está pausado neste relay por enquanto — não acabou. Adicione uma chave sua ou entre com um plano que você já paga, em Ajustes → nanoMuse Cloud. Seu login, seus dispositivos e o que resta continuam como estão.</string>
+    <string name="nm_cloud_err_allowance_paused">O saldo gratuito está pausado neste relay por enquanto, não acabou. Adicione uma chave sua ou entre com um plano que você já paga, em Ajustes → nanoMuse Cloud. Seu login, seus dispositivos e o que resta continuam como estão.</string>
     <string name="nm_cloud_err_service_paused">O nanoMuse Cloud está pausado pelo operador por enquanto; seu login e seus dados ficam guardados. Tente de novo mais tarde.</string>
     <string name="nm_cloud_err_sync_paused">A sincronização de conversas está pausada neste relay por enquanto; o que está salvo fica guardado, e seus dispositivos continuam funcionando por conta própria.</string>
     <string name="nm_cloud_err_hub_paused">A ligação entre dispositivos está pausada neste relay por enquanto; cada dispositivo continua funcionando por conta própria.</string>
@@ -742,21 +743,21 @@
     <string name="nm_face_cost_checking">Verificando a cota de hoje…</string>
     <string name="nm_face_cost_what">Um rosto novo são %1$d imagens</string>
     <string name="nm_face_cost_what_clips">Um rosto novo são %1$d imagens e %2$d clipes curtos</string>
-    <string name="nm_face_cost_about">%1$s — cerca de ¥%2$s da sua cota.</string>
+    <string name="nm_face_cost_about">%1$s: cerca de ¥%2$s da sua cota.</string>
     <string name="nm_face_cost_left">Você ainda tem ¥%1$s da cota.</string>
     <string name="nm_face_cost_short">Isso é mais do que resta. Convide um amigo (+¥%1$s para cada um de vocês) ou adicione sua própria chave em Configurações → Provedores.</string>
     <string name="nm_face_cost_unknown">%1$s. Não foi possível verificar a cota de hoje agora.</string>
     <string name="nm_face_cost_go">Desenhar</string>
     <string name="nm_face_cost_anyway">Tentar mesmo assim</string>
     <string name="nm_face_cost_not_now">Agora não</string>
-    <string name="nm_face_cost_declined">Tudo bem — o rosto fica como está.</string>
+    <string name="nm_face_cost_declined">Tudo bem, o rosto fica como está.</string>
     <string name="nm_cloud_invite_title">Convidar um amigo</string>
-    <string name="nm_cloud_invite_why">Cada pessoa nova que se cadastra com seu código soma ¥%1$s à sua cota — e ¥%1$s à dela. Nunca expira.</string>
+    <string name="nm_cloud_invite_why">Cada pessoa nova que se cadastra com seu código soma ¥%1$s à sua cota, e ¥%1$s à dela. Nunca expira.</string>
     <string name="nm_cloud_invite_code">Seu código</string>
     <string name="nm_cloud_invite_share">Compartilhar o link</string>
     <string name="nm_cloud_invite_copy">Copiar</string>
     <string name="nm_cloud_invite_copied">Copiado</string>
-    <string name="nm_cloud_invite_share_text">Experimente o nanoMuse comigo — um agente pessoal totalmente de código aberto, gratuito. Cadastre-se com meu código %1$s: %2$s</string>
+    <string name="nm_cloud_invite_share_text">Experimente o nanoMuse comigo: um agente pessoal totalmente de código aberto, gratuito. Cadastre-se com meu código %1$s: %2$s</string>
     <string name="nm_cloud_invite_count">%1$d amigos entraram</string>
     <string name="nm_cloud_invite_earned">¥%1$s somados por convites</string>
     <string name="nm_cloud_invite_have">Tem um código de convite?</string>
@@ -765,9 +766,9 @@
     <string name="nm_notice_issue">Relatar um erro ou pedir um recurso</string>
     <string name="nm_ways_title_out">A cota gratuita acabou.</string>
     <string name="nm_ways_title_warn">Quase no fim: restam ¥%1$s de ¥%2$s.</string>
-    <string name="nm_ways_title_paused">O saldo gratuito está pausado neste relay por enquanto — não acabou.</string>
+    <string name="nm_ways_title_paused">O saldo gratuito está pausado neste relay por enquanto, não acabou.</string>
     <string name="nm_ways_paused_sub">O que resta continua como está; os caminhos abaixo funcionam agora.</string>
-    <string name="nm_ways_sub">Dois caminhos para seguir — seu login e seus dispositivos continuam funcionando de qualquer forma.</string>
+    <string name="nm_ways_sub">Dois caminhos para seguir; seu login e seus dispositivos continuam funcionando de qualquer forma.</string>
     <string name="nm_ways_key_title">Usar sua própria chave de modelo</string>
     <string name="nm_ways_key_guide">Guia passo a passo</string>
     <string name="nm_ways_region_cn">Primeiro o Alibaba Cloud Bailian: uma chave cobre chat, tela, imagens e clipes, e ele cadastra contas da China continental. Cada provedor abaixo diz o que cobre.</string>
@@ -785,10 +786,10 @@
     <string name="nm_cap_screen">tela</string>
     <string name="nm_cap_pictures">imagens</string>
     <string name="nm_cap_clips">clipes</string>
-    <string name="nm_cap_pictures_unavailable">Imagens precisam de um provedor com modelos de imagem — Bailian, OpenAI, Gemini ou OpenRouter.</string>
-    <string name="nm_cap_clips_unavailable">Clipes precisam de um provedor com modelos de vídeo — Alibaba Cloud Bailian.</string>
-    <string name="nm_cap_hands_unavailable">As mãos precisam de um modelo que veja a tela — Bailian, OpenRouter, OpenAI, Anthropic, Gemini ou qualquer provedor com modelos de visão.</string>
-    <string name="nm_cap_chat_unavailable">O chat precisa de um provedor com modelos de chat — adicione uma chave ou entre.</string>
+    <string name="nm_cap_pictures_unavailable">Imagens precisam de um provedor com modelos de imagem: Bailian, OpenAI, Gemini ou OpenRouter.</string>
+    <string name="nm_cap_clips_unavailable">Clipes precisam de um provedor com modelos de vídeo: Alibaba Cloud Bailian.</string>
+    <string name="nm_cap_hands_unavailable">As mãos precisam de um modelo que veja a tela: Bailian, OpenRouter, OpenAI, Anthropic, Gemini ou qualquer provedor com modelos de visão.</string>
+    <string name="nm_cap_chat_unavailable">O chat precisa de um provedor com modelos de chat: adicione uma chave ou entre.</string>
     <string name="nm_ways_invite_title">Convide um amigo: +¥%1$s para você e +¥%2$s para ele, a cada pessoa nova que se cadastra com seu link.</string>
     <string name="nm_ways_invite_share">Compartilhar o link</string>
     <string name="nm_ways_invite_copy">Copiar o link</string>
@@ -798,7 +799,7 @@
     <string name="nm_cloud_ev_contribute_default">Controles de dados: ligado para contas novas</string>
     <string name="nm_data_title">Controles de dados</string>
     <string name="nm_data_improve">Ajudar a melhorar os modelos de IA do nanoMuse</string>
-    <string name="nm_data_why">Enquanto isto está ligado, o texto das suas conversas com os modelos do nanoMuse Cloud — o que você escreveu, o que ele respondeu e as ferramentas que escolheu chamar — fica guardado no relay para treinar o modelo aberto da própria comunidade. Não a sua memória nem o SOUL (o prompt de sistema), não o que as ferramentas retornaram, não imagens, e nunca junto de quem você é. Sua própria chave de API nunca passa pelo relay.</string>
+    <string name="nm_data_why">Enquanto isto está ligado, o texto das suas conversas com os modelos do nanoMuse Cloud (o que você escreveu, o que ele respondeu e as ferramentas que escolheu chamar) fica guardado no relay para treinar o modelo aberto da própria comunidade. Não a sua memória nem o SOUL (o prompt de sistema), não o que as ferramentas retornaram, não imagens, e nunca junto de quem você é. Sua própria chave de API nunca passa pelo relay.</string>
     <string name="nm_data_default_on">Contas novas começam com isto ligado.</string>
     <string name="nm_data_default_off">Contas novas começam com isto desligado.</string>
     <string name="nm_data_kept">%1$d turnos guardados até agora.</string>
@@ -842,7 +843,7 @@
     <string name="nm_cloud_ev_password_cleared">Senha removida</string>
     <string name="nm_cloud_ev_sign_out">Saiu</string>
     <string name="nm_cloud_ev_sign_out_all">Saiu de todos os dispositivos</string>
-    <string name="nm_cloud_ev_budget_refused">Pedido recusado — cota esgotada</string>
+    <string name="nm_cloud_ev_budget_refused">Pedido recusado: cota esgotada</string>
     <string name="nm_cloud_ev_upstream_error">O provedor do modelo retornou um erro</string>
     <string name="nm_cloud_sign_out_here">Sair neste celular</string>
     <string name="nm_cloud_sign_out_everywhere">Sair de todos os dispositivos</string>
@@ -851,13 +852,13 @@
     <string name="nm_cloud_delete_account_confirm">A conta, seus logins, uso e histórico são excluídos no relay, e as conversas, a memória, o feed, as metas e o rosto desta conta são removidos deste celular. Isso não pode ser desfeito.</string>
     <string name="nm_cloud_keep_chats">Manter as conversas desta conta neste aparelho</string>
     <string name="nm_cloud_keep_chats_sub">Desligado: as conversas, a memória, o feed, as metas e o rosto desta conta são removidos deste celular. Com a sincronização ligada, o relay ainda tem as conversas para o próximo login.</string>
-    <string name="nm_cloud_sign_in_ended">Seu login neste celular foi encerrado — entre de novo para continuar; até lá, suas conversas ficam neste aparelho.</string>
+    <string name="nm_cloud_sign_in_ended">Seu login neste celular foi encerrado. Entre de novo para continuar; até lá, suas conversas ficam neste aparelho.</string>
 
     <!-- 0.1.20: the coding agents on the account's computers -->
     <string name="nm_coding_title">Agentes de código</string>
-    <string name="nm_coding_intro">Cursor, Codex e Claude Code nos seus computadores: as sessões deles, a última resposta e uma mensagem para qualquer um — daqui. Nada deles é copiado para o celular.</string>
+    <string name="nm_coding_intro">Cursor, Codex e Claude Code nos seus computadores: as sessões deles, a última resposta e uma mensagem para qualquer um, daqui. Nada deles é copiado para o celular.</string>
     <string name="nm_coding_no_computer">Nenhum computador com um agente de código está online. Rode o nanoMuse no computador onde o Cursor, o Codex ou o Claude Code está instalado, conectado com esta conta.</string>
-    <string name="nm_coding_account_hint">Este celular está conectado como %1$s — o computador precisa usar a mesma conta.</string>
+    <string name="nm_coding_account_hint">Este celular está conectado como %1$s; o computador precisa usar a mesma conta.</string>
     <string name="nm_coding_refresh">Atualizar</string>
     <string name="nm_coding_all">Todos</string>
     <string name="nm_coding_new">Começar algo novo</string>
@@ -886,11 +887,11 @@
     <string name="nm_cloud_allowance_used">Usado ¥%1$s · $%2$s</string>
     <string name="nm_cloud_allowance_of">de ¥%1$s · $%2$s, sem prazo</string>
     <string name="nm_cloud_allowance_left">Restam ¥%1$s · $%2$s</string>
-    <string name="nm_cloud_allowance_why">¥%1$s para começar, +¥%2$s por amigo que você convidar — e +¥%2$s para ele; depois disso, sua própria chave mantém o modelo funcionando.</string>
+    <string name="nm_cloud_allowance_why">¥%1$s para começar, +¥%2$s por amigo que você convidar, e +¥%2$s para ele; depois disso, sua própria chave mantém o modelo funcionando.</string>
     <string name="nm_cloud_tokens_line">%1$s tokens no total · %2$s hoje</string>
     <string name="nm_cloud_notice_title">Gratuito, código aberto, sem fins lucrativos</string>
     <string name="nm_cloud_notice_closing">Achou um erro, quer um recurso, tem um patch? O repositório no GitHub é o lugar.</string>
-    <string name="nm_cloud_notice">O nanoMuse é um projeto comunitário de código aberto, sem fins lucrativos — gratuito, para sempre. O modelo vem com uma cota gratuita paga pelo desenvolvedor; depois dela, sua própria chave. Nada é vendido; o que o relay guarda está na política de privacidade, e Configurações → Controles de dados é seu. Exclua a conta quando quiser.</string>
+    <string name="nm_cloud_notice">O nanoMuse é um projeto comunitário de código aberto, sem fins lucrativos: gratuito, para sempre. O modelo vem com uma cota gratuita paga pelo desenvolvedor; depois dela, sua própria chave. Nada é vendido; o que o relay guarda está na política de privacidade, e Configurações → Controles de dados é seu. Exclua a conta quando quiser.</string>
 
     <!-- nanoMuse: devices on the hub -->
     <string name="nm_hub_channel">Mensagens dos seus dispositivos</string>
@@ -908,7 +909,7 @@
     <string name="nm_hub_session_title">De %1$s</string>
     <string name="nm_hub_service_alone_short">Só este</string>
     <string name="nm_devices_title">Dispositivos</string>
-    <string name="nm_devices_intro">Todo dispositivo conectado a esta conta — este celular, seus computadores, o console web — pode pedir coisas aos outros, em qualquer rede.</string>
+    <string name="nm_devices_intro">Todo dispositivo conectado a esta conta (este celular, seus computadores, o console web) pode pedir coisas aos outros, em qualquer rede.</string>
     <string name="nm_devices_join">Acessível pelos seus dispositivos</string>
     <string name="nm_devices_join_sub">Mantém este celular conectado para que seus outros dispositivos possam pedir coisas a ele. Uma notificação discreta aparece enquanto está ligado.</string>
     <string name="nm_devices_remote_control">Deixar outros dispositivos operarem este celular</string>
@@ -939,11 +940,11 @@
     <string name="nm_hub_err_unknown_action">O computador roda um nanoMuse mais antigo que não conhece esta ação.</string>
     <string name="nm_hub_err_bad_key">Desconectado no relay; entre de novo.</string>
     <string name="nm_hub_err_generic">O computador não conseguiu fazer isso.</string>
-    <string name="nm_devices_refused">Recusado pelo relay — entre de novo</string>
+    <string name="nm_devices_refused">Recusado pelo relay; entre de novo</string>
     <string name="nm_devices_notifications_hint">Permita notificações para que o celular continue acessível em segundo plano.</string>
     <string name="nm_library_share_failed">Não foi possível compartilhar o arquivo.</string>
 
-    <!-- 0.1.32: Settings → Connectors — the services the agent can be let into (the desktop's catalogue) -->
+    <!-- 0.1.32: Settings → Connectors: the services the agent can be let into (the desktop's catalogue) -->
     <string name="nm_connectors_title">Conectores</string>
     <string name="nm_connectors_intro">Dê ao agente acesso aos serviços que você usa. Cada um é o servidor MCP remoto do próprio fornecedor; a maioria entra com a conta que você já tem, alguns pedem uma chave. Um serviço conectado é uma entrada de servidor MCP que o agente pode usar em qualquer conversa.</string>
     <string name="nm_connectors_connected_n">%1$d conectados</string>
@@ -956,12 +957,12 @@
     <string name="nm_connectors_docs">A página do fornecedor sobre este servidor</string>
     <string name="nm_connectors_how_oauth">Entra com sua conta %1$s no navegador; o nanoMuse se registra sozinho no serviço, então não há nada para digitar. O token fica neste celular.</string>
     <string name="nm_connectors_how_key">Precisa de uma chave do serviço: %1$s. Ela fica só na entrada MCP deste celular.</string>
-    <string name="nm_connectors_how_none">Aberto a todos — não precisa entrar.</string>
+    <string name="nm_connectors_how_none">Aberto a todos; não precisa entrar.</string>
     <string name="nm_connectors_how_auto">Verifica antes do que o servidor precisa: nada, um login ou uma chave.</string>
     <string name="nm_connectors_key_placeholder">Cole a chave</string>
     <string name="nm_handover_title">Sua vez</string>
-    <string name="nm_handover_body">A página precisa de você: %1$s. Faça no navegador aqui — mesma página, mesma sessão — e depois toque em Concluído, e o agente continua de onde você parou.</string>
-    <string name="nm_handover_body_generic">A página precisa de você — um login ou um código. Faça no navegador aqui, depois toque em Concluído, e o agente continua de onde você parou.</string>
+    <string name="nm_handover_body">A página precisa de você: %1$s. Faça no navegador aqui (mesma página, mesma sessão), e depois toque em Concluído, e o agente continua de onde você parou.</string>
+    <string name="nm_handover_body_generic">A página precisa de você: um login ou um código. Faça no navegador aqui, depois toque em Concluído, e o agente continua de onde você parou.</string>
     <string name="nm_handover_open">Abrir a página</string>
     <string name="nm_handover_done">Concluído, continuar</string>
     <string name="nm_handover_banner">Sua vez: %1$s. Toque em Concluído quando a página estiver pronta.</string>
@@ -972,13 +973,13 @@
 
     <!-- Connections the account's other devices hold (the relay profile carries which device connected what; credentials stay where they were made) -->
     <string name="nm_connectors_elsewhere_title">Nos seus outros dispositivos</string>
-    <string name="nm_connectors_elsewhere_sign_in">Conectado em %1$s — entre aqui para usar neste celular.</string>
+    <string name="nm_connectors_elsewhere_sign_in">Conectado em %1$s; entre aqui para usar neste celular.</string>
     <string name="nm_connectors_elsewhere_only">Conectado em %1$s. Não está no catálogo deste celular; adicione em Seus próprios servidores se precisar dele aqui.</string>
     <string name="nm_connectors_elsewhere_device">outro dispositivo</string>
     <string name="nm_connectors_own_n">%1$d seus · adicione por endereço, comando ou JSON</string>
     <string name="nm_connectors_how_client">%1$s não registra apps sozinho, então isto leva um minuto de configuração, uma vez: crie um app OAuth seu nas configurações de desenvolvedor dele, dê a ele o endereço de retorno abaixo e cole aqui o client ID do app (e o secret, se houver). Ambos ficam neste celular.</string>
     <string name="nm_connectors_client_developer">Abrir as configurações de desenvolvedor de %1$s</string>
-    <string name="nm_connectors_client_redirect">Endereço de retorno (redirect) do app — toque para copiar:</string>
+    <string name="nm_connectors_client_redirect">Endereço de retorno (redirect) do app, toque para copiar:</string>
     <string name="nm_connectors_client_copy">Copiar</string>
     <string name="nm_connectors_client_id">Client ID OAuth</string>
     <string name="nm_connectors_client_secret">Client secret OAuth (se houver)</string>
@@ -1005,7 +1006,7 @@
     <string name="nm_sync_delete_confirm">As conversas guardadas no nanoMuse Cloud são removidas. As conversas nos seus dispositivos ficam como estão.</string>
     <string name="nm_sync_deleted">Conversas sincronizadas excluídas.</string>
     <string name="nm_sync_from">De %1$s</string>
-    <string name="nm_sync_attachment_note">[Anexo %1$s — fica no dispositivo em que foi criado]</string>
+    <string name="nm_sync_attachment_note">[Anexo %1$s, fica no dispositivo em que foi criado]</string>
 
     <!-- Contract C9 (0.1.38): side chats stay local unless asked for; the device working on a line -->
     <string name="nm_sync_side_title">Sincronizar também as conversas paralelas</string>

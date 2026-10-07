@@ -17,15 +17,25 @@ import java.net.URI
 object LanOnly {
     private val localSuffixes = listOf(".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain")
 
-    /** Null when the endpoint is fine; otherwise a short reason it is refused. */
+    /** Null when the endpoint is fine; otherwise a short reason it is refused (English, for logs). */
     fun problem(url: String): String? {
+        val host = refusedHost(url) ?: return null
+        if (host.isEmpty()) return "the address has no host"
+        return "plain http:// only works for addresses on your own network (10.x, 172.16-31.x, 192.168.x, .local names); use https:// for $host"
+    }
+
+    /**
+     * The host of an `http://` endpoint that is not on the local network, or "" when the address
+     * has no host at all; null when the endpoint is fine. Screens pass it to
+     * `R.string.nm_lan_only_https` so the refusal reads in the person's language.
+     */
+    fun refusedHost(url: String): String? {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return null
         val uri = runCatching { URI(trimmed) }.getOrNull() ?: return null
         if (!uri.scheme.equals("http", ignoreCase = true)) return null
-        val host = uri.host?.trim('[', ']')?.lowercase() ?: return "the address has no host"
-        if (isLocal(host)) return null
-        return "plain http:// only works for addresses on your own network (10.x, 172.16–31.x, 192.168.x, .local names); use https:// for $host"
+        val host = uri.host?.trim('[', ']')?.lowercase() ?: return ""
+        return if (isLocal(host)) null else host
     }
 
     /** Whether [host] (a name or an IP literal) is this device or on its local network. */

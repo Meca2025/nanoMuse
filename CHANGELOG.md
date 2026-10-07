@@ -76,6 +76,10 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The ideas catalogue reads without em dashes** (the same file the desktop and the web console carry).
 - **A path the agent or another device names stays inside the sandbox.** The hub's `files` actions, `nanomuse-media` and `nanomuse-pc put` resolved `..` and symlinks literally and fell back to the raw phone path, so a sandbox path could reach the app's own private files; they now resolve inside the rootfs, a bound folder or the session's own folders only, and anything else is "not inside the phone's sandbox".
 - **The hub waits when the relay asks it to.** A paused hub or a connection replaced by a newer one of the same device (close 4003) is retried after 30 seconds instead of at once, as on the desktop; a key the relay refuses at the handshake (HTTP 401 or 403) is shown as refused under Devices and retried once a minute instead of on the fast backoff forever. The close is acknowledged with a normal code.
+- **No em dashes left in the Android copy.** Every string in the 17 languages now reads with a comma, colon or full stop where an em dash stood, and a unit test keeps it that way (it also refuses 非盈利 for 非营利).
+- **Chinese copy uses the product's own names.** 简体 and 繁體 strings say `nanoMuse Cloud` instead of 「nanoMuse 云」, 智能体 / 智慧體 instead of the English word "agent", and 中继 / 中繼 for the relay throughout.
+- **The provider URL field explains a refused `http://` address in the phone's language.** The footer under *Custom API base* that says plain `http://` works only on your own network used to be English in every locale.
+- **Dates follow the phone's locale.** The computers list, the profile's file cards and the chat drawer format their timestamps with the system's short date and time (the drawer said "now" in English and the computers list used `MM-dd HH:mm`).
 
 ### iOS
 

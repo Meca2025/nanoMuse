@@ -39,8 +39,8 @@
 
     <!-- 第一次對話：開場白 -->
     <string name="nm_intro_hello">你好，我是 nanoMuse，住在你手機裡的私人助理。讓我替你分擔幾件事。</string>
-    <string name="nm_intro_how_i_work">先說說我怎麼工作：\n\n- 我有自己的電腦——一個 Linux 沙盒和一個瀏覽器，能跑指令、開網頁、填表單。\n- 你掛載給我的檔案和相簿，我能讀、能整理；提醒和排程任務也可以交給我。\n- 關鍵的一步之前，我會先問你。\n- 一切都在這支手機上跑。對話發給你自己設定的模型；登入 nanoMuse Cloud 後，這段對話也會同步到你的其他裝置——可以在「資料控制」裡關掉。</string>
-    <string name="nm_intro_ask_name">開始之前——我該怎麼稱呼你？</string>
+    <string name="nm_intro_how_i_work">先說說我怎麼工作：\n\n- 我有自己的電腦，一個 Linux 沙盒和一個瀏覽器，能跑指令、開網頁、填表單。\n- 你掛載給我的檔案和相簿，我能讀、能整理；提醒和排程任務也可以交給我。\n- 關鍵的一步之前，我會先問你。\n- 一切都在這支手機上跑。對話發給你自己設定的模型；登入 nanoMuse Cloud 後，這段對話也會同步到你的其他裝置，可以在「資料控制」裡關掉。</string>
+    <string name="nm_intro_ask_name">開始之前，我該怎麼稱呼你？</string>
 
     <!-- 第一次對話：取名卡 -->
     <string name="nm_naming_title">給我取個名字吧</string>
@@ -80,7 +80,7 @@
     <string name="nm_goals_tracking">追蹤</string>
     <string name="nm_goals_tracking_empty">尚未追蹤任何內容</string>
     <string name="nm_goals_routines">例程</string>
-    <string name="nm_goals_routines_empty">還沒有例程。例程是我在固定時間替你做的事——每天，或你選的那幾天。</string>
+    <string name="nm_goals_routines_empty">還沒有例程。例程是我在固定時間替你做的事：每天，或你選的那幾天。</string>
     <string name="nm_goals_create">建立目標</string>
     <string name="nm_goals_create_body">選擇一個類別，告訴我你想要的目標，我會為你量身規劃一個計畫，並隨著你的成長不斷改進。</string>
     <string name="nm_goal_cat_health">健康</string>
@@ -206,14 +206,14 @@
     <string name="nm_feed_prompt">寫今天的動態。</string>
     <string name="nm_feed_default_preferences">幫我做一個關於我關心的事的動態。短一點、直接一點，掃一眼就能看完，別搞標題黨。</string>
     <string name="nm_feed_intro_title">關於動態</string>
-    <string name="nm_feed_intro_desc">這裡是你的智慧體為你寫的短貼文，取材於它記得的東西——記憶檔案、最近一週的日記、你的目標。下面這句話決定今後每一條貼文的方向，隨時可以改。</string>
+    <string name="nm_feed_intro_desc">這裡是你的智慧體為你寫的短貼文，取材於它記得的東西：記憶檔案、最近一週的日記、你的目標。下面這句話決定今後每一條貼文的方向，隨時可以改。</string>
     <string name="nm_feed_edit">編輯</string>
     <string name="nm_feed_got_it">知道了</string>
     <string name="nm_feed_save">儲存</string>
     <string name="nm_feed_settings_title">動態</string>
     <string name="nm_feed_routine_switch">每天自動寫</string>
     <string name="nm_feed_routine_time">每天 %1$s · 點擊修改</string>
-    <string name="nm_feed_routine_needs_model">先新增一個模型——動態由你的 agent 來寫。</string>
+    <string name="nm_feed_routine_needs_model">先新增一個模型；動態由你的智慧體來寫。</string>
     <string name="nm_feed_write_now">現在寫一版</string>
     <string name="nm_feed_generating">正在寫…</string>
     <string name="nm_feed_discuss">討論</string>
@@ -230,7 +230,7 @@
     <string name="nm_feed_type_memory">記憶</string>
     <string name="nm_feed_type_note">隨記</string>
     <string name="nm_feed_empty_title">動態裡還沒有內容</string>
-    <string name="nm_feed_empty_body">隨著我們相互了解，新的貼文會顯示在這裡。每天 %1$s，我會讀一遍記得的關於你的東西——記憶檔案、最近一週的日記、你的目標——然後寫幾條簡短的貼文。</string>
+    <string name="nm_feed_empty_body">隨著我們相互了解，新的貼文會顯示在這裡。每天 %1$s，我會讀一遍記得的關於你的東西（記憶檔案、最近一週的日記、你的目標）然後寫幾條簡短的貼文。</string>
     <string name="nm_feed_empty_how_title">一句話就能調整</string>
     <string name="nm_feed_empty_how_body">點右上角的滑桿，告訴我你想多看什麼、關掉每天的例程，或者讓我現在就寫第一天。</string>
     <string name="nm_feed_card_posted">已加入動態</string>
@@ -255,13 +255,13 @@
     <string name="nm_sysfiles_sort_recent">最近修改</string>
     <string name="nm_sysfiles_sort_toggle">切換排序</string>
     <string name="nm_sysfiles_open_memory">打開記憶</string>
-    <string name="nm_sysfiles_footer">這些檔案屬於 agent：它是誰、它對你的了解、它記住的事、它為你寫的東西、它什麼時候自己醒來。都存在你手機裡——agent 在它的 shell 裡透過 /var/minis/memory 讀寫，你也可以在這裡直接改。</string>
+    <string name="nm_sysfiles_footer">這些檔案屬於智慧體：它是誰、它對你的了解、它記住的事、它為你寫的東西、它什麼時候自己醒來。都存在你手機裡；智慧體在它的 shell 裡透過 /var/minis/memory 讀寫，你也可以在這裡直接改。</string>
     <string name="nm_sysfile_about_lead">關於此檔案。</string>
-    <string name="nm_sysfile_about_soul">這是 agent 的人格：它在每次對話裡努力守住的價值和習慣、它的名字、它回答時的風格。從 nanoMuse 自帶的範本開始，agent 可能會隨著時間打磨它，並在改動時告訴你。你隨時可以編輯。這段說明不是檔案的一部分。</string>
-    <string name="nm_sysfile_about_user">agent 把這個檔案當作關於你的工作筆記：你的名字、你喜歡的稱呼、你的時區，以及它要派上用場所需要的背景，比如你正在做的事。它會從你們的對話裡逐漸填進來，並在每次對話開始時讀一遍。它反映的是 agent 目前的理解，可能不完整或過時。這裡的任何內容你都可以改，agent 會照你寫的來。這段說明不是檔案的一部分。</string>
-    <string name="nm_sysfile_about_memory">agent 跨對話保留的長期記錄——值得記住的事，用它自己的話寫下，加上你從別的助手匯入的內容。逐日的日記放在同一個記憶資料夾裡。開著記憶時，每次對話開始都會讀。這段說明不是檔案的一部分。</string>
+    <string name="nm_sysfile_about_soul">這是智慧體的人格：它在每次對話裡努力守住的價值和習慣、它的名字、它回答時的風格。從 nanoMuse 自帶的範本開始，智慧體可能會隨著時間打磨它，並在改動時告訴你。你隨時可以編輯。這段說明不是檔案的一部分。</string>
+    <string name="nm_sysfile_about_user">智慧體把這個檔案當作關於你的工作筆記：你的名字、你喜歡的稱呼、你的時區，以及它要派上用場所需要的背景，比如你正在做的事。它會從你們的對話裡逐漸填進來，並在每次對話開始時讀一遍。它反映的是智慧體目前的理解，可能不完整或過時。這裡的任何內容你都可以改，智慧體會照你寫的來。這段說明不是檔案的一部分。</string>
+    <string name="nm_sysfile_about_memory">智慧體跨對話保留的長期記錄：值得記住的事，用它自己的話寫下，加上你從別的助手匯入的內容。逐日的日記放在同一個記憶資料夾裡。開著記憶時，每次對話開始都會讀。這段說明不是檔案的一部分。</string>
     <string name="nm_sysfile_about_feed">一段話決定動態怎麼寫：你想多看什麼、少看什麼、每條多長。每天寫動態的例程動筆前會先讀它。這段說明不是檔案的一部分。</string>
-    <string name="nm_sysfile_about_heartbeat">agent 什麼時候自己醒來：每條例程和每個目標檢查，它們的時間和上次執行的結果。由例程即時產生，所以這裡只能看——要改請去 目標 → 例程。這段說明不是檔案的一部分。</string>
+    <string name="nm_sysfile_about_heartbeat">智慧體什麼時候自己醒來：每條例程和每個目標檢查，它們的時間和上次執行的結果。由例程即時產生，所以這裡只能看；要改請去 目標 → 例程。這段說明不是檔案的一部分。</string>
     <string name="nm_sysfile_edit">編輯</string>
     <string name="nm_sysfile_copy">複製內容</string>
     <string name="nm_sysfile_share">分享</string>
@@ -269,7 +269,7 @@
     <string name="nm_sysfile_edit_hint">用 Markdown 寫 %1$s。標題和要點最好讀；別寫密碼等敏感資訊。</string>
     <string name="nm_sysfile_saved">已儲存</string>
     <string name="nm_sysfile_empty">這裡還是空的。</string>
-    <string name="nm_sysfile_empty_editable">這裡還是空的。點鉛筆來寫，或者讓 agent 在聊天中慢慢填。</string>
+    <string name="nm_sysfile_empty_editable">這裡還是空的。點鉛筆來寫，或者讓智慧體在聊天中慢慢填。</string>
     <string name="nm_heartbeat_intro">哪些事會自己跑、什麼時候跑。由例程產生；要改請去 目標 → 例程。</string>
     <string name="nm_heartbeat_routines">例程</string>
     <string name="nm_heartbeat_goal_checks">目標檢查</string>
@@ -279,12 +279,12 @@
 
     <!-- 0.1.5: 匯入記憶 -->
     <string name="nm_import_title">匯入記憶</string>
-    <string name="nm_import_intro">把別的助手已經了解的你帶過來。用下面這段提示詞去問它，把回答貼到這裡，就會追加到 GLOBAL.md 的「匯入」一節——你的 agent 每次對話開始都會讀到。</string>
+    <string name="nm_import_intro">把別的助手已經了解的你帶過來。用下面這段提示詞去問它，把回答貼到這裡，就會追加到 GLOBAL.md 的「匯入」一節，你的智慧體每次對話開始都會讀到。</string>
     <string name="nm_import_step1">去問你的另一個助手</string>
     <string name="nm_import_step2">把它的回答貼進來</string>
     <string name="nm_import_prompt">把你記得的關於我的事整理成幾條簡短要點：我是誰、喜歡別人怎麼稱呼我、住在哪裡、什麼時區、做什麼工作、最近在忙什麼、我的偏好和習慣，還有我交代過你一定要做或絕對不要做的事。純文字，不要標題，密碼之類的敏感資訊不要寫。</string>
     <string name="nm_import_copy_prompt">複製提示詞</string>
-    <string name="nm_import_from_hint">來自（可選）——如 ChatGPT、Claude</string>
+    <string name="nm_import_from_hint">來自（可選），如 ChatGPT、Claude</string>
     <string name="nm_import_paste_hint">把要點貼到這裡</string>
     <string name="nm_import_heading">匯入</string>
     <string name="nm_import_append">追加到記憶</string>
@@ -333,7 +333,7 @@
     <string name="nm_avatar_pick_title">挑一張</string>
     <string name="nm_avatar_pick_body">隨時可以再畫四張；沒重畫之前舊的會留著。</string>
     <string name="nm_avatar_use_this">就用這個</string>
-    <string name="nm_avatar_use_this_hint">接下來會在背景以它為底畫出各個狀態——工作、等你、搞定、出錯。</string>
+    <string name="nm_avatar_use_this_hint">接下來會在背景以它為底畫出各個狀態：工作、等你、搞定、出錯。</string>
     <string name="nm_avatar_footer">圖片存在這台手機的 minis-global/nanomuse/avatar 下。每換一次形象會向你的提供方要五張圖：你選的那張加四個狀態。</string>
 
     <!-- 首次執行 -->
@@ -356,17 +356,17 @@
     <string name="nm_settings_version">nanoMuse %1$s (%2$d)</string>
     <string name="nm_version_title">版本</string>
     <string name="nm_version_checking">正在查看最新版本…</string>
-    <string name="nm_version_have">最新 %1$s——你用的就是它</string>
+    <string name="nm_version_have">最新 %1$s，你用的就是它</string>
     <string name="nm_version_out">%1$s 已發布</string>
-    <string name="nm_version_out_update">%1$s 已發布——點此更新</string>
+    <string name="nm_version_out_update">%1$s 已發布，點此更新</string>
     <string name="nm_version_update">更新</string>
-    <string name="nm_version_failed">沒查到——點一下再試</string>
+    <string name="nm_version_failed">沒查到，點一下再試</string>
     <string name="nm_appearance_section_home">首頁</string>
     <string name="nm_appearance_header_model_title">在名字下方顯示模型</string>
     <string name="nm_appearance_header_model_footer">Muse 只顯示名字。開啟後名字下方會顯示模型群組和服務商 · 模型，點它可以切換。關閉時模型在 ••• → 模型和設定裡。</string>
     <string name="nm_appearance_section_chat">對話</string>
     <string name="nm_appearance_steps_title">顯示執行步驟</string>
-    <string name="nm_appearance_steps_footer">關閉時，聊天裡只保留回覆，頭像下面那一行說明它正在做什麼。開啟後每一步都會出現在聊天裡——用到的每個工具、它的推理，以及輸入框上方一條可以打開步驟詳情的狀態列。</string>
+    <string name="nm_appearance_steps_footer">關閉時，聊天裡只保留回覆，頭像下面那一行說明它正在做什麼。開啟後每一步都會出現在聊天裡：用到的每個工具、它的推理，以及輸入框上方一條可以打開步驟詳情的狀態列。</string>
     <string name="nm_chat_menu_model">模型</string>
     <string name="nm_model_switched">這個對話已換成 %1$s</string>
     <string name="nm_model_switched_sticky">已換成 %1$s，新對話也用它</string>
@@ -431,7 +431,7 @@
     <string name="nm_avatar_share_title">分享我的虛擬形象</string>
     <string name="nm_avatar_share_subtitle">選一張卡片，用系統分享送出。</string>
     <string name="nm_avatar_share_system">分享</string>
-    <string name="nm_avatar_share_bubble">你好，我是你的個人 AI 智慧體%1$s。nanoMuse——開源、在手機上本地執行。</string>
+    <string name="nm_avatar_share_bubble">你好，我是你的個人 AI 智慧體%1$s。nanoMuse：開源、在手機上本地執行。</string>
     <string name="nm_avatar_share_tagline">你的個人 AI 智慧體，開源 · github.com/nano-muse/nanoMuse</string>
     <!-- 0.1.10 · Motion -->
     <string name="nm_media_title">圖像與影片模型</string>
@@ -443,7 +443,7 @@
     <string name="nm_media_image_off">設定之前無法更換形象，也畫不了圖。你問起時它會告訴你。</string>
     <string name="nm_media_need_model">在下方填寫模型名稱</string>
     <string name="nm_media_section_video">影片模型</string>
-    <string name="nm_media_video_footer">讓形象動起來——每個狀態一段循環短片——以及你要的任何短片。阿里雲百煉：wan2.2-i2v-flash（推薦，480P 每秒 ¥0.10）、其他通義萬相模型或 MiniMax/MiniMax-H3；列表裡是這把 key 能用的，每個模型需在百煉控制台的模型卡片上開通一次。按影片秒數計費；一套形象是四段幾秒的短片。</string>
+    <string name="nm_media_video_footer">讓形象動起來（每個狀態一段循環短片）以及你要的任何短片。阿里雲百煉：wan2.2-i2v-flash（推薦，480P 每秒 ¥0.10）、其他通義萬相模型或 MiniMax/MiniMax-H3；列表裡是這把 key 能用的，每個模型需在百煉控制台的模型卡片上開通一次。按影片秒數計費；一套形象是四段幾秒的短片。</string>
     <string name="nm_media_video_off">可選。不設定的話形象保持靜態，也做不了影片。</string>
     <string name="nm_media_video_off_option">不用影片模型</string>
     <string name="nm_media_not_set">未設定</string>
@@ -464,7 +464,7 @@
     <string name="nm_media_video_none_found">這把 key 下沒有可用的影片模型。可以在下方手動填寫，或重新檢查。</string>
     <string name="nm_media_other_model">其他模型名</string>
     <string name="nm_avatar_status_animating">正在產生動態 %1$d/%2$d…</string>
-    <string name="nm_avatar_clips_coming">我還會做四段短片讓自己動起來——在背景用你的影片模型，要幾分鐘。</string>
+    <string name="nm_avatar_clips_coming">我還會做四段短片讓自己動起來：在背景用你的影片模型，要幾分鐘。</string>
 
     <!-- Hands (0.1.12): the phone's screen as a hand -->
     <string name="nm_hands_title">動手操作螢幕</string>
@@ -474,7 +474,7 @@
     <string name="nm_hands_intro">對於沒有介面的 App，它像你一樣用手機：看一眼截圖，然後點、輸、滑。技能、命令列、瀏覽器能辦的先用，螢幕是最後一步。預設關閉。</string>
     <string name="nm_hands_switch">允許操作螢幕</string>
     <string name="nm_hands_switch_footer">操作時螢幕頂部會有一個膠囊，顯示每一步和「停止」按鈕。登入、密碼、驗證碼永遠留給你自己輸。</string>
-    <string name="nm_hands_status_off">已關閉——任務需要用到螢幕時它會告訴你</string>
+    <string name="nm_hands_status_off">已關閉；任務需要用到螢幕時它會告訴你</string>
     <string name="nm_hands_status_ready">就緒</string>
     <string name="nm_hands_status_missing">已開啟，但下面還有沒準備好的</string>
     <string name="nm_hands_status_working">正在操作螢幕</string>
@@ -494,18 +494,18 @@
     <string name="nm_hands_need_ok">就緒</string>
     <string name="nm_hands_need_set_up">去設定</string>
     <string name="nm_hands_section_model">動手用的模型</string>
-    <string name="nm_hands_model_auto">自動——優先 qwen3.8-27b（nanoMuse 雲的，或你自己 key 下的），否則用你選的、能看圖的對話模型，再否則用視覺模型群組</string>
+    <string name="nm_hands_model_auto">自動：優先 qwen3.8-27b（nanoMuse Cloud 的，或你自己 key 下的），否則用你選的、能看圖的對話模型，再否則用視覺模型群組</string>
     <string name="nm_hands_model_footer">每一步都會把一張截圖傳給這個模型，它和對話模型是兩個獨立的設定。小一點的視覺模型就夠用，也更省錢。雲端選單之外的模型只有你自己選了才會用。</string>
     <string name="nm_hands_why_chosen">在這裡選的</string>
     <string name="nm_hands_why_default">你自己 key 下的動手預設模型</string>
     <string name="nm_hands_why_chat">你選的對話模型</string>
     <string name="nm_hands_why_group">預設模型群組裡第一個能看圖的</string>
-    <string name="nm_hands_why_menu">nanoMuse 雲的看屏模型</string>
+    <string name="nm_hands_why_menu">nanoMuse Cloud 的看屏模型</string>
     <string name="nm_hands_why_vision_group">你的視覺模型群組</string>
     <string name="nm_hands_why_any">唯一一個啟用了、又能看圖的模型</string>
     <string name="nm_hands_section_rules">它會怎麼做</string>
     <string name="nm_hands_rule_ladder">螢幕排最後：先試技能、命令列、瀏覽器。</string>
-    <string name="nm_hands_rule_secrets">從不代輸密碼、驗證碼、卡號——遇到就把手機交還給你。</string>
+    <string name="nm_hands_rule_secrets">從不代輸密碼、驗證碼、卡號；遇到就把手機交還給你。</string>
     <string name="nm_hands_rule_approvals">付款、傳送、發布、刪除之前先問你，和命令列、瀏覽器一樣。</string>
     <string name="nm_hands_rule_stop">「停止」一直在螢幕上，點了就不會再動。</string>
     <string name="nm_hands_rule_screenshots">每一步的截圖隨對話保存，只傳給你自己的模型。</string>
@@ -520,7 +520,7 @@
     <string name="nm_hands_protected_screen">這個頁面受保護，讀不到內容。請你自己完成這一步，然後點「繼續」。</string>
     <string name="nm_hands_secret_field">這是密碼或驗證碼輸入框，請你自己填好，然後點「繼續」。</string>
     <string name="nm_hands_approval_title">等你確認</string>
-    <string name="nm_hands_approval_detail">要點「%1$s」——請回 nanoMuse 確認（會要求驗證螢幕鎖）。</string>
+    <string name="nm_hands_approval_detail">要點「%1$s」：請回 nanoMuse 確認（會要求驗證螢幕鎖）。</string>
     <string name="nm_hands_approval_here">要點「%1$s」，可以嗎？</string>
     <string name="nm_hands_allow_once">允許</string>
     <string name="nm_hands_deny">拒絕</string>
@@ -557,7 +557,7 @@
     <string name="nm_pc_section_paired">這個帳號下的電腦</string>
     <string name="nm_pc_none">還沒有電腦</string>
     <string name="nm_pc_none_footer">電腦用這個帳號登入之前，任務該在電腦上做的時候它會直接告訴你。</string>
-    <string name="nm_pc_paired_footer">點一下可以看它是否在線。電腦沒出現在這裡，多半是登了另一個帳號——以上面提示的帳號為準。</string>
+    <string name="nm_pc_paired_footer">點一下可以看它是否在線。電腦沒出現在這裡，多半是登了另一個帳號；以上面提示的帳號為準。</string>
     <string name="nm_pc_last_seen">上次 %1$s</string>
     <string name="nm_pc_offline">離線</string>
     <string name="nm_pc_online">在線</string>
@@ -565,7 +565,7 @@
     <string name="nm_pc_account_hint">這台手機登入的是 %1$s，電腦上要登同一個帳號。</string>
     <string name="nm_pc_checking">正在檢查…</string>
     <string name="nm_pc_answering">%1$s 在線</string>
-    <string name="nm_pc_not_answering">%1$s 沒有回應——電腦上的 nanoMuse 桌面版還開著嗎？</string>
+    <string name="nm_pc_not_answering">%1$s 沒有回應。電腦上的 nanoMuse 桌面版還開著嗎？</string>
     <!-- the approval card -->
     <string name="nm_risk_desc_on_computer">在電腦「%1$s」上，不是在這台手機上。</string>
     <string name="nm_risk_preview_computer">電腦上的命令</string>
@@ -594,7 +594,7 @@
     <string name="nm_welcome_feat_chat">對話、圖片、影片</string>
     <string name="nm_welcome_feat_chat_sub">能力不錯的模型，圖片與影片生成，工具、技能和記憶，都在你的手機上</string>
     <string name="nm_welcome_feat_hands">Hands：替你操作手機</string>
-    <string name="nm_welcome_feat_hands_sub">訂車票、點外送、在應用程式裡查東西——你全程看著，隨時可以停</string>
+    <string name="nm_welcome_feat_hands_sub">訂車票、點外送、在應用程式裡查東西；你全程看著，隨時可以停</string>
     <string name="nm_welcome_feat_reach">Reach：從手機使用你的電腦</string>
     <string name="nm_welcome_feat_reach_sub">配對一台 Mac、Windows 或 Linux 電腦，在手機上派工作給它</string>
     <string name="nm_welcome_notice">nanoMuse 是非營利的開源社群專案，永久免費。模型自帶一份由開發者承擔的免費額度，用完換自己的 key。資料不會出售；伺服器保存什麼寫在隱私權政策裡，「設定 → 資料控制」由你決定。</string>
@@ -603,9 +603,9 @@
     <string name="nm_welcome_hands_turn_on">去開啟</string>
     <string name="nm_welcome_skip">暫時跳過</string>
     <string name="nm_welcome_hands_fine_print">不開也不影響其他功能。之後隨時可以在「設定 → Hands」裡開啟。</string>
-    <string name="nm_welcome_meet_fine_print">凡是無法撤回的事——刪除、傳送、付款——它都會先停下來問你。</string>
-    <string name="nm_cloud_title">nanoMuse 雲</string>
-    <string name="nm_cloud_signin_title">用 nanoMuse 雲開始</string>
+    <string name="nm_welcome_meet_fine_print">凡是無法撤回的事（刪除、傳送、付款）它都會先停下來問你。</string>
+    <string name="nm_cloud_title">nanoMuse Cloud</string>
+    <string name="nm_cloud_signin_title">用 nanoMuse Cloud 開始</string>
     <string name="nm_cloud_signin_subtitle">手機號或信箱收一個驗證碼；設過密碼的話也可以直接用密碼。</string>
     <string name="nm_cloud_mode_code">驗證碼登入</string>
     <string name="nm_cloud_mode_password">密碼登入</string>
@@ -628,6 +628,7 @@
     <string name="nm_cloud_server_ok">%1$s 已回應：中繼服務 %2$s。</string>
     <string name="nm_cloud_server_bad_url">請填寫伺服器位址，例如 https://relay.example.org。</string>
     <string name="nm_cloud_server_https">自家網路之外的伺服器請用 https。內網位址（10.x、192.168.x、172.16–31.x、localhost、.local 或 .ts.net 網域）可以用 http。</string>
+    <string name="nm_lan_only_https">明文 http:// 只能用於你自己網路裡的位址（10.x、172.16–31.x、192.168.x、.local 名字）；%1$s 請用 https://。</string>
     <string name="nm_cloud_server_unreachable">%1$s 沒有中繼服務回應。請檢查位址，並確認服務已在執行。</string>
     <string name="nm_cloud_server_default">改回 nanoMuse Cloud</string>
     <string name="nm_cloud_server_row">伺服器</string>
@@ -649,18 +650,18 @@
     <string name="nm_cloud_used_today_open">今天已用 %1$s</string>
     <string name="nm_cloud_refresh">重新整理餘額</string>
     <string name="nm_cloud_refreshing">正在重新整理…</string>
-    <string name="nm_cloud_how_it_works">nanoMuse 雲在這個應用裡就是一個普通的服務商：它的模型列在「服務商」裡，也可以和你自己的模型放進同一個模型組。</string>
+    <string name="nm_cloud_how_it_works">nanoMuse Cloud 在這個應用裡就是一個普通的服務商：它的模型列在「服務商」裡，也可以和你自己的模型放進同一個模型組。</string>
     <string name="nm_cloud_open_provider">服務商設定</string>
     <string name="nm_cloud_sign_out">登出</string>
     <string name="nm_cloud_sign_out_sub">作廢這台手機的 key 並移除這個服務商；額度跟著帳號，下次登入還在。</string>
-    <string name="nm_cloud_sign_out_confirm">會從這台手機上移除 nanoMuse 雲這個服務商和它的模型。</string>
+    <string name="nm_cloud_sign_out_confirm">會從這台手機上移除 nanoMuse Cloud 這個服務商和它的模型。</string>
     <string name="nm_cloud_row_remaining">剩餘 %1$s</string>
     <string name="nm_cloud_row_sign_in">登入</string>
     <string name="nm_cloud_err_bad_identifier">這看起來不是信箱地址。</string>
     <string name="nm_cloud_err_code_wrong">驗證碼不對。</string>
     <string name="nm_cloud_err_code_expired">驗證碼已過期，請重新發送。</string>
     <string name="nm_cloud_err_code_too_often">發送太頻繁了，請過幾分鐘再試。</string>
-    <string name="nm_cloud_err_not_invited">這是一台私人中轉，這個信箱不在名單上。</string>
+    <string name="nm_cloud_err_not_invited">這是一台私人中繼，這個信箱不在名單上。</string>
     <string name="nm_cloud_err_send_failed">驗證碼沒發出去，請稍後再試。</string>
     <string name="nm_cloud_err_disabled">這個帳號已停用。</string>
     <string name="nm_cloud_err_bad_key">伺服器已不認識這台手機，請重新登入。</string>
@@ -669,9 +670,9 @@
     <string name="nm_cloud_err_daily_cap">今天的 token 配額用完了，明天恢復。</string>
     <string name="nm_cloud_err_allowance">免費額度已用完。邀請一位新用戶（你和對方各 +¥%1$s），或在 設定 → 服務商 裡新增自己的 key，推薦阿里雲百煉。</string>
     <string name="nm_cloud_err_allowance_abroad">免費額度已用完。邀請一位新用戶（你和對方各 +¥%1$s），或在 設定 → 服務商 裡新增自己的 key，海外推薦 OpenRouter：一個帳號一把 key，按量付費。</string>
-    <string name="nm_cloud_warn_line">免費額度快用完了：還剩 ¥%1$s（共 ¥%2$s）。邀請一位新用戶（你和對方各 +¥%3$s），或換成自己的 key——都在「帳號」裡。</string>
+    <string name="nm_cloud_warn_line">免費額度快用完了：還剩 ¥%1$s（共 ¥%2$s）。邀請一位新用戶（你和對方各 +¥%3$s），或換成自己的 key，都在「帳號」裡。</string>
     <string name="nm_cloud_err_rate_limited">請求太快了，稍等一下。</string>
-    <string name="nm_cloud_err_unreachable">連不上 nanoMuse 雲，請檢查網路。</string>
+    <string name="nm_cloud_err_unreachable">連不上 nanoMuse Cloud，請檢查網路。</string>
     <string name="nm_cloud_err_generic">出了點問題。</string>
     <string name="nm_cloud_err_bad_credentials">信箱或密碼不對。</string>
     <string name="nm_cloud_err_no_password">這個帳號還沒有設定密碼。先用驗證碼登入，再到「帳號」裡設定。</string>
@@ -680,17 +681,17 @@
     <string name="nm_cloud_err_password_required">請先輸入目前的密碼。</string>
     <string name="nm_cloud_err_password_short">密碼至少 8 位。</string>
     <string name="nm_cloud_err_password_weak">這個密碼太好猜了。</string>
-    <string name="nm_cloud_err_signup_closed">這台中轉暫時關閉了註冊。已有的帳號仍可登入。</string>
+    <string name="nm_cloud_err_signup_closed">這台中繼暫時關閉了註冊。已有的帳號仍可登入。</string>
     <string name="nm_cloud_err_too_large">這則訊息對模型來說太長了。縮短一些、去掉幾個附件，或者新開一個對話。</string>
     <string name="nm_cloud_err_provider_busy">模型服務商現在很忙，稍後再試。</string>
     <string name="nm_cloud_err_provider_busy_wait">模型服務商現在很忙，請在 %1$s 後再試。</string>
-    <string name="nm_cloud_err_model_not_offered">nanoMuse 雲不再提供這個模型。到「設定 → nanoMuse 雲」換一個。</string>
-    <string name="nm_cloud_err_relay_down">nanoMuse 雲沒有回應，稍後再試。</string>
-    <string name="nm_cloud_err_allowance_paused">這台中轉暫時停發了免費額度——不是用完了。到「設定 → nanoMuse 雲」加入自己的金鑰，或用已付費的訂閱登入。登入、多裝置和剩餘額度都原樣保留。</string>
-    <string name="nm_cloud_err_service_paused">nanoMuse 雲被營運者暫停了，登入和資料都保留著。稍後再試。</string>
-    <string name="nm_cloud_err_sync_paused">這台中轉暫時停了對話同步，已存的內容保留，各裝置可以各自繼續用。</string>
-    <string name="nm_cloud_err_hub_paused">這台中轉暫時停了裝置互聯，各裝置可以各自繼續用。</string>
-    <string name="nm_refusal_relay_says">中轉說：%1$s</string>
+    <string name="nm_cloud_err_model_not_offered">nanoMuse Cloud 不再提供這個模型。到「設定 → nanoMuse Cloud」換一個。</string>
+    <string name="nm_cloud_err_relay_down">nanoMuse Cloud 沒有回應，稍後再試。</string>
+    <string name="nm_cloud_err_allowance_paused">這台中繼暫時停發了免費額度，不是用完了。到「設定 → nanoMuse Cloud」加入自己的金鑰，或用已付費的訂閱登入。登入、多裝置和剩餘額度都原樣保留。</string>
+    <string name="nm_cloud_err_service_paused">nanoMuse Cloud 被營運者暫停了，登入和資料都保留著。稍後再試。</string>
+    <string name="nm_cloud_err_sync_paused">這台中繼暫時停了對話同步，已存的內容保留，各裝置可以各自繼續用。</string>
+    <string name="nm_cloud_err_hub_paused">這台中繼暫時停了裝置互聯，各裝置可以各自繼續用。</string>
+    <string name="nm_refusal_relay_says">中繼說：%1$s</string>
     <string name="nm_refusal_new_chat">新對話</string>
     <string name="nm_refusal_sign_in">登入</string>
     <string name="nm_refusal_open_settings">打開設定</string>
@@ -730,7 +731,7 @@
     <string name="nm_cloud_invite_share">分享連結</string>
     <string name="nm_cloud_invite_copy">複製</string>
     <string name="nm_cloud_invite_copied">已複製</string>
-    <string name="nm_cloud_invite_share_text">來和我一起用 nanoMuse——完全開源的個人智慧體，免費使用。用我的邀請碼 %1$s 註冊：%2$s</string>
+    <string name="nm_cloud_invite_share_text">來和我一起用 nanoMuse：完全開源的個人智慧體，免費使用。用我的邀請碼 %1$s 註冊：%2$s</string>
     <string name="nm_cloud_invite_count">已邀請 %1$d 位</string>
     <string name="nm_cloud_invite_earned">邀請帶來 ¥%1$s</string>
     <string name="nm_cloud_invite_have">有邀請碼？</string>
@@ -739,9 +740,9 @@
     <string name="nm_notice_issue">回報問題 / 提需求</string>
     <string name="nm_ways_title_out">免費額度已用完。</string>
     <string name="nm_ways_title_warn">額度快用完了：還剩 ¥%1$s（共 ¥%2$s）。</string>
-    <string name="nm_ways_title_paused">這台中轉暫時停發了免費額度——不是用完了。</string>
+    <string name="nm_ways_title_paused">這台中繼暫時停發了免費額度，不是用完了。</string>
     <string name="nm_ways_paused_sub">剩餘額度原樣保留；下面的辦法現在就能用。</string>
-    <string name="nm_ways_sub">兩個辦法繼續用——無論選哪個，登入和多裝置功能都不受影響。</string>
+    <string name="nm_ways_sub">兩個辦法繼續用；無論選哪個，登入和多裝置功能都不受影響。</string>
     <string name="nm_ways_key_title">換成自己的 key</string>
     <string name="nm_ways_key_guide">圖文教學</string>
     <string name="nm_ways_region_cn">先看阿里雲百煉：一把 key 涵蓋對話、螢幕、繪圖和影片，面向中國大陸身分註冊。下面每一家都寫明了能做什麼。</string>
@@ -759,10 +760,10 @@
     <string name="nm_cap_screen">螢幕</string>
     <string name="nm_cap_pictures">繪圖</string>
     <string name="nm_cap_clips">影片</string>
-    <string name="nm_cap_pictures_unavailable">繪圖需要有圖像模型的提供方——百煉、OpenAI、Gemini 或 OpenRouter。</string>
-    <string name="nm_cap_clips_unavailable">影片需要有影片模型的提供方——阿里雲百煉。</string>
-    <string name="nm_cap_hands_unavailable">手需要能看螢幕的模型——百煉、OpenRouter、OpenAI、Anthropic、Gemini，或任何有視覺模型的提供方。</string>
-    <string name="nm_cap_chat_unavailable">對話需要有對話模型的提供方——新增一把 key，或登入。</string>
+    <string name="nm_cap_pictures_unavailable">繪圖需要有圖像模型的提供方：百煉、OpenAI、Gemini 或 OpenRouter。</string>
+    <string name="nm_cap_clips_unavailable">影片需要有影片模型的提供方：阿里雲百煉。</string>
+    <string name="nm_cap_hands_unavailable">手需要能看螢幕的模型：百煉、OpenRouter、OpenAI、Anthropic、Gemini，或任何有視覺模型的提供方。</string>
+    <string name="nm_cap_chat_unavailable">對話需要有對話模型的提供方：新增一把 key，或登入。</string>
     <string name="nm_ways_invite_title">邀請朋友：每有一位新用戶透過你的連結註冊，你 +¥%1$s，對方也 +¥%2$s。</string>
     <string name="nm_ways_invite_share">分享連結</string>
     <string name="nm_ways_invite_copy">複製連結</string>
@@ -772,7 +773,7 @@
     <string name="nm_cloud_ev_contribute_default">資料控制：新帳號預設開啟</string>
     <string name="nm_data_title">資料控制</string>
     <string name="nm_data_improve">協助改進 nanoMuse 的 AI 模型</string>
-    <string name="nm_data_why">開啟後，你與 nanoMuse Cloud 模型對話的文字——你寫的、它回答的，以及它選擇呼叫的工具——會保存在中繼上，用來訓練社群自己的開源模型。不保存你的記憶和 SOUL（系統提示）、工具回傳的內容和圖片，也不和你的身分放在一起。用自己的 API key 時，對話不經過中繼。</string>
+    <string name="nm_data_why">開啟後，你與 nanoMuse Cloud 模型對話的文字（你寫的、它回答的，以及它選擇呼叫的工具）會保存在中繼上，用來訓練社群自己的開源模型。不保存你的記憶和 SOUL（系統提示）、工具回傳的內容和圖片，也不和你的身分放在一起。用自己的 API key 時，對話不經過中繼。</string>
     <string name="nm_data_default_on">新帳號預設開啟。</string>
     <string name="nm_data_default_off">新帳號預設關閉。</string>
     <string name="nm_data_kept">已保存 %1$d 輪對話。</string>
@@ -816,7 +817,7 @@
     <string name="nm_cloud_ev_password_cleared">移除了密碼</string>
     <string name="nm_cloud_ev_sign_out">登出</string>
     <string name="nm_cloud_ev_sign_out_all">所有裝置登出</string>
-    <string name="nm_cloud_ev_budget_refused">請求被拒——額度用完了</string>
+    <string name="nm_cloud_ev_budget_refused">請求被拒：額度用完了</string>
     <string name="nm_cloud_ev_upstream_error">模型服務回傳了錯誤</string>
     <string name="nm_cloud_sign_out_here">在這台手機上登出</string>
     <string name="nm_cloud_sign_out_everywhere">所有裝置登出</string>
@@ -825,8 +826,8 @@
     <string name="nm_cloud_delete_account_confirm">帳號、登入記錄、用量和動態都會從伺服器刪除，這個帳號在這台手機上的聊天、記憶、動態、目標和頭像也會一併清除。無法復原。</string>
     <string name="nm_cloud_keep_chats">把這個帳號的聊天留在這台裝置上</string>
     <string name="nm_cloud_keep_chats_sub">關閉時：這個帳號的聊天、記憶、動態、目標和頭像會從這台手機上清除。開著同步的話，伺服器上仍有聊天記錄，下次登入會取回。</string>
-    <string name="nm_cloud_sign_in_ended">這台手機上的登入已結束——重新登入即可繼續；在那之前，你的聊天會留在這台裝置上。</string>
-    <!-- 0.1.20: the coding agents on the account's computers -->
+    <string name="nm_cloud_sign_in_ended">這台手機上的登入已結束。重新登入即可繼續；在那之前，你的聊天會留在這台裝置上。</string>
+    <!-- 0.1.20: the 程式設計助手s on the account's computers -->
     <string name="nm_coding_title">程式助手</string>
     <string name="nm_coding_intro">你電腦上的 Cursor、Codex、Claude Code：在這裡看它們的會話和最近的回覆，直接給任何一個發訊息。它們的內容不會複製到手機上。</string>
     <string name="nm_coding_no_computer">沒有在線的電腦帶程式助手。請在裝了 Cursor、Codex 或 Claude Code 的電腦上執行 nanoMuse，並用同一個帳號登入。</string>
@@ -879,7 +880,7 @@
 
     <string name="nm_hub_service_alone_short">只有這一台</string>
     <string name="nm_devices_title">裝置</string>
-    <string name="nm_devices_intro">登入同一帳號的每台裝置——這支手機、你的電腦、網頁主控台——都可以互相交代事情，不必在同一個網路。</string>
+    <string name="nm_devices_intro">登入同一帳號的每台裝置（這支手機、你的電腦、網頁主控台）都可以互相交代事情，不必在同一個網路。</string>
     <string name="nm_devices_join">讓其他裝置能找到這支手機</string>
     <string name="nm_devices_join_sub">保持手機與雲端連線，其他裝置才能交代事情給它。開著時會有一則安靜的常駐通知。</string>
     <string name="nm_devices_remote_control">允許其他裝置操作這支手機</string>
@@ -904,15 +905,15 @@
     <string name="nm_hub_err_device_offline">那台電腦不在線上。</string>
     <string name="nm_hub_err_busy">電腦正忙著另一個任務，稍後再試。</string>
     <string name="nm_hub_err_not_controllable">那個裝置不能接受操作。</string>
-    <string name="nm_hub_err_unknown_agent">電腦上沒有這個 coding agent。</string>
+    <string name="nm_hub_err_unknown_agent">電腦上沒有這個 程式設計助手。</string>
     <string name="nm_hub_err_no_session">這個會話已經不在電腦上了。</string>
     <string name="nm_hub_err_unknown_action">電腦上的 nanoMuse 版本較舊，不認識這個操作。</string>
     <string name="nm_hub_err_bad_key">中繼上已登出，請重新登入。</string>
     <string name="nm_hub_err_generic">電腦沒能完成。</string>
-    <string name="nm_devices_refused">中繼拒絕了連線——重新登入一下</string>
+    <string name="nm_devices_refused">中繼拒絕了連線；重新登入一下</string>
     <string name="nm_devices_notifications_hint">允許通知，手機才能在背景保持可聯。</string>
     <string name="nm_library_share_failed">檔案沒能分享出去。</string>
-    <!-- 0.1.32：設定 → 連接器——可以讓智慧體接入的服務（桌面端同一份目錄） -->
+    <!-- 0.1.32：設定 → 連接器：可以讓智慧體接入的服務（桌面端同一份目錄） -->
     <string name="nm_connectors_title">連接器</string>
     <string name="nm_connectors_intro">讓智慧體接入你在用的服務。每一項都是服務商自己的遠端 MCP 伺服器；大多數用你既有的帳號登入，少數需要一個金鑰。連接好的服務就是一條 MCP 伺服器記錄，任何對話裡都能用。</string>
     <string name="nm_connectors_connected_n">已連接 %1$d 個</string>
@@ -929,8 +930,8 @@
     <string name="nm_connectors_how_auto">先探測伺服器需要什麼：不需要、登入，還是金鑰。</string>
     <string name="nm_connectors_key_placeholder">貼上金鑰</string>
     <string name="nm_handover_title">輪到你了</string>
-    <string name="nm_handover_body">這個頁面需要你來：%1$s。就在這裡的瀏覽器裡完成——同一個頁面、同一個工作階段——然後點「完成」，它會從你停下的地方接著做。</string>
-    <string name="nm_handover_body_generic">這個頁面需要你來——登入或填驗證碼。就在這裡的瀏覽器裡完成，然後點「完成」，它會從你停下的地方接著做。</string>
+    <string name="nm_handover_body">這個頁面需要你來：%1$s。就在這裡的瀏覽器裡完成（同一個頁面、同一個工作階段），然後點「完成」，它會從你停下的地方接著做。</string>
+    <string name="nm_handover_body_generic">這個頁面需要你來：登入或填驗證碼。就在這裡的瀏覽器裡完成，然後點「完成」，它會從你停下的地方接著做。</string>
     <string name="nm_handover_open">開啟頁面</string>
     <string name="nm_handover_done">完成，繼續</string>
     <string name="nm_handover_banner">輪到你了：%1$s。弄好後點「完成」。</string>
@@ -939,13 +940,13 @@
     <string name="nm_connectors_own_row">MCP 伺服器</string>
     <string name="nm_connectors_own_sub">按位址或指令新增伺服器，或匯入 JSON 設定。</string>
     <string name="nm_connectors_elsewhere_title">你的其他裝置上</string>
-    <string name="nm_connectors_elsewhere_sign_in">已在%1$s上連接——在這支手機上登入一次，這裡也能用。</string>
+    <string name="nm_connectors_elsewhere_sign_in">已在%1$s上連接；在這支手機上登入一次，這裡也能用。</string>
     <string name="nm_connectors_elsewhere_only">已在%1$s上連接。不在這支手機的目錄裡；需要的話到「你自己的伺服器」裡新增。</string>
     <string name="nm_connectors_elsewhere_device">另一台裝置</string>
     <string name="nm_connectors_own_n">已有 %1$d 個 · 按位址、指令或 JSON 新增</string>
     <string name="nm_connectors_how_client">%1$s 不支援自動註冊應用程式，所以需要一次性的小設定：在它的開發者設定裡建立一個你自己的 OAuth 應用程式，回呼位址填下面這個，然後把應用程式的用戶端 ID 貼到這裡（如有用戶端密鑰也一併填上）。兩者都只保存在這支手機上。</string>
     <string name="nm_connectors_client_developer">開啟 %1$s 的開發者設定</string>
-    <string name="nm_connectors_client_redirect">應用程式的回呼（redirect）位址——點一下複製：</string>
+    <string name="nm_connectors_client_redirect">應用程式的回呼（redirect）位址，點一下複製：</string>
     <string name="nm_connectors_client_copy">複製</string>
     <string name="nm_connectors_client_id">OAuth 用戶端 ID</string>
     <string name="nm_connectors_client_secret">OAuth 用戶端密鑰（如有）</string>
@@ -972,7 +973,7 @@
     <string name="nm_sync_delete_confirm">保存在 nanoMuse Cloud 的對話會被刪除。各裝置上的聊天保持原樣。</string>
     <string name="nm_sync_deleted">已刪除同步的對話。</string>
     <string name="nm_sync_from">來自 %1$s</string>
-    <string name="nm_sync_attachment_note">[附件 %1$s——只留在產生它的裝置上]</string>
+    <string name="nm_sync_attachment_note">[附件 %1$s，只留在產生它的裝置上]</string>
     <!-- 約定 C9（0.1.38）：旁聊預設只留在本機；某台裝置正在處理某一行 -->
     <string name="nm_sync_side_title">同時同步旁聊</string>
     <string name="nm_sync_side_sub">關：旁聊只留在本機。開：本機的旁聊上傳到帳號，其他裝置的旁聊也會同步過來。</string>

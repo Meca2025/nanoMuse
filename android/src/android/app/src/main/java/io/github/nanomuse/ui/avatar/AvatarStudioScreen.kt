@@ -287,7 +287,7 @@ fun AvatarStudioScreen(onBack: () -> Unit, onOpenSoul: () -> Unit, onOpenMediaMo
                         Text(
                             // C11: no provider draws at all → the one sentence naming those that would
                             if (endpoint == null) ImageGen.unavailableLine(context) ?: stringResource(R.string.nm_avatar_no_provider)
-                            else stringResource(R.string.nm_avatar_using, endpoint.label, endpoint.model.ifBlank { "—" }),
+                            else stringResource(R.string.nm_avatar_using, endpoint.label, endpoint.model.ifBlank { "·" }),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),

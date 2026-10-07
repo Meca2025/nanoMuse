@@ -345,7 +345,7 @@ private fun SideChatRow(
             }
             Spacer(Modifier.size(10.dp))
             Text(
-                text = relativeDay(session.updatedAt),
+                text = relativeDay(androidx.compose.ui.platform.LocalContext.current, session.updatedAt),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -359,11 +359,11 @@ private fun SideChatRow(
     }
 }
 
-internal fun relativeDay(ms: Long): String {
+internal fun relativeDay(context: android.content.Context, ms: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - ms
     return when {
-        diff < 60_000L -> "now"
+        diff < 60_000L -> context.getString(R.string.nm_time_just_now)
         android.text.format.DateUtils.isToday(ms) -> DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(ms))
         diff < 7L * 24 * 3600_000L -> java.text.SimpleDateFormat("EEE", java.util.Locale.getDefault()).format(Date(ms))
         else -> DateFormat.getDateInstance(DateFormat.SHORT).format(Date(ms))
