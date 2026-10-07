@@ -82,6 +82,16 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: harness/desktop/package-lock.json
+      # setup-node caches one package manager; the bundle's pnpm store is kept by hand
+      - name: pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('harness/dsh-nanomuse/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
       - name: Linux packages the runtime and the installers need
         if: runner.os == 'Linux'
         run: |

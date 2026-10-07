@@ -238,6 +238,29 @@ test('a restart while the key is still being read opens one socket, not two', as
   client.stop()
 })
 
+test('a restart fails the calls in flight at once and is offline until the new welcome', async () => {
+  const h = harness()
+  const s1 = await connected(h)
+  const states = []
+  h.client.onState(() => states.push(h.client.connected))
+  const inFlight = h.client.call('phone-1', 'info', {}, { timeoutMs: 60_000 })
+  h.client.restart()
+  await assert.rejects(inFlight, (e) => e instanceof HubError && e.code === 'disconnected')
+  assert.equal(h.client.connected, false, 'not connected between the sockets')
+  assert.deepEqual(states, [false])
+  // a call made before the new socket is open is refused, not written into a closed socket
+  await assert.rejects(h.client.call('phone-1', 'info', {}), (e) => e instanceof HubError && e.code === 'offline')
+  await tick()
+  const s2 = h.sockets.at(-1)
+  assert.notEqual(s2, s1)
+  assert.equal(s2.sent.length, 0, 'nothing is sent before the socket opens')
+  s2.open()
+  s2.push({ type: 'welcome', device_id: DEVICE.id, devices: [], server: {} })
+  assert.equal(h.client.connected, true)
+  assert.deepEqual(states, [false, true])
+  h.client.stop()
+})
+
 test('hub_paused waits well beyond the normal back-off; a refused device stays closed without signing out', async () => {
   const h = harness()
   const s = await connected(h)
