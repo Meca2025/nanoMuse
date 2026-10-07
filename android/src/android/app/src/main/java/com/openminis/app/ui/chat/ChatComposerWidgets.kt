@@ -416,7 +416,7 @@ internal fun MicButton(
              else ChatColors.inputIconBg
     val tint = if (isRecording) Color.Red
                else MaterialTheme.colorScheme.onSurfaceVariant
-    val borderColor = if (isRecording || plain) Color.Transparent else ChatColors.inputIconBorder
+    val borderColor = if (isRecording || plain) Color.Transparent else ChatColors.inputIconBorder // nanoMuse: plain composer
     Box(
         modifier = Modifier
             .size(38.dp)
@@ -430,7 +430,7 @@ internal fun MicButton(
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            if (isVoiceActive) Icons.Default.Keyboard else if (plain) Icons.Outlined.Mic else Icons.Default.Mic,
+            if (isVoiceActive) Icons.Default.Keyboard else if (plain) Icons.Outlined.Mic else Icons.Default.Mic, // nanoMuse: plain composer
             contentDescription = if (isVoiceActive) "Switch to keyboard"
             else if (isRecording) "Stop recording" else "Voice input",
             tint = tint,

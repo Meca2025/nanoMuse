@@ -325,7 +325,7 @@ fun ProviderDetailScreen(
                 // Save action — TextButton presentation so it reads as a list
                 // row rather than a floating filled button inside the card.
                 MinisSmallTextButton(
-                    enabled = baseUrlProblem == null,
+                    enabled = baseUrlProblem == null, // nanoMuse: LanOnly
                     onClick = {
                         providerRepository.updateInstance(
                             instance.copy(

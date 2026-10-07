@@ -3477,7 +3477,7 @@ fun ChatScreen(
                         }
                     }
                 }
-                val hasFloatingTools = nmShowSteps && (isStreaming || nmBarLingers) && nmAnyToolStep
+                val hasFloatingTools = nmShowSteps && (isStreaming || nmBarLingers) && nmAnyToolStep // nanoMuse: the steps bar
                 val visualOverlayHeight = 65.dp  // thumbnailHeight in FloatingToolStatusBar
                 // Halve the breathing room above the input bar in both
                 // states — felt too sparse before. The thumbnail's 65dp
@@ -5615,7 +5615,7 @@ fun ChatScreen(
                                 shadowPaint,
                             )
                         }
-                        .padding(top = if (attachments.isNotEmpty()) 8.dp else if (nmPill) 0.dp else 4.dp),
+                        .padding(top = if (attachments.isNotEmpty()) 8.dp else if (nmPill) 0.dp else 4.dp), // nanoMuse: pill composer
                 ) {
                     // T185: Move-to capsule lives INSIDE the composer card,
                     // pinned 8dp from the top-right corner, mirroring iOS

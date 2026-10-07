@@ -127,11 +127,15 @@ object ProviderReach {
         val rest = t.removePrefix(CANONICAL_PREFIX)
         val head = rest.substringBefore('|')
         val detail = rest.substringAfter('|', "")
-        val parts = head.split(':')
-        if (parts.size < 2) return null
-        val kind = runCatching { Kind.valueOf(parts[0].uppercase(Locale.ROOT)) }.getOrNull() ?: return null
-        val retry = parts.getOrNull(2)?.toIntOrNull()
-        return Reach(kind, parts[1], detail, retry)
+        // kind, host, retry: the host may carry colons itself (an IPv6 literal), so it is what
+        // sits between the first colon and the last, and the retry is what follows the last.
+        val kindName = head.substringBefore(':', "")
+        if (kindName.isEmpty() || !head.contains(':')) return null
+        val kind = runCatching { Kind.valueOf(kindName.uppercase(Locale.ROOT)) }.getOrNull() ?: return null
+        val hostAndRetry = head.substringAfter(':')
+        val host = if (hostAndRetry.contains(':')) hostAndRetry.substringBeforeLast(':') else hostAndRetry
+        val retry = if (hostAndRetry.contains(':')) hostAndRetry.substringAfterLast(':').toIntOrNull() else null
+        return Reach(kind, host, detail, retry)
     }
 
     fun looksLikeHtml(body: String): Boolean {

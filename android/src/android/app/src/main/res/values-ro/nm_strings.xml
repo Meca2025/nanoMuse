@@ -515,7 +515,6 @@
     <string name="nm_hands_need_ok">Gata</string>
     <string name="nm_hands_need_set_up">Configurează</string>
     <string name="nm_hands_section_model">Modelul mâinilor</string>
-    <string name="nm_hands_model_auto">Automat: qwen3.8-27b (al nanoMuse Cloud sau sub propria ta cheie), altfel modelul de chat ales de tine dacă poate vedea, altfel Grupul de viziune</string>
     <string name="nm_hands_model_footer">Fiecare pas trimite o captură de ecran acestui model; e o setare separată de modelul de chat. Modelele de viziune mai mici sunt potrivite aici și costă mai puțin. Un model din catalogul extins al Cloud-ului e folosit doar când îl alegi.</string>
     <string name="nm_hands_why_chosen">ales aici</string>
     <string name="nm_hands_why_default">implicitul mâinilor sub propria ta cheie</string>
