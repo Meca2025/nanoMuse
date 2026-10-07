@@ -18,6 +18,7 @@ import re
 import secrets
 import sqlite3
 import time
+from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -344,6 +345,10 @@ RUNTIME_SETTINGS: dict[str, tuple[type, float, float]] = {
 
 
 class Cloud:
+    # The clock a charge is priced by (a model with idle hours); the tests pin it to a known
+    # hour, so a suite run at night costs the same as one by day.
+    clock: Callable[[], int] = staticmethod(now)
+
     def __init__(self, settings: Settings, db: Database | None = None, sender: CodeSender | None = None):
         self.env = settings  # what the environment said; `s` has the page's overrides on top
         self.db = db or Database(settings.database)
@@ -1437,15 +1442,45 @@ class Cloud:
         """What a chat on `model` is held at while it runs."""
         return model.chat_cost_uy(CHAT_RESERVE_PROMPT_TOKENS, CHAT_RESERVE_COMPLETION_TOKENS)
 
-    def charge_chat(self, caller: Caller, model: ModelSpec, prompt_tokens: int, completion_tokens: int, request_id: str) -> int:
+    def charge_chat(
+        self,
+        caller: Caller,
+        model: ModelSpec,
+        prompt_tokens: int,
+        completion_tokens: int,
+        request_id: str,
+        cached_tokens: int = 0,
+        at: int | None = None,
+    ) -> int:
+        """One chat turn in the ledger: the tokens as the provider counted them, the money at
+        the model's price in force when the reply came in (`at`, now by default) — the
+        cached part of the prompt at its cached rate, the idle hours at the idle price. The
+        ledger line's `extra` says when either applied, so a statement can be checked."""
+        at = self.clock() if at is None else at
         charged = math.ceil(prompt_tokens * model.in_mult + completion_tokens * model.out_mult)
-        cost = model.chat_cost_uy(prompt_tokens, completion_tokens)
-        self.db.charge(caller.account_id, "chat", model.id, prompt_tokens, completion_tokens, charged, request_id, cost_uy=cost)
+        cost = model.chat_cost_uy(prompt_tokens, completion_tokens, cached_tokens, at)
+        detail: dict[str, Any] = {}
+        if cached_tokens > 0:
+            detail["cached_tokens"] = min(max(0, cached_tokens), max(0, prompt_tokens))
+        if model.idle_at(at):
+            detail["idle"] = True
+        self.db.charge(
+            caller.account_id,
+            "chat",
+            model.id,
+            prompt_tokens,
+            completion_tokens,
+            charged,
+            request_id,
+            cost_uy=cost,
+            extra=json.dumps(detail) if detail else "",
+        )
         return charged
 
-    def charge_image(self, caller: Caller, model: ModelSpec, n: int, request_id: str, size: str | None = None) -> int:
+    def charge_image(self, caller: Caller, model: ModelSpec, n: int, request_id: str, size: str | None = None, inputs: int = 0) -> int:
+        """`n` pictures out at the tier `size` falls in; `inputs` pictures sent in (an edit)."""
         charged = model.per_image * max(1, n)
-        cost = model.image_cost_uy(size) * max(1, n)
+        cost = model.image_cost_uy(size, inputs) * max(1, n)
         self.db.charge(caller.account_id, "image", model.id, 0, 0, charged, request_id, cost_uy=cost)
         return charged
 
@@ -2443,28 +2478,54 @@ def prompt_chars(messages: list) -> int:
     return total
 
 
-def usage_from_json(obj: dict) -> tuple[int, int] | None:
-    """The prompt and completion tokens a reply says it used — reasoning counted as
-    completion. OpenAI's shape has the reasoning inside `completion_tokens` with the
-    breakdown under `completion_tokens_details.reasoning_tokens` (DashScope's native name is
+@dataclass(frozen=True)
+class Usage:
+    """What a reply says it used: prompt and completion tokens (the reasoning counted as
+    completion) and how many of the prompt tokens the provider served from its cache."""
+
+    prompt: int
+    completion: int
+    cached: int = 0
+
+
+def usage_from_json(obj: dict) -> Usage | None:
+    """The tokens a reply says it used, or None when it says nothing usable (no `usage`, an
+    empty one, a count that is not a number) — the caller then estimates. OpenAI's shape has
+    the reasoning inside `completion_tokens` with the breakdown under
+    `completion_tokens_details.reasoning_tokens` (DashScope's native name is
     `output_tokens_details`); a provider that counts the reasoning *apart* reports more
     reasoning than completion, and then the two are added, so a thinking model's turn is
-    never billed for its answer alone."""
+    never billed for its answer alone. The cached part of the prompt is
+    `prompt_tokens_details.cached_tokens` (a part of `prompt_tokens`, as the provider
+    reports it); the Anthropic-shaped `cache_read_input_tokens` is counted *beside*
+    `input_tokens` and is added to the prompt here."""
     u = obj.get("usage") if isinstance(obj, dict) else None
     if not isinstance(u, dict):
         return None
     try:
-        prompt, completion = int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0)
+        prompt = int(u.get("prompt_tokens") or u.get("input_tokens") or 0)
+        completion = int(u.get("completion_tokens") or u.get("output_tokens") or 0)
         reasoning = 0
         for key in ("completion_tokens_details", "output_tokens_details"):
             details = u.get(key)
             if isinstance(details, dict) and details.get("reasoning_tokens") is not None:
                 reasoning = max(reasoning, int(details.get("reasoning_tokens") or 0))
+        cached = 0
+        for key in ("prompt_tokens_details", "input_tokens_details"):
+            details = u.get(key)
+            if isinstance(details, dict) and details.get("cached_tokens") is not None:
+                cached = max(cached, int(details.get("cached_tokens") or 0))
+        if u.get("cache_read_input_tokens") is not None:
+            read = int(u.get("cache_read_input_tokens") or 0)
+            prompt += read
+            cached = max(cached, read)
     except (TypeError, ValueError):
+        return None
+    if prompt <= 0 and completion <= 0:
         return None
     if reasoning > completion:
         completion += reasoning
-    return prompt, completion
+    return Usage(max(0, prompt), max(0, completion), min(max(0, cached), max(0, prompt)))
 
 
 def dumps(obj) -> str:

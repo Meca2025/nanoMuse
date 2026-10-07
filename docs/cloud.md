@@ -272,15 +272,22 @@ to draw on — for its lifetime, not by the day (relay 0.5):
 | tokens | no ceiling; usage is metered and shown |
 
 Spend is counted at the model provider's list prices (Alibaba Cloud Model
-Studio, Beijing region, October 2026): `deepseek-v4.1-flash` — the chat model
-since 0.1.34, it reads pictures and thinks before it answers — ¥2 in / ¥8 out
-per million tokens, `qwen3.8-27b` — the hands model, usable for chat too — ¥3
-/ ¥12, `qwen3.8-flash` ¥0.8 / ¥2.7, `qwen-image-3.0` ¥0.18 a picture,
-`wan2.2-i2v-flash` ¥0.10 a second of video at 480P (a 5-second clip is
-¥0.50). A typical day of chatting costs a few fen; ¥10 is roughly two million
-tokens of the chat model or fifty pictures. A new face —
-four candidates, four poses and four clips — comes to about ¥3.5, and the app
-shows the estimate and what is left before it draws.
+Studio, Beijing region, read on 2026-10-07). `deepseek-v4.1-flash`, the chat
+model since 0.1.34 (it reads pictures and thinks before it answers), is ¥2 in /
+¥8 out per million tokens from 8:00 to 22:00 Beijing time and ¥1 / ¥4 the rest
+of the night; the hour the reply comes in decides. `qwen3.8-27b`, the hands
+model, usable for chat too, is ¥3 / ¥12; `qwen3.8-flash` ¥0.8 / ¥2.7;
+`qwen-image-3.0` ¥0.18 a picture, and an edit adds ¥0.02 for the picture sent
+in; `wan2.2-i2v-flash` ¥0.10 a second of video at 480P (a 5-second clip is
+¥0.50), ¥0.20 a second at 720P and ¥0.48 at 1080P. The part of a prompt the
+provider served from its cache (the system prompt and the history, turn after
+turn) is counted at the provider's cached rate, 10 % of the input price on
+DeepSeek and 20 % on the Qwen models, as the reply's `usage` reports it. The
+reasoning tokens of a thinking model count as output. A typical day of
+chatting costs a few fen; ¥10 is roughly two million tokens of the chat model
+or fifty pictures. A new face (four candidates, four poses and four clips)
+comes to about ¥3.5, and the app shows the estimate and what is left before it
+draws.
 
 *Settings → nanoMuse Cloud* shows what was used of the pool in ¥ and $, what
 is left, and how the pool grows. At 80 % the app says so once; when the pool

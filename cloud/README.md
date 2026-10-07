@@ -343,9 +343,15 @@ policy lives in the `settings` table under `nudges`.
 ### Money
 
 Every request is priced in yuan at the provider's Beijing list prices (set per
-model: `price_in` / `price_out` per million tokens, `price_image` and
-`price_image_2k` per picture, `price_second` per second of video) and stored
-in the ledger next to the token count. A non-member account has one pool for
+model: `price_in` / `price_out` per million tokens, `price_in_idle` /
+`price_out_idle` for a model priced by the hour with `idle_hours` as
+`[start, end]` in Beijing time, `cached_in_rate` for the share of the input
+price a cached prompt token costs, `price_image` and `price_image_2k` per
+picture out and `price_image_in` per picture sent in, `price_second` per second
+of video at the base resolution and `price_second_res` as `{"720P": 0.2, ...}`
+above it) and stored in the ledger next to the token count; a chat is priced
+at the hour its reply comes in, with the provider's `cached_tokens` at the
+cached rate, and the ledger line's `extra` says when either applied. A non-member account has one pool for
 its lifetime — `ALLOWANCE_CNY` (¥10 by default, adjustable at runtime), grown by invites (both
 sides) and the operator's credit; a picture or a clip that would go
 over it is refused before it is made, a chat once the pool is spent. Clips are
