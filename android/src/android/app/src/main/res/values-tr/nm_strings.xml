@@ -1097,5 +1097,6 @@
     <string name="nm_models_auto_currently">Şu anda %1$s</string>
     <string name="nm_models_show_more">%1$d tane daha göster</string>
     <string name="nm_models_search">Model ara</string>
+    <string name="nm_models_search_clear">Aramayı temizle</string>
     <string name="nm_models_no_match">Eşleşen model yok</string>
 </resources>

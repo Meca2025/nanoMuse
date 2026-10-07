@@ -39,7 +39,8 @@ update*) and offers the download.
    the row. A group shows eight models until you tap *Show N more* (the catalogue's default
    for the row first, then the one in use, then the rest as the provider lists them); past
    eight models in all, a *Search models* field above the groups filters every group live by
-   id or name, and *No model matches* says when nothing does. A chat pick there, or in the
+   id or name, and *No model matches* says when nothing does; the search and the opened
+   groups survive a rotation and the trip through *Add a provider*. A chat pick there, or in the
    chat's own `•••` menu, is the default for new chats
    (*Applies to new chats.*); a chat already open keeps its model. The other three pickers
    open with *Automatic* (*Currently nanoMuse Cloud · qwen3.8-27b*), which forgets a choice

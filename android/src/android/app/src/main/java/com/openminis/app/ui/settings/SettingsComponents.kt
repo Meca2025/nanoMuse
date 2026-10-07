@@ -20,6 +20,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape // nanoMuse
 import androidx.compose.foundation.border // nanoMuse
+import androidx.compose.foundation.selection.selectable // nanoMuse
+import androidx.compose.ui.semantics.Role // nanoMuse
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -443,7 +445,8 @@ fun SettingsChoiceRow(
                 // [T-android-settings-ui-md3] #1 match SettingsRow's 56dp min so
                 // choice/radio rows line up with toggle/value rows in mixed lists.
                 .heightIn(min = 56.dp)
-                .clickable(onClick = onSelect)
+                // nanoMuse: a radio row says whether it is the chosen one to TalkBack
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

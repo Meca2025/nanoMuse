@@ -1093,5 +1093,6 @@
     <string name="nm_models_auto_currently">Kini %1$s</string>
     <string name="nm_models_show_more">Tunjukkan %1$d lagi</string>
     <string name="nm_models_search">Cari model</string>
+    <string name="nm_models_search_clear">Kosongkan carian</string>
     <string name="nm_models_no_match">Tiada model yang sepadan</string>
 </resources>

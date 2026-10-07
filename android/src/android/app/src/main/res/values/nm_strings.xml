@@ -1074,5 +1074,6 @@
     <string name="nm_models_auto_currently">Currently %1$s</string>
     <string name="nm_models_show_more">Show %1$d more</string>
     <string name="nm_models_search">Search models</string>
+    <string name="nm_models_search_clear">Clear the search</string>
     <string name="nm_models_no_match">No model matches</string>
 </resources>

@@ -1105,5 +1105,6 @@
     <string name="nm_models_auto_currently">Obecnie %1$s</string>
     <string name="nm_models_show_more">Pokaż jeszcze %1$d</string>
     <string name="nm_models_search">Szukaj modeli</string>
+    <string name="nm_models_search_clear">Wyczyść wyszukiwanie</string>
     <string name="nm_models_no_match">Żaden model nie pasuje</string>
 </resources>
