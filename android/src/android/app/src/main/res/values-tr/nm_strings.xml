@@ -1081,7 +1081,7 @@
     <string name="nm_models_image_sub">Muse’unun portreleri ve istediğin görseller.</string>
     <string name="nm_models_video_title">Klip oluşturma</string>
     <string name="nm_models_video_sub">Muse’unun kısa klipleri.</string>
-    <string name="nm_models_new_chats">Yeni sohbetler için geçerlidir.</string>
+    <string name="nm_models_chat_applies">Ana sohbet ve yeni sohbetler için geçerlidir; yan sohbet kendi modelini korur.</string>
     <string name="nm_models_media_more">Daha fazla görsel ve klip seçeneği</string>
     <string name="nm_models_media_more_sub">Bir model adı yaz, hangi model olmadan neyin durduğunu gör ya da bir anahtarın hangi video modellerini kullanabildiğini yeniden denetle.</string>
     <string name="nm_models_cloud_switch">nanoMuse Cloud modellerini kullan</string>

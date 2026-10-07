@@ -1081,7 +1081,7 @@
     <string name="nm_models_image_sub">Des portraits de votre Muse et les images que vous demandez.</string>
     <string name="nm_models_video_title">Créer des clips</string>
     <string name="nm_models_video_sub">De courts clips de votre Muse.</string>
-    <string name="nm_models_new_chats">S’applique aux nouveaux chats.</string>
+    <string name="nm_models_chat_applies">S’applique à la discussion principale et aux nouvelles discussions ; une discussion secondaire garde son modèle.</string>
     <string name="nm_models_media_more">Plus d’options pour les images et les clips</string>
     <string name="nm_models_media_more_sub">Saisir un nom de modèle, voir ce qui s’arrête sans chaque modèle, ou revérifier quels modèles vidéo une clé peut utiliser.</string>
     <string name="nm_models_cloud_switch">Utiliser les modèles nanoMuse Cloud</string>

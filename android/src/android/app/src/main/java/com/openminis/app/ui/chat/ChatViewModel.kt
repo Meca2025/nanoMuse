@@ -3715,6 +3715,23 @@ class ChatViewModel(
                         }
                 }
             }
+        // nanoMuse: the main chat follows the chat slot (Settings › Models, the "Use it for"
+        // card, a pick in a chat's picker: ModelSlots.followPick → mainChatFollows). Its row is
+        // rewritten there; this view-model lives as long as the app, so it is told as well and
+        // re-resolves to the group that now leads with the pick. A side chat keeps its model.
+        viewModelScope.launch {
+            sessionLoaded.first { it }
+            io.github.nanomuse.models.ModelSlots.chatSlotWritten.collect { pick ->
+                val sid = realSessionId.takeIf { it.isNotEmpty() } ?: return@collect
+                val isMain = io.github.nanomuse.home.MainChat.isMain(context, sid)
+                if (!io.github.nanomuse.models.MainChatFollow.shouldMove(isMain, _activeEntryId.value, _selectedGroupId.value, pick)) return@collect
+                if (resolveProviderFromGroup(pick.groupId, pick.entryId)) {
+                    _selectedGroupId.value = pick.groupId
+                    _activeEntryId.value?.let { persistBinding(io.github.nanomuse.models.MainChatFollow.binding(pick.copy(entryId = it))) }
+                    AppLogger.info(TAG, "🔀RESOLVE main chat follows the chat slot: group=${pick.groupId} entry=${_activeEntryId.value} model=${currentModel?.id}")
+                }
+            }
+        }
         // Re-resolve provider when config changes (models may load async)
         viewModelScope.launch {
             // T306: wait for loadSession to finish BEFORE observing config.

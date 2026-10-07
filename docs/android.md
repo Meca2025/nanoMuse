@@ -41,8 +41,9 @@ update*) and offers the download.
    eight models in all, a *Search models* field above the groups filters every group live by
    id or name, and *No model matches* says when nothing does; the search and the opened
    groups survive a rotation and the trip through *Add a provider*. A chat pick there, or in the
-   chat's own `•••` menu, is the default for new chats
-   (*Applies to new chats.*); a chat already open keeps its model. The other three pickers
+   chat's own `•••` menu, is the default for new chats and moves the main chat
+   (*Applies to the main chat and to new chats; a side chat keeps its model.*); a side
+   chat already open keeps its model. The other three pickers
    open with *Automatic* (*Currently nanoMuse Cloud · qwen3.8-27b*), which forgets a choice
    made there and lets the row follow the order below again. Running everything yourself
    with no account at all is the runtime's `cloud.required = false`; the phone app asks for

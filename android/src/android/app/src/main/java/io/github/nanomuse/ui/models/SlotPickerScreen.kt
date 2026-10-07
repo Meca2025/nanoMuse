@@ -192,7 +192,7 @@ fun SlotPickerScreen(slot: Slot, onBack: () -> Unit, onAddProvider: () -> Unit) 
         }
         SettingsSection(
             footer = if (groups.isEmpty()) Capabilities.unavailableLine(context, slot.capability)
-            else if (slot == Slot.CHAT) stringResource(R.string.nm_models_new_chats) else null,
+            else if (slot == Slot.CHAT) stringResource(R.string.nm_models_chat_applies) else null,
         ) {
             SettingsRow(
                 title = stringResource(R.string.nm_media_add_provider),

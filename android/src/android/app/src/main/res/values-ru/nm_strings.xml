@@ -1089,7 +1089,7 @@
     <string name="nm_models_image_sub">Портреты вашей Музы и изображения, которые вы просите.</string>
     <string name="nm_models_video_title">Создание клипов</string>
     <string name="nm_models_video_sub">Короткие клипы с вашей Музой.</string>
-    <string name="nm_models_new_chats">Действует для новых чатов.</string>
+    <string name="nm_models_chat_applies">Действует для основного чата и новых чатов; побочный чат сохраняет свою модель.</string>
     <string name="nm_models_media_more">Другие параметры изображений и клипов</string>
     <string name="nm_models_media_more_sub">Ввести имя модели, посмотреть, что остановится без какой модели, или заново проверить, какие видеомодели доступны ключу.</string>
     <string name="nm_models_cloud_switch">Использовать модели nanoMuse Cloud</string>

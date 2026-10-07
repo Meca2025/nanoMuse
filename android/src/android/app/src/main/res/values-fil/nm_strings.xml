@@ -1081,7 +1081,7 @@
     <string name="nm_models_image_sub">Mga larawan ng iyong Muse at ang mga larawang hinihingi mo.</string>
     <string name="nm_models_video_title">Paggawa ng clip</string>
     <string name="nm_models_video_sub">Maiikling clip ng iyong Muse.</string>
-    <string name="nm_models_new_chats">Para sa mga bagong chat.</string>
+    <string name="nm_models_chat_applies">Para sa pangunahing chat at sa mga bagong chat; pinapanatili ng side chat ang sarili nitong model.</string>
     <string name="nm_models_media_more">Higit pang opsyon sa larawan at clip</string>
     <string name="nm_models_media_more_sub">Mag-type ng pangalan ng modelo, tingnan kung ano ang hihinto kung wala ang bawat modelo, o suriin muli kung aling mga video model ang magagamit ng isang key.</string>
     <string name="nm_models_cloud_switch">Gamitin ang mga modelo ng nanoMuse Cloud</string>

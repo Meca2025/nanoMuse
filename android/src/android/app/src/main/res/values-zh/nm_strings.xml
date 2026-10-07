@@ -1054,7 +1054,7 @@
     <string name="nm_models_image_sub">形象的肖像，以及你要的图片。</string>
     <string name="nm_models_video_title">生成视频</string>
     <string name="nm_models_video_sub">形象的短视频。</string>
-    <string name="nm_models_new_chats">新对话起生效。</string>
+    <string name="nm_models_chat_applies">对主要聊天和新对话生效；旁聊保留自己的模型。</string>
     <string name="nm_models_media_more">更多图片和视频选项</string>
     <string name="nm_models_media_more_sub">手动输入模型名、查看缺了哪个模型会停下什么，或重新检查一把 key 能用哪些视频模型。</string>
     <string name="nm_models_cloud_switch">使用 nanoMuse Cloud 模型</string>

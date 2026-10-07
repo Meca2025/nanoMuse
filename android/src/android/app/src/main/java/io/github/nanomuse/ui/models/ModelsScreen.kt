@@ -128,7 +128,7 @@ fun ModelsScreen(
             val videoOff = remember(tick, changed) { slot == Slot.VIDEO && ModelSlots.videoOff(context) }
             val footer = buildString {
                 append(stringResource(slotSubtitle(slot)))
-                if (slot == Slot.CHAT && changed == Slot.CHAT) append(" ").append(stringResource(R.string.nm_models_new_chats))
+                if (slot == Slot.CHAT && changed == Slot.CHAT) append(" ").append(stringResource(R.string.nm_models_chat_applies))
             }
             SettingsSection(footer = footer) {
                 SettingsRow(

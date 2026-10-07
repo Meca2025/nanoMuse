@@ -1058,7 +1058,7 @@
     <string name="nm_models_image_sub">Portraits of your Muse and the pictures you ask for.</string>
     <string name="nm_models_video_title">Making clips</string>
     <string name="nm_models_video_sub">Short clips of your Muse.</string>
-    <string name="nm_models_new_chats">Applies to new chats.</string>
+    <string name="nm_models_chat_applies">Applies to the main chat and to new chats; a side chat keeps its model.</string>
     <string name="nm_models_media_more">More picture and clip options</string>
     <string name="nm_models_media_more_sub">Type a model name, see what stops without each model, or check again which video models a key can use.</string>
     <string name="nm_models_cloud_switch">Use nanoMuse Cloud models</string>

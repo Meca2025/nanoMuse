@@ -1077,7 +1077,7 @@
     <string name="nm_models_image_sub">Potret Muse anda dan gambar yang anda minta.</string>
     <string name="nm_models_video_title">Membuat klip</string>
     <string name="nm_models_video_sub">Klip pendek Muse anda.</string>
-    <string name="nm_models_new_chats">Terpakai untuk sembang baharu.</string>
+    <string name="nm_models_chat_applies">Terpakai untuk sembang utama dan sembang baharu; sembang sampingan mengekalkan modelnya sendiri.</string>
     <string name="nm_models_media_more">Pilihan gambar dan klip lain</string>
     <string name="nm_models_media_more_sub">Taip nama model, lihat apa yang terhenti tanpa setiap model, atau semak semula model video yang boleh digunakan oleh satu kunci.</string>
     <string name="nm_models_cloud_switch">Gunakan model nanoMuse Cloud</string>
