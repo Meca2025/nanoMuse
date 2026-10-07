@@ -103,6 +103,19 @@ final class NanoMuseModelSlotsTests: XCTestCase {
         XCTAssertNil(NanoMuseSlotResolver.resolve(slot: .video, chosen: nil, chatProviderId: "openrouter-1", providers: [openrouter]))
     }
 
+    func testClearingTheChoiceReturnsTheSlotToTheOrder() {
+        let providers = [cloud, bailian]
+        let chosen = NanoMuseSlotChoice(providerId: "bailian-1", model: "wan2.6-image")
+        XCTAssertEqual(NanoMuseSlotResolver.resolve(slot: .image, chosen: chosen, chatProviderId: cloudId, providers: providers), chosen, "a stored choice is kept")
+        // the Automatic entry: no choice stored, the order again: the chat provider cannot draw here, so Cloud
+        let automatic = NanoMuseSlotResolver.automatic(slot: .image, chatProviderId: cloudId, providers: providers)
+        XCTAssertEqual(automatic, NanoMuseSlotChoice(providerId: cloudId, model: "qwen-image-3.0"))
+        XCTAssertEqual(automatic, NanoMuseSlotResolver.resolve(slot: .image, chosen: nil, chatProviderId: cloudId, providers: providers))
+        // and when the chat runs on the Bailian key, automatic follows it
+        XCTAssertEqual(NanoMuseSlotResolver.automatic(slot: .video, chatProviderId: "bailian-1", providers: providers), NanoMuseSlotChoice(providerId: "bailian-1", model: "wan2.2-i2v-flash"))
+        XCTAssertNil(NanoMuseSlotResolver.automatic(slot: .video, chatProviderId: "openrouter-1", providers: [openrouter]), "nothing can: the entry says so instead of a model")
+    }
+
     func testChatResolvesToCloudThenTheFirstKey() {
         XCTAssertEqual(NanoMuseSlotResolver.resolve(slot: .chat, chosen: nil, chatProviderId: nil, providers: [bailian, cloud])?.providerId, cloudId)
         XCTAssertEqual(NanoMuseSlotResolver.resolve(slot: .chat, chosen: nil, chatProviderId: nil, providers: [openrouter, bailian]), NanoMuseSlotChoice(providerId: "openrouter-1", model: "deepseek/deepseek-v4.1-flash"))

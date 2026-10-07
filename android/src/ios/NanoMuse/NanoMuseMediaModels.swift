@@ -129,6 +129,15 @@ enum NanoMuseMediaModels {
         NotificationCenter.default.post(name: changed, object: nil)
     }
 
+    /// Back to the automatic order for clips (the *Automatic* entry of the picker): the
+    /// stored choice, on or off, is forgotten, nothing else changes.
+    @MainActor
+    static func clearVideoChoice() {
+        UserDefaults.standard.removeObject(forKey: Keys.videoInstance)
+        UserDefaults.standard.removeObject(forKey: Keys.videoModel)
+        NotificationCenter.default.post(name: changed, object: nil)
+    }
+
     /// The video model is the Cloud's: its clips come out of the allowance.
     @MainActor
     static var videoOnCloud: Bool {

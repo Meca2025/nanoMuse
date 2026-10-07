@@ -153,7 +153,9 @@ Ours, in `NanoMuse/`:
   provider's own default when it is a Model Studio key that draws, else nanoMuse Cloud when
   signed in, else the first key that can — so Cloud is no longer passed over for a Bailian key
   you did not pick; the image and video models come from the catalogue's `defaults`, not from
-  names in the code. After a key is saved, `NanoMuseVendorSheet` shows *Use it for*: one switch
+  names in the code. The pictures and clips pickers open with an *Automatic* entry (*Currently
+  〈provider · model〉*) that forgets the stored choice and lets the slot follow that order
+  again; the clips picker keeps *Off* under it. After a key is saved, `NanoMuseVendorSheet` shows *Use it for*: one switch
   per slot the key covers (pictures and clips only on a DashScope host, the screen never on
   iPhone), all on; *Use it* moves the ticked slots to the provider's defaults, *Not now* changes
   nothing, and saving no longer switches anything by itself. When a model of your own fails, the
