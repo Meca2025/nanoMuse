@@ -195,7 +195,8 @@ object DeepLinkHandler {
             "appearance" -> DeepLinkAction.OpenSettingsScreen(Routes.APPEARANCE)
             "soul" -> DeepLinkAction.OpenSettingsScreen(Routes.SOUL) // nanoMuse: the name pill links here
             "avatar", "face" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.avatar.ROUTE_AVATAR_STUDIO) // nanoMuse: the avatar studio
-            "media", "models" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) // nanoMuse: image & video models
+            "media" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.media.ROUTE_MEDIA_MODELS) // nanoMuse: image & video models
+            "models" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.models.ROUTE_MODELS) // nanoMuse: Settings → Models
             "hands", "screen" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.hands.ROUTE_HANDS) // nanoMuse: the screen as a hand
             "computers", "pc" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.reach.ROUTE_COMPUTERS) // nanoMuse: the account's computers
             "cloud", "devices" -> DeepLinkAction.OpenSettingsScreen(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_ACCOUNT) // nanoMuse: the account and its devices on the hub

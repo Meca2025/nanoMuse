@@ -1,0 +1,126 @@
+package io.github.nanomuse.ui.models
+
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.openminis.app.MinisApp
+import com.openminis.app.R
+import com.openminis.app.ui.settings.SettingsChoiceRow
+import com.openminis.app.ui.settings.SettingsRow
+import com.openminis.app.ui.settings.SettingsScaffold
+import com.openminis.app.ui.settings.SettingsSection
+import io.github.nanomuse.cloud.Capabilities
+import io.github.nanomuse.media.MediaModels
+import io.github.nanomuse.models.ModelSlots
+import io.github.nanomuse.models.ModelSlots.Slot
+import io.github.nanomuse.ui.home.MuseTones
+
+/**
+ * The picker behind one row of Settings → Models: a group `nanoMuse Cloud` (when signed in)
+ * with that lane's relay models, the recommended one first and marked; then one group per
+ * configured own provider, listing only its models with the capability. Choosing sets the
+ * slot and goes back; for chat that is the default for new chats. With no option at all, the
+ * sentence that says which provider would serve the slot, and *Add a provider*.
+ */
+@Composable
+fun SlotPickerScreen(slot: Slot, onBack: () -> Unit, onAddProvider: () -> Unit) {
+    val context = LocalContext.current
+    val repo = (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
+    val config = repo?.config?.collectAsState()?.value
+    var tick by remember { mutableIntStateOf(0) }
+    val groups = remember(config, tick) { ModelSlots.groups(context, slot) }
+    val current = remember(config, tick) { ModelSlots.current(context, slot) }
+    val videoOff = remember(tick) { slot == Slot.VIDEO && ModelSlots.videoOff(context) }
+    var checking by remember { mutableStateOf(false) }
+
+    // Model Studio does not list video models: the known ones are probed once a day per key.
+    if (slot == Slot.VIDEO) {
+        LaunchedEffect(groups.size) {
+            val stale = groups.map { it.instance }.filter { MediaModels.availableVideoModels(context, it) == null || !MediaModels.videoCheckIsFresh(context, it) }
+            if (stale.isEmpty()) return@LaunchedEffect
+            checking = true
+            stale.forEach { runCatching { MediaModels.checkVideoModels(context, it) } }
+            checking = false
+            tick++
+        }
+    }
+
+    SettingsScaffold(title = stringResource(slotTitle(slot)), onBack = onBack) {
+        Text(
+            text = stringResource(slotSubtitle(slot)),
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 12.dp),
+        )
+        if (slot == Slot.VIDEO && groups.isNotEmpty()) {
+            SettingsSection {
+                SettingsChoiceRow(
+                    title = stringResource(R.string.nm_media_video_off_option),
+                    selected = videoOff,
+                    onSelect = {
+                        MediaModels.saveVideo(context, null, current?.modelId ?: MediaModels.DEFAULT_VIDEO_MODEL)
+                        ModelSlots.lastChanged.value = Slot.VIDEO
+                        onBack()
+                    },
+                    showDivider = false,
+                )
+            }
+        }
+        groups.forEach { group ->
+            val title = ModelSlots.providerLabel(context, group.instance)
+            SettingsSection(header = title) {
+                group.options.forEachIndexed { i, option ->
+                    SettingsChoiceRow(
+                        title = option.modelId,
+                        selected = !videoOff && current != null && current.instance.id == option.instance.id && current.modelId == option.modelId,
+                        onSelect = {
+                            ModelSlots.choose(context, slot, option)
+                            onBack()
+                        },
+                        leading = if (option.recommended) ({ RecommendedMark() }) else null,
+                        showDivider = i < group.options.lastIndex,
+                    )
+                }
+            }
+        }
+        if (checking) {
+            SettingsRow(
+                title = stringResource(R.string.nm_media_checking),
+                titleColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                showDivider = false,
+                trailing = { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MuseTones.action) },
+            )
+        }
+        SettingsSection(
+            footer = if (groups.isEmpty()) Capabilities.unavailableLine(context, slot.capability)
+            else if (slot == Slot.CHAT) stringResource(R.string.nm_models_new_chats) else null,
+        ) {
+            SettingsRow(
+                title = stringResource(R.string.nm_media_add_provider),
+                titleColor = MuseTones.action,
+                onClick = onAddProvider,
+                showChevron = false,
+                showDivider = false,
+            )
+        }
+        Spacer(Modifier.height(32.dp))
+    }
+}

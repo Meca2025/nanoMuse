@@ -1067,4 +1067,26 @@
     <string name="nm_ways_computer_title">Bilgisayarınız</string>
     <string name="nm_ways_computer_body">Sohbete @ ve bilgisayarın adını yazın; tur orada, orada ayarlı sağlayıcılarla çalışır.</string>
     <string name="nm_ways_devices">Cihazlar</string>
+    <!-- 0.1.41 Choice: Settings → Models, the "Use it for" card, one turn on the Cloud -->
+    <string name="nm_models_title">Modeller</string>
+    <string name="nm_models_intro">Hangi model neyi yapıyor. Her satır bir seçim açar; orada nanoMuse Cloud ve eklediğin sağlayıcılar, uygun modelleriyle görünür.</string>
+    <string name="nm_models_chat_title">Sohbet</string>
+    <string name="nm_models_chat_sub">Seninle konuşan model.</string>
+    <string name="nm_models_hands_title">Ekranı kullanma</string>
+    <string name="nm_models_hands_sub">Ekrana bakar ve senin yerine işlem yapar. Görsel görebilen bir model gerekir.</string>
+    <string name="nm_models_image_title">Görsel oluşturma</string>
+    <string name="nm_models_image_sub">Muse’unun portreleri ve istediğin görseller.</string>
+    <string name="nm_models_video_title">Klip oluşturma</string>
+    <string name="nm_models_video_sub">Muse’unun kısa klipleri.</string>
+    <string name="nm_models_new_chats">Yeni sohbetler için geçerlidir.</string>
+    <string name="nm_models_media_more">Daha fazla görsel ve klip seçeneği</string>
+    <string name="nm_models_media_more_sub">Bir model adı yaz, hangi model olmadan neyin durduğunu gör ya da bir anahtarın hangi video modellerini kullanabildiğini yeniden denetle.</string>
+    <string name="nm_useit_title">Ne için kullanılsın</string>
+    <string name="nm_useit_body">Bu anahtarın neleri üstleneceğini seç. Gerisi nanoMuse Cloud’da kalır.</string>
+    <string name="nm_useit_body_signed_out">Bu anahtarın neleri üstleneceğini seç.</string>
+    <string name="nm_useit_use">Kullan</string>
+    <string name="nm_useit_not_now">Şimdi değil</string>
+    <string name="nm_useit_footnote">Bunu istediğin zaman Ayarlar › Modeller altından değiştirebilirsin.</string>
+    <string name="nm_retry_on_cloud">Bu sefer nanoMuse Cloud kullan</string>
+    <string name="nm_hands_why_chat_provider">sohbet sağlayıcındaki ellerin varsayılanı</string>
 </resources>

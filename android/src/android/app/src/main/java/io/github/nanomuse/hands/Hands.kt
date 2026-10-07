@@ -64,7 +64,7 @@ object Hands {
     // ── the screen model ───────────────────────────────────────────────────
 
     /** How the screen model was arrived at, for the settings page to say. */
-    enum class Why { CHOSEN, MENU, DEFAULT, CHAT, GROUP, VISION_GROUP, ANY }
+    enum class Why { CHOSEN, CHAT_PROVIDER, MENU, DEFAULT, CHAT, GROUP, VISION_GROUP, ANY }
 
     /**
      * The hands' default model wherever it is served (contract C4): `qwen3.8-27b` on nanoMuse
@@ -102,15 +102,18 @@ object Hands {
 
     /**
      * The model that looks at the screen — the *hands model*, a setting of its own beside the
-     * chat model (contract C4) — in this order: the one chosen in Settings → Hands; nanoMuse
-     * Cloud's model for the screen (`qwen3.8-27b`, what the relay marks `for: gui`), when
-     * signed in; the same default under the person's own key (`qwen3.8-27b` on 百炼,
-     * `qwen/qwen3.8-27b` on OpenRouter); then, for a set-up with none of those, the chat model
-     * the person last picked when it sees, the first sighted member of the default group, the
-     * Vision Group, and last any enabled vision model, preferring names that say so (`vl`,
-     * `vision`) — but never one of the Cloud's catalog models the person did not pick, so a
-     * member is not quietly billed for `qwen-vl-max` because its name has `vl` in it. Null when
-     * none of the user's models sees.
+     * chat model (contract C4) — in the order of the Models page (0.1.41, [io.github.nanomuse.models.SlotOrder]):
+     * the one chosen in Settings → Models (or → Hands); the chat provider's own model for the
+     * screen (the catalogue's `defaults.hands`, else its first model that sees) when the chat
+     * provider is the person's own and sees — the relay never jumps ahead of a provider the
+     * person chose; nanoMuse Cloud's model for the screen (`qwen3.8-27b`, what the relay marks
+     * `for: gui`), when signed in; the same default under the person's own key (`qwen3.8-27b`
+     * on 百炼, `qwen/qwen3.8-27b` on OpenRouter); then, for a set-up with none of those, the
+     * chat model the person last picked when it sees, the first sighted member of the default
+     * group, the Vision Group, and last any enabled vision model, preferring names that say so
+     * (`vl`, `vision`) — but never one of the Cloud's catalog models the person did not pick,
+     * so a member is not quietly billed for `qwen-vl-max` because its name has `vl` in it.
+     * Null when none of the user's models sees.
      */
     fun screenModel(context: Context): ScreenModel? {
         val repo = repo(context) ?: return null
@@ -124,6 +127,14 @@ object Hands {
             entry?.let { e -> usable(cfg.instances.firstOrNull { it.id == e.providerInstanceId }, e, why) }
         modelEntryId(context)?.let { id -> byEntry(cfg.modelEntries.firstOrNull { it.id == id }, Why.CHOSEN) }?.let { return it }
         val cloud = NanoMuseCloud.instance(context)
+        // the chat provider's own model for the screen, when the chat provider is the
+        // person's own and sees: `defaults.hands` of the catalogue, else its first that sees
+        io.github.nanomuse.models.ModelSlots.ownChatInstance(context)?.takeIf { sees(context, it) }?.let { own ->
+            val wanted = io.github.nanomuse.models.ModelSlots.defaultOf(context, own, io.github.nanomuse.models.ModelSlots.Slot.HANDS)
+            val sighted = cfg.modelEntries.filter { it.providerInstanceId == own.id && !it.isHidden && it.model.hasImageInput }
+            (sighted.firstOrNull { wanted != null && it.model.id.equals(wanted, ignoreCase = true) } ?: sighted.firstOrNull())
+                ?.let { byEntry(it, Why.CHAT_PROVIDER) }
+        }?.let { return it }
         if (cloud != null) {
             NanoMuseCloud.sightedModelId(context)?.let { sighted ->
                 byEntry(cfg.modelEntries.firstOrNull { it.providerInstanceId == cloud.id && it.model.id == sighted && !it.isHidden }, Why.MENU)
