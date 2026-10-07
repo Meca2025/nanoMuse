@@ -536,3 +536,71 @@ test('the hands row says why: the mount’s outcome reaches hands/runtime, with 
     await out.done()
   }
 })
+
+// The main chat follows the chat slot (the phones' rule, 0.1.42): a pick on the Models page or
+// the "Use it for" card moves the one conversation the Chat tab always shows; side chats keep
+// theirs; a session that already says so is not written again.
+function fakeSessions(selections) {
+  const moved = []
+  const sessionController = {
+    async resolveAgent(sessionId) {
+      const config = selections[sessionId]
+      return config ? { agent: { session: { id: sessionId, requestHeader: () => ({ config }) } } } : { error: 'no such session' }
+    },
+    async selectModel({ sessionId, provider, model }) {
+      moved.push({ sessionId, provider, model })
+      selections[sessionId] = { provider, model }
+    },
+  }
+  return { moved, ctx: { sessionController, get() { return undefined } } }
+}
+
+test('picking the chat model moves the main chat and only it; the same pick twice writes nothing; without a main chat nothing moves', async () => {
+  const out = await cloud({ signedIn: true })
+  try {
+    const sessions = fakeSessions({ 's-main': { provider: PROVIDER_ID, model: 'deepseek-v4.1' }, 's-side': { provider: PROVIDER_ID, model: 'deepseek-v4.1' } })
+    out.svc.sessionCtx = sessions.ctx
+    // no main chat known yet: the slot moves, no session does
+    assert.equal((await out.api('POST', '/chat-model', { model: 'deepseek-v4.1-flash', provider: PROVIDER_ID })).status, 200)
+    assert.deepEqual(sessions.moved, [])
+    out.svc.sync = { state: { mainSession: 's-main' } }
+    assert.equal((await out.api('POST', '/chat-model', { model: 'deepseek-v4.1', provider: PROVIDER_ID })).status, 200)
+    // the main chat already answers through deepseek-v4.1: nothing written
+    assert.deepEqual(sessions.moved, [])
+    assert.equal((await out.api('POST', '/chat-model', { model: 'deepseek-v4.1-flash', provider: PROVIDER_ID })).status, 200)
+    assert.deepEqual(sessions.moved, [{ sessionId: 's-main', provider: PROVIDER_ID, model: 'deepseek-v4.1-flash' }])
+    assert.deepEqual(out.selection.current, { provider: PROVIDER_ID, model: 'deepseek-v4.1-flash' })
+    // the side chat is where it was
+    assert.deepEqual((await sessions.ctx.sessionController.resolveAgent('s-side')).agent.session.requestHeader().config, { provider: PROVIDER_ID, model: 'deepseek-v4.1' })
+    // the same pick again: the equality guard, no second write
+    assert.equal((await out.api('POST', '/chat-model', { model: 'deepseek-v4.1-flash', provider: PROVIDER_ID })).status, 200)
+    assert.equal(sessions.moved.length, 1)
+  } finally {
+    await out.done()
+  }
+})
+
+test('the "Use it for" card moves the main chat to the own key too; a main chat on Cloud for one turn comes back to the pick instead', async () => {
+  const out = await cloud({ signedIn: true, defaultModel: { provider: PROVIDER_ID, model: 'deepseek-v4.1-flash' } })
+  const server = await modelsServer(BAILIAN_MODELS)
+  try {
+    const sessions = fakeSessions({ 's-main': { provider: PROVIDER_ID, model: 'deepseek-v4.1-flash' } })
+    out.svc.sessionCtx = sessions.ctx
+    out.svc.sync = { state: { mainSession: 's-main' } }
+    await out.api('POST', '/providers/save', { id: 'bailian', apiKey: 'sk-own', baseURL: server.url })
+    assert.deepEqual(sessions.moved, [])
+    const adopted = await out.api('POST', '/providers/adopt', { id: 'bailian', slots: ['chat'] })
+    assert.equal(adopted.status, 200)
+    assert.equal(sessions.moved.length, 1)
+    assert.equal(sessions.moved[0].sessionId, 's-main')
+    assert.equal(sessions.moved[0].provider, 'bailian')
+    // held on the account for one turn: the hold's way back becomes the new pick, the session is not touched mid-turn
+    out.svc.cloudOnce.set('s-main', { provider: 'bailian', model: sessions.moved[0].model, at: 1 })
+    assert.equal((await out.api('POST', '/chat-model', { model: 'deepseek-v4.1', provider: PROVIDER_ID })).status, 200)
+    assert.equal(sessions.moved.length, 1)
+    assert.deepEqual(out.svc.cloudOnce.get('s-main'), { provider: PROVIDER_ID, model: 'deepseek-v4.1', at: 1 })
+  } finally {
+    await server.close()
+    await out.done()
+  }
+})
