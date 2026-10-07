@@ -973,29 +973,36 @@ struct NanoMuseDrawer: View {
     @State private var dragOffset: CGFloat = 0
     @State private var deleteCandidate: String?
 
-    private var width: CGFloat { min(320, UIScreen.main.bounds.width * 0.82) }
+    /// The panel's width: most of the window, at most 320 pt. Measured from the window the
+    /// drawer is in rather than the screen, so an iPad window narrower than the screen (Stage
+    /// Manager, Split View) gets a drawer that fits it.
+    private func width(in container: CGFloat) -> CGFloat { min(320, container * 0.82) }
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            if isOpen {
-                Color.black.opacity(0.35)
-                    .ignoresSafeArea()
-                    .onTapGesture { close() }
-                    .transition(.opacity)
-                panel
-                    .frame(width: width)
-                    .offset(x: min(0, dragOffset))
-                    .transition(.move(edge: .leading))
-                    .gesture(
-                        DragGesture()
-                            .onChanged { v in dragOffset = v.translation.width }
-                            .onEnded { v in
-                                if v.translation.width < -60 { close() }
-                                dragOffset = 0
-                            }
-                    )
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                if isOpen {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture { close() }
+                        .transition(.opacity)
+                    panel
+                        .frame(width: width(in: geo.size.width))
+                        .offset(x: min(0, dragOffset))
+                        .transition(.move(edge: .leading))
+                        .gesture(
+                            DragGesture()
+                                .onChanged { v in dragOffset = v.translation.width }
+                                .onEnded { v in
+                                    if v.translation.width < -60 { close() }
+                                    dragOffset = 0
+                                }
+                        )
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
+        .allowsHitTesting(isOpen)
         .animation(.easeInOut(duration: 0.22), value: isOpen)
         .nmOnChange(of: isOpen) { open in
             if open { refresh() }

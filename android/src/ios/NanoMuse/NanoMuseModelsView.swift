@@ -336,6 +336,7 @@ private struct NanoMuseChoiceRow: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(NanoMuseTones.action)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.horizontal, 16)
@@ -343,6 +344,8 @@ private struct NanoMuseChoiceRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // VoiceOver says "selected" for the chosen row instead of reading the tick's symbol name
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }
 
@@ -388,6 +391,11 @@ private struct NanoMuseModelList: View {
     let onPick: (String) -> Void
     let onMore: () -> Void
 
+    /// Whether `model` is the slot's current choice in this group (Cloud's one row is "").
+    private func isChosen(_ model: String) -> Bool {
+        current?.providerId == provider.id && (current?.model == model || (model.isEmpty && current?.model.isEmpty == true))
+    }
+
     var body: some View {
         NanoMuseCard {
             ForEach(Array(models.enumerated()), id: \.offset) { index, model in
@@ -405,10 +413,11 @@ private struct NanoMuseModelList: View {
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
-                        if current?.providerId == provider.id, (current?.model == model || (model.isEmpty && current?.model.isEmpty == true)) {
+                        if isChosen(model) {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(NanoMuseTones.action)
+                                .accessibilityHidden(true)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -416,6 +425,7 @@ private struct NanoMuseModelList: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(isChosen(model) ? [.isSelected] : [])
             }
             if hidden > 0 {
                 if !models.isEmpty { NanoMuseRowDivider() }

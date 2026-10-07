@@ -148,17 +148,13 @@ enum NanoMuseCloud {
         return out
     }
 
-    /// A host on one's own network, where plain http is allowed: `10.`, `192.168.`, `172.16–31.`,
-    /// `localhost`, `*.local`, `*.ts.net`.
+    /// A host on one's own network, where plain http is allowed. The rule is
+    /// `NanoMuseProxy.isLocal`, the one the proxy's bypass applies too (and Android's `LanOnly`):
+    /// parsed addresses rather than string prefixes, the private, carrier-grade, loopback,
+    /// link-local and ULA ranges, `localhost`, a name without a dot, and the local suffixes
+    /// with Tailscale's `.ts.net` among them.
     nonisolated static func isPrivateHost(_ host: String) -> Bool {
-        let h = host.lowercased()
-        if h == "localhost" || h == "127.0.0.1" || h == "::1" || h.hasSuffix(".local") || h.hasSuffix(".ts.net") { return true }
-        if h.hasPrefix("10.") || h.hasPrefix("192.168.") { return true }
-        if h.hasPrefix("172.") {
-            let parts = h.split(separator: ".")
-            if parts.count == 4, let second = Int(parts[1]), (16...31).contains(second) { return true }
-        }
-        return false
+        NanoMuseProxy.isLocal(host)
     }
 
     /// Why an address cannot be used as the relay, as a sentence; nil when it can.

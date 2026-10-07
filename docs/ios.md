@@ -347,8 +347,12 @@ Ours, in `NanoMuse/`:
   *Text-message codes reach mainland-China numbers only. Use an e-mail address instead.* before
   the code is requested, and the relay's `phone_region` error reads the same. *Use a different
   server* on the sign-in page opens a sheet: the address, *Check* (`GET /healthz`), *Use this
-  server*; https is required unless the host is on one's own network (`10.`, `192.168.`,
-  `172.16–31.`, `localhost`, `*.local`, `*.ts.net`). Signed in, the account page shows *Server:
+  server*; https is required unless the host is on one's own network, judged by the one rule
+  the proxy's bypass uses too (`NanoMuseProxy.isLocal`, Android's `LanOnly`): the address is
+  parsed first, so `10.foo.example.com` is a public name; the private ranges, the carrier-grade
+  `100.64/10` Tailscale hands out, loopback, link-local, IPv6 ULA, `localhost`, a name without a
+  dot and the suffixes `.local`, `.lan`, `.home`, `.internal`, `.home.arpa`, `.localdomain`,
+  `.ts.net` count as one's own. Signed in, the account page shows *Server:
   〈host〉* with *Change*, which signs this phone out first — a key belongs to the relay that
   issued it.
 - **One account's conversations, not the last person's (0.1.39, Contract C10)**
@@ -420,7 +424,12 @@ Ours, in `NanoMuse/`:
   task then answers `cancelled` as [hub.md](hub.md) says. A relay `error` frame about one frame
   (`too_large`, `rate_limited`, `bad_frame`) while the socket stays open is logged and the
   Devices row keeps saying *Connected* instead of showing the relay's sentence until the next
-  reconnect.
+  reconnect. The header's name and status lines (`NanoMuseNamePill`, `NanoMuseHeaderTitle`) and
+  the height reserved for the pill follow Dynamic Type up to 1.35 times their base
+  (`NanoMuseHeaderMetrics`); the side drawer measures its width from the window it is in
+  (`GeometryReader`) rather than `UIScreen.main`, so an iPad window narrower than the screen gets
+  a drawer that fits; the model pickers' rows carry the *selected* trait for VoiceOver and the
+  tick is not read as a symbol name.
 - **The audit's strings and layout pass (round 10)** (`NanoMuseChrome.swift`,
   `NanoMuseFirstRun.swift`, `NanoMuseProviderReachCard.swift`, `NanoMuseSystemFiles.swift`,
   `*.lproj/InfoPlist.strings`, `Localizable.xcstrings`): `NanoMuseFlowLayout`, a wrapping row
