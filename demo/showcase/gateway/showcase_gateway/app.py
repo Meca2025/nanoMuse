@@ -36,6 +36,7 @@ from .accounts import AccountManager, AccountStore, Asleep
 from .clips import Clips, is_clip_path
 from .config import Settings
 from .images import Pictures, is_image_path
+from .logs import redact_tokens_in_logs
 from .proxy import proxy_http, proxy_ws
 from .runner import DockerRunner
 from .sessions import Provider, Refused, SessionManager, resolve_provider
@@ -176,6 +177,9 @@ def create_app(
             await http.aclose()
 
     app = FastAPI(title="nanoMuse showcase gateway", version=__version__, lifespan=lifespan)
+    # the request lines (uvicorn's, and httpx's for what is relayed) never carry a session
+    # token, whatever form a client still uses to send it (logs.py)
+    redact_tokens_in_logs()
 
     # ------------------------------------------------------------- the phone → its Muse
     async def _behind(host_id: str, proves=None):
@@ -271,6 +275,8 @@ def create_app(
         accepted = False
         first: str | None = None
         try:
+            # the clients send the token as the first frame; a page or app still on the older
+            # ?token= form is served this release, and the value is never logged (logs.py)
             target, touch = await _behind(sid, proof_from_token(ws.query_params.get("token")))
         except Asleep:
             # the token travels in the socket's first frame (the runtime's way since 0.1.31):
