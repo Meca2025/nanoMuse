@@ -88,7 +88,10 @@ Ours, in `NanoMuse/`:
   reads the avatar flow's line. The face (`NanoMuseFaces.swift`, the drawn face from Application
   Support or the dragon from the bundle, five moods with the breath, bob, tilt, pop and shake of
   the other clients) is tapped into **the agent's page**. The drawer holds the sessions, search,
-  a new side chat, *Pin as the main chat*, *All chats* and the nanoMuse settings.
+  a new side chat, *Pin as the main chat*, *All chats* and the nanoMuse settings; it opens from
+  the round button and, on the main chat, from a swipe in at the left edge
+  (`NanoMuseEdgeSwipe.swift`, a screen-edge pan on the window, as Android's drawer on the Chat
+  tab; a pushed side chat keeps the system's back swipe).
 - **The agent's page (0.1.34)** (`NanoMuseAgentPage.swift`, Android `ui/profile`): the big face
   with the pen badge (*Change avatar* puts "Change your avatar to " in the main chat's composer,
   *Edit name*, *Avatar studio*), the name, *online*, and four panes — **Activity** (what you asked

@@ -81,7 +81,9 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   *正在处理：〈简述〉*，空闲时是模型的名字；正在画新形象时，显示的是形象流程那边的那行字。
   形象（`NanoMuseFaces.swift`：Application Support 里画出来的脸，或者 bundle 里的小龙，五种
   状态，带着其他客户端那样的呼吸、浮动、歪头、弹出和抖动）点一下进入**智能体的页面**。
-  抽屉里放着会话、搜索、新建旁聊、*设为主要聊天*、*全部对话* 和 nanoMuse 设置。
+  抽屉里放着会话、搜索、新建旁聊、*设为主要聊天*、*全部对话* 和 nanoMuse 设置；点圆形按钮
+  打开，在主要聊天里从左边缘向右滑也打开（`NanoMuseEdgeSwipe.swift`，挂在窗口上的屏幕边缘
+  手势，和 Android 聊天页上的抽屉一样；推出来的旁聊仍然用系统的返回手势）。
 - **智能体的页面（0.1.34）**（`NanoMuseAgentPage.swift`，对应 Android `ui/profile`）：带钢笔
   角标的大脸（*更换形象* 会把「把形象改成 」放进主要聊天的输入框，还有 *编辑名称*、
   *形象工作室*）、名字、*在线*，以及四个面板——**动态**（你要求过什么、智能体做了什么，取自
