@@ -140,7 +140,7 @@ vendors with `vision`. A ChatGPT plan signed in through Codex is chat and vision
 backend has no image or video endpoints — so it is never offered for pictures. A vendor the
 catalogue does not know (a gateway, a relay of your own, nanoMuse Cloud) is taken at its
 models' word, as before. When no configured provider has a capability, the page says so in one
-sentence — *Pictures need a provider with image models — Bailian, OpenAI, Gemini or
+sentence — *Pictures need a provider with image models: Bailian, OpenAI, Gemini or
 OpenRouter.* — instead of failing.
 
 **When the provider cannot be reached** (`net/ProviderReach.kt`, `ui/chat/ProviderReachCard.kt`).

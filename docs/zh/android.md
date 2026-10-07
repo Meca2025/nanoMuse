@@ -115,8 +115,8 @@ Claude、Kimi（设备码）和 OpenRouter；「登录」打开同一个表单�
 能驱动的里面挑（百炼的视频 API）；屏幕模型和它的选择页只列出有 `vision` 的厂商的模型。通过
 Codex 登录的 ChatGPT 套餐只有聊天和视觉——Codex 后端没有图片或视频端点——所以从不会被拿来
 画图。目录不认识的厂商（一个网关、你自己的中继、nanoMuse Cloud）按它模型自己的说法算，和以前
-一样。没有任何已配置的服务商具备某项能力时，页面用一句话说明——「图片需要有图像模型的
-服务商——百炼、OpenAI、Gemini 或 OpenRouter。」——而不是报错。
+一样。没有任何已配置的服务商具备某项能力时，页面用一句话说明——「画图需要有图像模型的
+提供方：百炼、OpenAI、Gemini 或 OpenRouter。」——而不是报错。
 
 **连不上服务商的时候**（`net/ProviderReach.kt`、`ui/chat/ProviderReachCard.kt`）。失败的一轮，如果
 错误来自传输层——OkHttp 的「failed to connect to chatgpt.com/…（port 443）」「Unable to resolve host」、
