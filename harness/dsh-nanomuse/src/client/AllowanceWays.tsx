@@ -170,7 +170,7 @@ export function AllowanceWays({ t, info, sheet, exhausted, lead, inSettings = fa
               more
                 ? h('ul', { className: 'nm-aw-list' }, others.map((p) =>
                     h('li', { key: p.id },
-                      h('span', null, h('b', null, p.name), p.covers.length ? h('span', { style: muted }, ` — ${coverage(t, p.covers)}`) : null),
+                      h('span', null, h('b', null, p.name), p.covers.length ? h('span', { style: muted }, ` · ${coverage(t, p.covers)}`) : null),
                       h('span', { className: 'nm-aw-list-actions' },
                         h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: openRows }, t('awSetUp')),
                         p.keyUrl ? h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: () => openLink(p.keyUrl) }, t('ownKeyGetKey')) : null))))

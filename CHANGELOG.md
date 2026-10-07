@@ -63,6 +63,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **Enter while an input method is composing no longer sends.** The coding panel's composer, a chat's rename field, the search box and the connectors' key fields treated the Enter that picks a candidate (Chinese, Japanese, Korean) as a send; they now wait for the text.
 - **Renaming a chat: Escape discards, Enter commits once.** Escape used to leave the field but the rename still went through when the field lost focus, and Enter followed by that blur renamed twice.
 - The *Manage permissions* row of the profile drawer opens with Enter and Space; the Help page's *Docs* row opens the desktop page of the docs site instead of a developer page on GitHub.
+- **The desktop's sentences lost their dashes.** 66 English and 49 Chinese strings, the refusal card's two sentences, the first run's greeting, the video model's activation note and the Linear connector's line now read with commas, colons and full stops; a test keeps dashes and exclamation marks out of both dictionaries from here on.
+- **87 locale strings nobody read are gone**: the old onboarding slides, the first profile drawer, the first About and leftovers of the feed, ideas and library pages, in both languages; a test now fails on a key the client never uses.
 
 ### Android
 

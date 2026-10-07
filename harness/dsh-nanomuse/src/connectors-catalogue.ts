@@ -46,7 +46,7 @@ export const CATALOGUE: CatalogueEntry[] = [
   { id: 'notion', name: 'Notion', category: 'work', url: 'https://mcp.notion.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developers.notion.com/docs/mcp', icon: 'notion', color: '#000000',
     about: { en: 'Search, read and write your pages and databases.', zh: '搜索、阅读和编辑你的页面与数据库。' } },
   { id: 'linear', name: 'Linear', category: 'work', url: 'https://mcp.linear.app/mcp', auth: { kind: 'oauth' }, docs: 'https://linear.app/docs/mcp', icon: 'linear', color: '#5E6AD2',
-    about: { en: 'Issues, projects and cycles — find, create and update them.', zh: '查找、创建和更新 issue、项目与周期。' } },
+    about: { en: 'Issues, projects and cycles: find, create and update them.', zh: '查找、创建和更新 issue、项目与周期。' } },
   { id: 'atlassian', name: 'Atlassian · Jira & Confluence', category: 'work', url: 'https://mcp.atlassian.com/v2/mcp', auth: { kind: 'oauth' }, docs: 'https://support.atlassian.com/rovo/docs/getting-started-with-the-atlassian-remote-mcp-server/', icon: 'atlassian', color: '#0052CC',
     about: { en: 'Jira issues and Confluence pages across your sites.', zh: '你各个站点里的 Jira 事项和 Confluence 页面。' } },
   { id: 'asana', name: 'Asana', category: 'work', url: 'https://mcp.asana.com/mcp', auth: { kind: 'oauth' }, docs: 'https://developers.asana.com/docs/using-asanas-model-control-protocol-mcp-server', icon: 'asana', color: '#F06A6A',

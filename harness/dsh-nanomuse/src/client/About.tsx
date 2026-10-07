@@ -84,7 +84,7 @@ export function UpdateRow({ t, bundle }: { t: Translate; bundle: string }): Reac
   if (checking || !info) {
     found = t('vrChecking')
   } else if (info.source === 'none') {
-    found = h(Fragment, null, t('vrFailed'), ' — ', h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: check }, t('vrCheckNow')))
+    found = h(Fragment, null, t('vrFailed'), ' · ', h('button', { type: 'button', className: 'nm-ob-link nm-inline', onClick: check }, t('vrCheckNow')))
   } else if (info.newer) {
     found = t('vrOut', { version: info.latest })
     action = h('button', { type: 'button', className: 'nm-pill nm-pill-sm', onClick: () => openLink(asset?.url ?? info.page) }, t('vrUpdate'))

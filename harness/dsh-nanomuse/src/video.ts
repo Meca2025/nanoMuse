@@ -325,7 +325,7 @@ async function download(url: string, fetchImpl: typeof fetch, signal?: AbortSign
 export function failureMessage(output: Record<string, unknown>): string {
   const code = typeof output.code === 'string' ? output.code : ''
   const message = typeof output.message === 'string' ? output.message : ''
-  if (/not activated/i.test(message)) return "The video model is not activated on this account — open the model's card in the Model Studio console and activate it"
+  if (/not activated/i.test(message)) return "The video model is not activated on this account: open the model's card in the Model Studio console and activate it"
   if (message.trim()) return code ? `${code}: ${message}` : message
   if (code) return code
   const status = typeof output.task_status === 'string' && output.task_status ? output.task_status : 'failed'

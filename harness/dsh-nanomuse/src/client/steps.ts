@@ -49,7 +49,7 @@ export function describeStep(t: Translate, action: LiveStageAction | null, busy:
       return t('stageWaiting')
     case 'hold':
     case 'hand_over':
-      return action.text ? `${t('stageYourTurn')} — ${action.text}` : t('stageYourTurn')
+      return action.text ? `${t('stageYourTurn')} · ${action.text}` : t('stageYourTurn')
     default:
       return action.kind
   }

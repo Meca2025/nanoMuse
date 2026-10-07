@@ -59,7 +59,7 @@ export function toolRowKey(callId: string): string {
 
 /** The words of a step, for Copy: the caption, the window, what the model said. */
 export function stepText(t: Translate, step: TrajectoryStep): string {
-  const lines = [`${t('trajStep', { i: step.i })} — ${describeStep(t, step.action, false)}${step.title ? ` · ${step.title}` : ''}`]
+  const lines = [`${t('trajStep', { i: step.i })} · ${describeStep(t, step.action, false)}${step.title ? ` · ${step.title}` : ''}`]
   if (step.action?.kind === 'type' && step.action.text) lines.push(step.action.text)
   if (step.words) lines.push(step.words)
   return lines.join('\n')
@@ -78,7 +78,7 @@ export function chipText(t: Translate, action: LiveStageAction): string {
       return t('stageWaiting')
     case 'hold':
     case 'hand_over':
-      return action.text ? `${t('stageYourTurn')} — ${action.text}` : t('stageYourTurn')
+      return action.text ? `${t('stageYourTurn')} · ${action.text}` : t('stageYourTurn')
     default:
       return action.label
   }
