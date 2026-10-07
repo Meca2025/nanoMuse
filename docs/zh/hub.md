@@ -67,13 +67,14 @@ hub 上传递两类请求：
 ```
 → hello    {device:{id,name,kind,os,version,actions[]}}     kind: phone | computer | web
 ← welcome  {device_id, devices:[…], server:{version,frame_limit,time}}
-← devices  {devices:[{id,name,kind,os,version,online,last_seen,controllable}]}
+← devices  {devices:[{id,name,kind,os,version,actions[],online,last_seen,controllable,ip}]}
 
 → call     {id, to, action, args}
 ← call     {id, from:{id,name,kind}, action, args}          (delivered to the target)
 → event    {id, body}          ← event  {id, from, body}    progress, approvals, images
 → result   {id, ok, body | error, message}                  ← result (to the caller)
-← error    {code, message, id?}   device_offline · not_controllable · self_call · unknown_call · too_large · bad_frame
+← error    {code, message, id?}   device_offline · not_controllable · self_call · unknown_call · timeout
+                                  too_large · rate_limited · bad_frame · device_online · bad_key · bad_device
 
 → devices  {}        → rename {name}        → forget {device_id}        → ping  ← pong
 ← profile  {rev, device}       the account's name, look or connectors changed (PUT /v1/me/profile); fetch it
@@ -81,7 +82,11 @@ hub 上传递两类请求：
 ← working  {cid, from, device_name, working, at}  another device started (true) or finished (false) a turn in that synced conversation
 ```
 
-关闭码：`4000` 期待 hello、`4001` key 无效、`4002` 设备无效、`4003` 被同一设备 id 的更新连接顶替——或者，带原因 `hub_paused`（中继 0.22）时，是运营者关掉了 hub 或整个服务：客户端应等一会儿再重连，而不是立刻重试（[cloud.md › 控制](cloud.md#controls)）。
+关闭码：`4000` 期待 hello（15 秒内没有 hello，或第一帧不是 hello，二进制帧也算）、`4001` key 无效（原因 `bad_key` 或 `account_deleted`；账号在连接期间被删除或停用时为 `account_gone`）、`4002` 设备无效、`4003` 被同一设备 id 的更新连接顶替——或者，带原因 `hub_paused`（中继 0.22）时，是运营者关掉了 hub 或整个服务：客户端应等一会儿再重连，而不是立刻重试（[cloud.md › 控制](cloud.md#controls)）——以及 `4008` 帧太多（无视了下面的限速）。
+
+`Authorization` 头里的 key 被拒时，处理方式与 `hello` 里的 key 被拒一致：握手完成，先发一个带 code 的 `error` 帧，再以 `4001` 关闭。客户端看到 `4001` 或 `4002` 就停止重连并请人重新登录；其他关闭都视为网络问题，按退避重试。
+
+中继不认识的帧（没有处理器的 `type`、不是 JSON 对象的文本帧、二进制帧）都回 `error bad_frame`，连接保持打开，所以新客户端对着旧中继只会丢一帧，不会掉线。超过 `frame_limit` 的帧回 `too_large`；每秒超过 60 帧或 8 MB 回 `rate_limited`（每秒最多提醒一次，多出的帧被丢弃），持续下去则以 `4008` 关闭。15 分钟内没人应答的 `call` 向发起方回 `timeout`；对当前在线的设备发 `forget` 会被拒绝，回 `device_online`。
 
 设备 id 按安装生成（`phone-…`、`pc-…`）；名字是给人看的，可以在设备上改。`web` 设备从不作为目标，也不会被记住。`file.get`、`file.put` 和 `screen` 的正文以 base64 携带字节（`data`）并附 `mime`；桌面拒绝超过 8 MB 的文件，中继拒绝超过 `HUB_FRAME_LIMIT` 的帧。
 

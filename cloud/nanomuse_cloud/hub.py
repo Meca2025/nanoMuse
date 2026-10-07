@@ -286,7 +286,8 @@ class Hub:
         await ws.accept()
         try:
             raw = await asyncio.wait_for(ws.receive_text(), HELLO_TIMEOUT_S)
-        except (TimeoutError, WebSocketDisconnect):
+        except (TimeoutError, WebSocketDisconnect, KeyError):
+            # KeyError: a binary frame — Starlette's receive_text has no text to give
             await self._close(ws, 4000, "hello expected")
             return
         hello = _loads(raw)
@@ -326,10 +327,15 @@ class Hub:
                     # RuntimeError: Starlette's WebSocketDisconnected, when the socket was closed
                     # under this loop (the same device connected again and took its place)
                     break
-                if len(raw) > self.frame_limit:
+                except KeyError:
+                    # a binary frame: Starlette's receive_text has no text to give. The protocol
+                    # is JSON text (docs/hub.md); below it is answered with bad_frame and the
+                    # socket stays open — it still counts towards the flood limit.
+                    raw = None
+                if raw is not None and len(raw) > self.frame_limit:
                     await conn.send({"type": "error", "code": "too_large", "message": f"Frames are capped at {self.frame_limit} bytes"})
                     continue
-                if conn.over_rate(len(raw)):
+                if conn.over_rate(len(raw or "")):
                     self.dropped_total += 1
                     if conn.dropped >= FLOOD_CLOSE_AFTER:
                         self.flood_closes += 1
@@ -346,6 +352,9 @@ class Hub:
                                 "message": f"At most {FRAMES_PER_S:.0f} frames and {BYTES_PER_S / 1048576:.0f} MB a second; this frame was dropped",
                             }
                         )
+                    continue
+                if raw is None:
+                    await conn.send({"type": "error", "code": "bad_frame", "message": "Frames are JSON text, not binary"})
                     continue
                 frame = _loads(raw)
                 if not isinstance(frame, dict):

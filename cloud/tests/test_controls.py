@@ -267,6 +267,15 @@ async def test_rules_through_the_api_fire_on_sign_up():
     assert r.status_code == 400 and r.json()["error"]["code"] == "bad_request"
 
 
+async def test_notify_test_answers_honestly_without_an_address():
+    app, client, sender, up, cloud, settings = make()
+    r = await client.post("/v1/admin/controls/notify-test", headers=ADMIN)
+    assert r.status_code == 200, r.text
+    assert r.json() == {"sent": False, "configured": False}
+    audit = (await client.get("/v1/admin/controls/audit", headers=ADMIN)).json()["audit"]
+    assert audit[0]["action"] == "notify" and audit[0]["actor"] == "tester"
+
+
 def test_controls_events_land_on_the_timeline():
     settings = Settings(database=":memory:", secret="test-secret")
     db = Database(":memory:")
