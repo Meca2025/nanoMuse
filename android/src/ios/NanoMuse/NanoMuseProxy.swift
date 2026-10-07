@@ -159,12 +159,55 @@ enum NanoMuseProxy {
         return !relay.isEmpty && h == relay
     }
 
+    /// Whether `host` (a name or an IP literal, brackets allowed) is this device or on its own
+    /// network. One rule for the proxy's bypass, the relay address's plain-http allowance
+    /// (`NanoMuseCloud.isPrivateHost`) and Android's `LanOnly`: the address is parsed before it is
+    /// judged, so `10.foo.example.com` is a public name, not a 10/8 address; the private ranges,
+    /// the carrier-grade 100.64/10 Tailscale hands out, loopback, link-local and IPv6 ULA count,
+    /// and so do `localhost`, a name without a dot and the local suffixes (`.ts.net` among them).
     static func isLocal(_ host: String) -> Bool {
-        if host == "localhost" || host.hasSuffix(".local") || host.hasSuffix(".home.arpa") { return true }
-        if host.hasPrefix("127.") || host.hasPrefix("10.") || host.hasPrefix("192.168.") || host.hasPrefix("169.254.") || host == "::1" { return true }
-        if host.hasPrefix("172."), let second = Int(host.split(separator: ".").dropFirst().first ?? ""), (16...31).contains(second) { return true }
-        if host.hasPrefix("100."), let second = Int(host.split(separator: ".").dropFirst().first ?? ""), (64...127).contains(second) { return true }
-        if host.hasPrefix("fd") || host.hasPrefix("fe80") { return true }
+        var h = host.lowercased().trimmingCharacters(in: .whitespaces)
+        if h.hasPrefix("["), h.hasSuffix("]") { h = String(h.dropFirst().dropLast()) }
+        if h.isEmpty { return false }
+        if h == "localhost" || h.hasSuffix(".localhost") { return true }
+        if let v4 = ipv4Octets(h) { return isPrivateV4(v4) }
+        if h.contains(":") { return isPrivateV6(h) }
+        if !h.contains(".") { return true }
+        return localSuffixes.contains { h.hasSuffix($0) }
+    }
+
+    private static let localSuffixes = [".local", ".lan", ".home", ".internal", ".home.arpa", ".localdomain", ".ts.net"]
+
+    /// The four octets when `h` is a dotted IPv4 literal, else nil.
+    private static func ipv4Octets(_ h: String) -> [Int]? {
+        let parts = h.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 4 else { return nil }
+        var out: [Int] = []
+        for part in parts {
+            guard !part.isEmpty, part.count <= 3, part.allSatisfy(\.isNumber), let n = Int(part), n <= 255 else { return nil }
+            out.append(n)
+        }
+        return out
+    }
+
+    /// Loopback, 10/8, 172.16/12, 192.168/16, 169.254/16 (link-local), 100.64/10 and 0.0.0.0.
+    private static func isPrivateV4(_ b: [Int]) -> Bool {
+        if b[0] == 127 || b[0] == 10 || b[0] == 0 { return true }
+        if b[0] == 192, b[1] == 168 { return true }
+        if b[0] == 172, (16...31).contains(b[1]) { return true }
+        if b[0] == 169, b[1] == 254 { return true }
+        if b[0] == 100, (64...127).contains(b[1]) { return true }
+        return false
+    }
+
+    /// `::1`, `::`, fc00::/7 (ULA) and fe80::/10 (link-local), read off the first hextet.
+    private static func isPrivateV6(_ h: String) -> Bool {
+        let bare = h.split(separator: "%", maxSplits: 1).first.map(String.init) ?? h // a scope id
+        if bare == "::1" || bare == "::" { return true }
+        guard let first = bare.split(separator: ":", omittingEmptySubsequences: false).first, !first.isEmpty,
+              let n = Int(first, radix: 16) else { return false }
+        if (n & 0xfe00) == 0xfc00 { return true }
+        if (n & 0xffc0) == 0xfe80 { return true }
         return false
     }
 

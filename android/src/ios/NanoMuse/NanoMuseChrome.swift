@@ -144,15 +144,20 @@ struct NanoMuseNamePill: View {
     var status: String?
     var statusColor: Color = .secondary
 
+    // Dynamic Type moves the pill's two lines with the person's text size, up to the cap in
+    // NanoMuseHeaderMetrics so the header's reserved height stays enough for them.
+    @ScaledMetric(relativeTo: .subheadline) private var nameSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .caption) private var statusSize: CGFloat = 11.5
+
     var body: some View {
         VStack(spacing: 2) {
             Text(name)
-                .font(.system(size: 14))
+                .font(.system(size: NanoMuseHeaderMetrics.capped(nameSize, base: 14)))
                 .foregroundStyle(Color.primary)
                 .lineLimit(1)
             if let status, !status.isEmpty {
                 Text(status)
-                    .font(.system(size: 11.5))
+                    .font(.system(size: NanoMuseHeaderMetrics.capped(statusSize, base: 11.5)))
                     .foregroundStyle(statusColor)
                     .lineLimit(1)
                     .transition(.opacity)
@@ -172,8 +177,18 @@ struct NanoMuseNamePill: View {
 
 /// How far the name pill rides up over the chin of the face.
 private let nmPillOverlap: CGFloat = 10
-/// Height reserved under the face for the pill (name + status line), so the bar does not jump.
-private let nmPillAreaHeight: CGFloat = 44
+
+/// The header's sizes under Dynamic Type: the pill's text and the height reserved for it grow
+/// with the person's setting up to `scaleCap` times their base, so the largest accessibility
+/// sizes make the lines readable without pushing the face off its disc.
+enum NanoMuseHeaderMetrics {
+    /// The largest multiple of a base size the header follows (the xxxLarge step is about 1.35).
+    static let scaleCap: CGFloat = 1.35
+    /// Height reserved under the face for the pill (name + status line) at the default text size.
+    static let pillAreaBase: CGFloat = 44
+
+    static func capped(_ scaled: CGFloat, base: CGFloat) -> CGFloat { min(scaled, base * scaleCap) }
+}
 
 /// The header of the main chat and of Feed / Ideas / Goals / Library: the face
 /// centred on its disc (its size is the Appearance setting; Hidden keeps the
@@ -189,9 +204,11 @@ struct NanoMuseMuseHeader<Leading: View, Trailing: View>: View {
     @ViewBuilder var trailing: () -> Trailing
 
     @ObservedObject private var appearance = NanoMuseAppearance.shared
+    @ScaledMetric(relativeTo: .subheadline) private var pillArea: CGFloat = NanoMuseHeaderMetrics.pillAreaBase
 
     var body: some View {
         let disc = appearance.avatarSize.points
+        let pillAreaHeight = NanoMuseHeaderMetrics.capped(pillArea, base: NanoMuseHeaderMetrics.pillAreaBase)
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 if let disc {
@@ -207,7 +224,7 @@ struct NanoMuseMuseHeader<Leading: View, Trailing: View>: View {
                     NanoMuseNamePill(name: name, status: status, statusColor: statusColor)
                 }
                 .buttonStyle(.plain)
-                .frame(height: nmPillAreaHeight, alignment: .top)
+                .frame(height: pillAreaHeight, alignment: .top)
                 .padding(.top, disc == nil ? 0 : -nmPillOverlap)
                 .zIndex(1)
             }

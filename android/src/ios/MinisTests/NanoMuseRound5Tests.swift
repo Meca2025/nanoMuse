@@ -110,6 +110,13 @@ final class NanoMuseRound5Tests: XCTestCase {
         for host in ["172.15.0.1", "172.32.0.1", "relay.example.org", "11.0.0.1", "example.local.com"] {
             XCTAssertFalse(NanoMuseCloud.isPrivateHost(host), host)
         }
+        // one rule with the proxy's bypass and Android's LanOnly: parsed addresses, not prefixes
+        for host in ["10.foo.example.com", "192.168.example.org", "127.example.org", "ts.net.example.org", "100.128.0.1", "2001:db8::1", "[2001:db8::1]"] {
+            XCTAssertFalse(NanoMuseCloud.isPrivateHost(host), host)
+        }
+        for host in ["100.64.0.1", "100.101.102.103", "169.254.3.4", "127.0.0.1", "[::1]", "fd00::1", "[fe80::1%en0]", "desktop", "nas.lan", "box.home.arpa", "LOCALHOST"] {
+            XCTAssertTrue(NanoMuseCloud.isPrivateHost(host), host)
+        }
     }
 
     func testHttpsIsRequiredUnlessPrivate() {

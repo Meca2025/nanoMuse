@@ -297,8 +297,11 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   `NanoMuseRelayPicker.swift`）：国家代码不是 +86 的手机号在请求验证码之前就会被告知
   *短信验证码只能发到中国大陆号码。请改用电子邮箱。*，中继的 `phone_region` 错误也是同一句。
   登录页上的 *使用其他服务器* 打开一个面板：地址、*检查*（`GET /healthz`）、*使用此服务器*；
-  除非主机在自己的网络里（`10.`、`192.168.`、`172.16–31.`、`localhost`、`*.local`、`*.ts.net`），
-  否则必须是 https。登录后，账号页显示 *服务器：〈主机〉* 和 *更换*，更换会先让这台手机退出
+  除非主机在自己的网络里，否则必须是 https；判断用的是代理绕行也在用的同一条规则
+  （`NanoMuseProxy.isLocal`，对应 Android 的 `LanOnly`）：地址先解析再判断，所以
+  `10.foo.example.com` 是公网名字；私有网段、Tailscale 分配的 `100.64/10`、回环、链路本地、
+  IPv6 ULA、`localhost`、不带点的名字，以及 `.local`、`.lan`、`.home`、`.internal`、`.home.arpa`、
+  `.localdomain`、`.ts.net` 后缀都算自己的网络。登录后，账号页显示 *服务器：〈主机〉* 和 *更换*，更换会先让这台手机退出
   登录——key 属于签发它的那个中继。
 - **一个账号的对话，不是上一个人的（0.1.39，契约 C10）**（`NanoMuseSync.swift`、
   `NanoMuseShell.swift`）：一个对话属于最先推送或拉取它的那个账号——映射它的同步表是那个
@@ -354,7 +357,11 @@ scripts/gen-ios-icons.py         the app icon and the four alternates, from asse
   `stop` 既能按任务帧的 id 找到这次运行（`stop {call}`，桌面端发的就是这个），也能按会话找；
   只有发起任务的设备能停它；停下之后任务按 [hub.md](hub.md) 的约定答 `cancelled`。socket
   还开着时中继针对某一帧发来的 `error`（`too_large`、`rate_limited`、`bad_frame`）只记日志，
-  「设备」一行继续显示*已连接*，不再把中继的句子挂到下次重连为止。
+  「设备」一行继续显示*已连接*，不再把中继的句子挂到下次重连为止。头部的名字和状态两行
+  （`NanoMuseNamePill`、`NanoMuseHeaderTitle`）以及为名牌预留的高度跟随「动态字体」放大，
+  最多到基准的 1.35 倍（`NanoMuseHeaderMetrics`）；侧边抽屉按所在窗口量宽度（`GeometryReader`）
+  而不是 `UIScreen.main`，iPad 上比屏幕窄的窗口也能放得下；模型选择页的每一行带「已选中」
+  特征给 VoiceOver，勾号不再被读成符号名。
 - **审计的文案与排版（第 10 轮）**（`NanoMuseChrome.swift`、`NanoMuseFirstRun.swift`、
   `NanoMuseProviderReachCard.swift`、`NanoMuseSystemFiles.swift`、`*.lproj/InfoPlist.strings`、
   `Localizable.xcstrings`）：`NanoMuseFlowLayout` 是一个会换行的横排（iOS 16 的 `Layout`），

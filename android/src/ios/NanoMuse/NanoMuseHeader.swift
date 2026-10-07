@@ -107,6 +107,9 @@ struct NanoMuseHeaderTitle: View {
     @ObservedObject private var avatarFlow = NanoMuseAvatarFlow.shared
     @ObservedObject private var motion = NanoMuseAvatarMotion.shared
     @StateObject private var moods = NanoMuseMoodModel()
+    // Dynamic Type, capped as in the big-face header (NanoMuseHeaderMetrics)
+    @ScaledMetric(relativeTo: .subheadline) private var nameSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .caption) private var statusSize: CGFloat = 11
 
     private var waiting: Bool {
         permissions.pendingRequest != nil || gate.pending != nil
@@ -152,11 +155,11 @@ struct NanoMuseHeaderTitle: View {
             Button(action: onTapText) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(soulName)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: NanoMuseHeaderMetrics.capped(nameSize, base: 14), weight: .semibold))
                         .foregroundStyle(ChatColors.primaryText)
                         .lineLimit(1)
                     Text(statusLine ?? modelName)
-                        .font(.system(size: 11))
+                        .font(.system(size: NanoMuseHeaderMetrics.capped(statusSize, base: 11)))
                         .foregroundStyle(statusLine == nil ? ChatColors.tertiaryText : NanoMuseTones.action)
                         .lineLimit(1)
                         .truncationMode(.tail)
