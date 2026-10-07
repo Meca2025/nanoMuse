@@ -167,7 +167,7 @@ export function Onboarding() {
                   ? conn?.llm.cloud
                     ? t("Your account's model, with its free allowance. Keep it, or switch to a key of your own here.")
                     : t("A model is already set up on the server. Keep it, or switch here.")
-                  : t("Your account brings a model with a free allowance, the quickest start. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
+                  : t("Your account brings a model with a free allowance, nothing to set up. Or paste a key of your own; it is stored encrypted in the vault on the server, never shown to the model, and nothing you say passes through the relay.")}
               </p>
             </div>
             {conn ? (

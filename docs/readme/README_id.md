@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse — agen pribadi sumber terbuka untuk setiap perangkat yang kamu miliki">
+  <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/nanomuse-cover.png" alt="nanoMuse: agen pribadi sumber terbuka untuk setiap perangkat yang kamu miliki">
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 
 **nanoMuse adalah agen pribadi sumber terbuka untuk setiap perangkat yang kamu miliki.** Satu agen dengan nama dan rupa sendiri, seperti [Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/) dari Meta: ia mengerjakan sesuatu alih-alih sekadar menjawab pertanyaan, terus bekerja saat aplikasinya ditutup, mengingatmu, dan berhenti untuk bertanya sebelum melakukan apa pun yang tidak bisa kamu batalkan.
 
-*nano* berarti satu paket lengkap yang cukup kecil untuk kamu jalankan dan pasang sendiri: aplikasi ponsel, aplikasi desktop, konsol web, dan relay yang menghubungkan semuanya ada di repositori ini, di bawah GPL-3.0-or-later. **[Gratis, sumber terbuka, nirlaba — mari bangun bersama.](../../CONTRIBUTING.md)** Masuk dan kamu mendapat jatah gratis pemakaian model di relay komunitas — pengembang yang membayarnya; kalau habis, [pakai kunci sendiri](../own-key.md). Relay yang sama bisa berjalan di servermu, jadi tidak ada data yang harus keluar dari rumahmu. Versi terbaru: **0.1.41 Choice** — [catatan rilis](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.41) · [coba di browser](https://demo.nanomuse.dev/).
+*nano* berarti satu paket lengkap yang cukup kecil untuk kamu jalankan dan pasang sendiri: aplikasi ponsel, aplikasi desktop, konsol web, dan relay yang menghubungkan semuanya ada di repositori ini, di bawah GPL-3.0-or-later. **[Gratis, sumber terbuka, nirlaba. Mari bangun bersama.](../../CONTRIBUTING.md)** Masuk dan kamu mendapat jatah gratis pemakaian model di relay komunitas (pengembang yang membayarnya); kalau habis, [pakai kunci sendiri](../own-key.md). Relay yang sama bisa berjalan di servermu, jadi tidak ada data yang harus keluar dari rumahmu. Versi terbaru: **0.1.41 Choice**, [catatan rilis](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.41) · [coba di browser](https://demo.nanomuse.dev/).
 
 https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
 
@@ -45,13 +45,13 @@ Semua versi: [releases](https://github.com/nano-muse/nanoMuse/releases).
 
 | | |
 |---|---|
-| **Browser** | [demo.nanomuse.dev](https://demo.nanomuse.dev/) — sebuah nanoMuse di ponsel simulasi, setelah masuk. Ini demo; aplikasi di bawah inilah yang sebenarnya |
-| **Android** 8.0+, arm64 | [nanoMuse-0.1.41-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-0.1.41-arm64.apk) — setiap versi ditandatangani dengan kunci yang sama dan dipasang menimpa versi sebelumnya |
-| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc) — versi beta; tautan ini memberikan build begitu tinjauan beta Apple lolos · [iOS](../ios.md) |
-| **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-x64.dmg) — belum dinotarisasi: klik kanan → *Open* saat pertama kali |
-| **Windows** 10+ | [nanoMuse-Desktop-0.1.41-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-win-x64.exe) — klik *Run anyway* sekali |
+| **Browser** | [demo.nanomuse.dev](https://demo.nanomuse.dev/): sebuah nanoMuse di ponsel simulasi, setelah masuk. Ini demo; aplikasi di bawah inilah yang sebenarnya |
+| **Android** 8.0+, arm64 | [nanoMuse-0.1.41-arm64.apk](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-0.1.41-arm64.apk): setiap versi ditandatangani dengan kunci yang sama dan dipasang menimpa versi sebelumnya |
+| **iPhone / iPad** | [TestFlight](https://testflight.apple.com/join/ZHexbDqc): versi beta; tautan ini memberikan build begitu tinjauan beta Apple lolos · [iOS](../ios.md) |
+| **macOS** 12+ | [Apple Silicon](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-arm64.dmg) · [Intel](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-mac-x64.dmg): belum dinotarisasi: klik kanan → *Open* saat pertama kali |
+| **Windows** 10+ | [nanoMuse-Desktop-0.1.41-win-x64.exe](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-win-x64.exe): klik *Run anyway* sekali |
 | **Linux** x64 | [AppImage](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-linux-x64.AppImage) · [.deb](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-linux-x64.deb) · [tar.gz](https://github.com/nano-muse/nanoMuse/releases/download/v0.1.41/nanoMuse-Desktop-0.1.41-linux-x64.tar.gz) |
-| **Docker** | `bash scripts/self-host.sh --local` untuk relay sendiri; `docker compose up -d app` untuk aplikasi web di servermu — [self-hosting](../self-hosting.md) |
+| **Docker** | `bash scripts/self-host.sh --local` untuk relay sendiri; `docker compose up -d app` untuk aplikasi web di servermu; lihat [self-hosting](../self-hosting.md) |
 
 Semua unduhan berasal dari [rilis terbaru](https://github.com/nano-muse/nanoMuse/releases/latest); berkas yang sama ada di [nanomuse.cn/dl](https://nanomuse.cn/dl/) kalau GitHub lambat di tempatmu. Buka aplikasinya, masuk dengan e-mail atau nomor ponsel Tiongkok daratan, dan agen langsung punya model untuk berpikir. Ponsel, desktop, dan web memakai satu akun dan menampilkan percakapan yang sama.
 
@@ -59,7 +59,7 @@ Semua unduhan berasal dari [rilis terbaru](https://github.com/nano-muse/nanoMuse
 
 <table>
   <tr>
-    <td width="50%" valign="top"><b>Mengerjakan sesuatu.</b><br>Shell Linux, browser, server MCP, dan skill — dan, dengan <i>Hands</i> menyala, aplikasi di ponselmu dan jendela di komputermu lewat layarnya, untuk segala hal yang tidak pernah punya API.</td>
+    <td width="50%" valign="top"><b>Mengerjakan sesuatu.</b><br>Shell Linux, browser, server MCP, dan skill, dan, dengan <i>Hands</i> menyala, aplikasi di ponselmu dan jendela di komputermu lewat layarnya, untuk segala hal yang tidak pernah punya API.</td>
     <td width="50%" valign="top"><b>Bertanya dulu.</b><br>Ia berhenti sebelum menghapus, mengirim, atau membayar, dan mengingat jawabanmu untuk sekali ini, untuk obrolan ini, atau untuk selamanya; kata sandi dan kode tetap kamu yang mengetik. Login atau CAPTCHA diserahkan kepadamu; <i>Done</i> melanjutkan.</td>
   </tr>
   <tr>
@@ -78,7 +78,7 @@ Semua unduhan berasal dari [rilis terbaru](https://github.com/nano-muse/nanoMuse
 
 ## Cara kerjanya
 
-Setiap perangkat menjalankan agennya sendiri — ponsel di dalam APK (Alpine Linux di bawah proot, shell, browser, MCP), komputer di dalam nanoMuse Desktop (DeepSeek Harness dengan runtime Python untuk tangannya). Setelah masuk, mereka bertemu di relay dan bisa saling meminta sesuatu; teks percakapan lewat relay, berkas dan tangkapan layar tetap di tempat dibuatnya.
+Setiap perangkat menjalankan agennya sendiri: ponsel di dalam APK (Alpine Linux di bawah proot, shell, browser, MCP), komputer di dalam nanoMuse Desktop (DeepSeek Harness dengan runtime Python untuk tangannya). Setelah masuk, mereka bertemu di relay dan bisa saling meminta sesuatu; teks percakapan lewat relay, berkas dan tangkapan layar tetap di tempat dibuatnya.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android, desktop (Mac, Windows, Linux), iPhone dan iPad, serta aplikasi web di sekitar satu akun: relay memproses masuknya perangkat ke akun dan membawa percakapan di antaranya" width="92%">
@@ -90,19 +90,19 @@ Setiap perangkat menjalankan agennya sendiri — ponsel di dalam APK (Alpine Lin
 
 | | Meta Muse | OpenMinis | nanoMuse |
 |---|---|---|---|
-| Di mana agen berjalan | Satu VM cloud per pengguna | Ponsel tempat ia dipasang | Ponselmu, komputermu, atau servermu — satu akun untuk semuanya |
-| Aplikasi tanpa API | Di luar jangkauan; VM tidak pernah menyentuh perangkatmu | CLI aksesibilitas di Android | Layar sebagai tangan di ponsel dan komputer: tangkapan layar, API dicoba dulu, kamu mengambil alih saat login. Tidak di iOS — sistemnya tidak mengizinkan |
+| Di mana agen berjalan | Satu VM cloud per pengguna | Ponsel tempat ia dipasang | Ponselmu, komputermu, atau servermu, satu akun untuk semuanya |
+| Aplikasi tanpa API | Di luar jangkauan; VM tidak pernah menyentuh perangkatmu | CLI aksesibilitas di Android | Layar sebagai tangan di ponsel dan komputer: tangkapan layar, API dicoba dulu, kamu mengambil alih saat login. Tidak di iOS, karena sistemnya tidak mengizinkan |
 | Perangkat lain | Klien dari satu VM | Hanya yang terpasang | Perangkat saling meminta lewat hub, persetujuan di tempatmu berada |
 | Model | Milik Meta | Bawa sendiri | Jatah gratis dari relay, atau milikmu |
 | Lisensi | Tertutup | GPL-3.0 | GPL-3.0-or-later, dibangun di atas OpenMinis |
 
 ## Dokumentasi
 
-[nanomuse.cn/docs](https://nanomuse.cn/docs/) — pemasangan per platform, setiap perangkat, tangan, konektor, memori, self-hosting, protokol. Sumbernya ada di [docs/](../); apa yang berubah di tiap versi ada di [CHANGELOG](../../CHANGELOG.md) dan [docs/releases/](../releases/).
+[nanomuse.cn/docs](https://nanomuse.cn/docs/): pemasangan per platform, setiap perangkat, tangan, konektor, memori, self-hosting, protokol. Sumbernya ada di [docs/](../); apa yang berubah di tiap versi ada di [CHANGELOG](../../CHANGELOG.md) dan [docs/releases/](../releases/).
 
 ## Self-hosting
 
-Satu VPS, satu jam: [docs/self-hosting.md](../self-hosting.md). Tiga jalan — tanpa server sama sekali dengan kunci sendiri; relay sendiri dengan `scripts/self-host.sh`; atau runtime sendiri untuk aplikasi web.
+Satu VPS, satu jam: [docs/self-hosting.md](../self-hosting.md). Tiga jalan: tanpa server sama sekali dengan kunci sendiri; relay sendiri dengan `scripts/self-host.sh`; atau runtime sendiri untuk aplikasi web.
 
 ## Berkontribusi
 
@@ -128,10 +128,10 @@ Jika nanoMuse bermanfaat bagi Anda, silakan kutip makalah ini.
 
 nanoMuse berdiri di atas karya orang lain; [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) memuat ketentuannya.
 
-- [OpenMinis](https://github.com/OpenMinis/OpenMinis) — agen di perangkat yang menjadi dasar aplikasi ponsel, dengan [proot](https://github.com/nano-muse/proot) dan [Alpine Linux](https://alpinelinux.org/) untuk sandbox-nya.
-- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — harness agen tempat aplikasi desktop menjadi plugin-nya.
-- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance) — operator tangan di desktop adalah porting dari milik mereka, dan penanda di panggung mengikuti ScreenMarker mereka.
-- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/PhoneHarness/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ZJU-REAL/ClawGUI) — operator ponsel, jejak, dan gagasan produknya.
+- [OpenMinis](https://github.com/OpenMinis/OpenMinis): agen di perangkat yang menjadi dasar aplikasi ponsel, dengan [proot](https://github.com/nano-muse/proot) dan [Alpine Linux](https://alpinelinux.org/) untuk sandbox-nya.
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): harness agen tempat aplikasi desktop menjadi plugin-nya.
+- [UI-TARS-desktop](https://github.com/bytedance/UI-TARS-desktop) (ByteDance): operator tangan di desktop adalah porting dari milik mereka, dan penanda di panggung mengikuti ScreenMarker mereka.
+- [MobileGym](https://github.com/Purewhiter/mobilegym), [MemGUI-Bench](https://github.com/lgy0404/MemGUI-Bench), [PhoneHarness](https://github.com/PhoneHarness/PhoneHarness), [CopilotKit/OpenMuse](https://github.com/CopilotKit/OpenMuse), [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM), [ClawGUI](https://github.com/ZJU-REAL/ClawGUI): operator ponsel, jejak, dan gagasan produknya.
 
 ## Penafian
 
@@ -139,4 +139,4 @@ nanoMuse adalah proyek komunitas independen, tidak berafiliasi dengan atau diduk
 
 ## Lisensi
 
-[GPL-3.0-or-later](../../LICENSE). Aplikasi ponsel berbasis OpenMinis 1.13 (GPL-3.0), dimodifikasi sejak 2026-09-24 — lihat [NOTICE](../../NOTICE). Versi lebih awal dari jalur Python berlisensi MIT (tag `pre-openminis`).
+[GPL-3.0-or-later](../../LICENSE). Aplikasi ponsel berbasis OpenMinis 1.13 (GPL-3.0), dimodifikasi sejak 2026-09-24; lihat [NOTICE](../../NOTICE). Versi lebih awal dari jalur Python berlisensi MIT (tag `pre-openminis`).
