@@ -220,8 +220,8 @@ timeout_ms = 30000
 # ------------------------------------------------------------------------------
 [gui]
 enabled = false
-provider = "openai"      # the operator's own model, openai | openai_responses
-model = ""               # empty → the main [llm] model operates the phone
+provider = "openai"      # openai | openai_responses, or a catalogue id (bailian, openrouter, …) that brings its endpoint
+model = ""               # empty → the chat provider's own hands model when it sees; else the account's; else the chat model
 # base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"   # e.g. 阿里云百炼 with model = "qwen3.8-27b"
 # api_key = "{{vault:GUI_API_KEY}}"
 max_steps = 30           # the most one phone task may take
@@ -230,17 +230,21 @@ reconnect_grace_s = 30.0  # how long a running task waits for a phone whose conn
 
 # ------------------------------------------------------------------------------
 # Pictures and clips — where the avatar studio draws when it is not the chat model's
-# host. All empty (the default): the chat model's host, as before. `provider` is a
-# catalogue id (nanomuse/llm/providers.json); base_url fills in from it.
+# host. All empty (the default): the chat provider's own picture model when it has one,
+# else the account's when signed in, else none. `provider` is a catalogue id
+# (nanomuse/llm/providers.json); base_url fills in from it. The app sets the same keys
+# through PUT /api/connections/image and /video (Connections → Making pictures / clips).
 # ------------------------------------------------------------------------------
 # [image]
 # provider = "bailian"              # bailian | zhipu | siliconflow | volcengine | openai | gemini | openrouter | xai
 # model = ""                        # empty → the catalogue's default for the provider
+# base_url = ""                     # instead of provider, for a host the catalogue does not list
 # api_key = "{{vault:IMAGE_API_KEY}}"   # empty → the chat model's key when the host is the same
 #
 # [video]
 # provider = "bailian"              # clips speak Bailian's video API this round
-# model = ""
+# model = ""                        # empty → the catalogue's default (wan2.2-i2v-flash)
+# base_url = ""
 # api_key = "{{vault:VIDEO_API_KEY}}"
 
 # ------------------------------------------------------------------------------

@@ -23,6 +23,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **`/api/nudges` keeps the relay's `star.text` and `star.text_zh`** (200 characters at most) for the star card's sentence.
 - **A file whose name is not ASCII can be downloaded from the web console again.** `/api/files/…?download=1` failed with 500 for a name such as 报告.md; the download header is now encoded.
 - **`nanomuse config init` writes the `[cloud]` and `[hub]` blocks and `gui.reconnect_grace_s`** with their defaults explained; the configuration page documents them too.
+- **Every model slot can be chosen through the app layer.** `PUT /api/connections/gui` takes a catalogue id (`bailian`, `openrouter`, ...) as `PUT /api/connections/llm` does, and reports the id a URL stands for; the new `PUT /api/connections/image` and `/video` (with `GET`) write the `[image]` and `[video]` slots: `provider`, `model`, `base_url`, `api_key` into the vault, all empty to clear, a provider without the capability refused with the one sentence. A slot nobody chose follows one order: the chat provider's own model when it can (its hands model when it sees, its picture model when it draws), else the account's when signed in, else the chat model or nothing. `[video] api_key` is sent to the video host; before, the picture host's key went.
 
 ### Web
 
@@ -31,6 +32,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The star card's sentence can come from the relay** (`star.text`, `star.text_zh` for a Chinese UI); the title and buttons stay the app's.
 - **The unit tests no longer depend on the developer machine's language.**
 - **Chinese copy writes 非营利** (not 非盈利) in the welcome notice and the account page; 89 dictionary entries no key referred to any more were dropped.
+- **Connections has a *Making pictures* and a *Making clips* row.** Each shows `provider · model` as the runtime resolves it and opens a picker with nanoMuse Cloud when signed in, the chat model's provider when it has the capability, and every catalogue provider that has it under *Add a provider*; a provider without it is not offered. A row nothing covers shows the one sentence and *Add a provider*. The *Pictures and clips* field under the chat model is gone; the *Hands model* default is the provider's own hands model, or the account's when the provider cannot see.
 
 ### Desktop
 

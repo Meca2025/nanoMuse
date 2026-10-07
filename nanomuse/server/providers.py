@@ -99,10 +99,12 @@ class Providers:
         return "app" if data.get(key) else "config"
 
     def slots(self) -> dict[str, dict[str, Any] | None]:
-        """What each slot uses today. ``hands`` follows ``chat`` unless ``[gui]`` names a
-        model; ``image`` and ``video`` are the avatar studio's answer to "where do pictures
-        come from" — the ``[image]``/``[video]`` slots when set, else the chat model's host
-        when it has an image model; ``None`` when nothing draws."""
+        """What each slot uses today, in the order of the Models contract (§3): an explicit
+        choice first (``source`` ``app`` or ``config``); else ``hands`` follows the chat
+        provider when it sees (``source`` ``chat``) and the relay otherwise with the account
+        (``cloud``); ``image`` and ``video`` are the avatar studio's answer to "where do
+        pictures come from" — the chat provider's own picture model, else the relay with
+        the account; ``None`` when nothing draws."""
         s = self.svc.settings
         llm, gui = s.llm, s.gui
         chat_id = self._id_for(llm.provider, llm.endpoint)
@@ -111,37 +113,37 @@ class Providers:
         out: dict[str, dict[str, Any] | None] = {
             "chat": _slot(chat_id, llm.model, chat_protocol, chat_source),
         }
-        hands_model = self.svc.app.gui_model()
-        if gui.model:
+        where, hands_model = self.svc.app.hands_choice()
+        if where == "gui":
             if gui.endpoint is None and gui.provider in PROTOCOLS:
                 hands_id = chat_id  # the main model's host, another model there
             else:
                 hands_id = self._id_for(gui.provider, gui.endpoint)
             protocol = resolve_provider(gui.provider, gui.base_url)[0]
             out["hands"] = _slot(hands_id, hands_model, protocol, self._source(hands_id, "hands"))
-        elif self.svc.app.llm_is_cloud():
+        elif where == "cloud":
             out["hands"] = _slot(CLOUD_ID, hands_model, "openai", "cloud")
         else:
             out["hands"] = _slot(chat_id, hands_model, chat_protocol, chat_source)
         out["image"] = out["video"] = None
         ep = self.svc.avatar.endpoint()
         if ep is not None:
-            image_id = (
-                CLOUD_ID
-                if ep.cloud
-                else (s.image.provider if s.image.configured and s.image.provider else "")
-                or self._id_for("", ep.base_url)
-            )
+            if ep.cloud:
+                image_id = CLOUD_ID
+            else:
+                # the slot's provider when it names a catalogue entry, else the host's
+                image_id = self._id_for(s.image.provider if s.image.configured else "", ep.base_url)
             out["image"] = _slot(
                 image_id, ep.image_model, "openai", self._source(image_id, "image")
             )
             if ep.video_model:
-                video_id = (
-                    CLOUD_ID
-                    if ep.cloud and not ep.video_base_url
-                    else (s.video.provider if s.video.configured and s.video.provider else "")
-                    or self._id_for("", ep.video_base_url or ep.base_url)
-                )
+                if ep.video_cloud or (ep.cloud and not ep.video_base_url):
+                    video_id = CLOUD_ID
+                else:
+                    video_id = self._id_for(
+                        s.video.provider if s.video.configured else "",
+                        ep.video_base_url or ep.base_url,
+                    )
                 out["video"] = _slot(
                     video_id, ep.video_model, "openai", self._source(video_id, "video")
                 )

@@ -22,6 +22,7 @@ from nanomuse.cloud import DEFAULT_GUI_MODEL as DEFAULT_CLOUD_GUI_MODEL
 from nanomuse.cloud import model_url
 from nanomuse.config import (
     CHATGPT_PROVIDER,
+    PROTOCOLS,
     CalendarFeedSettings,
     ContactSourceSettings,
     MCPServerSettings,
@@ -54,6 +55,16 @@ LLM_KEY = "LLM_API_KEY"
 EMBEDDINGS_KEY = "EMBEDDINGS_API_KEY"
 SEARCH_KEY = "SEARCH_API_KEY"
 GUI_KEY = "GUI_API_KEY"
+IMAGE_KEY = "IMAGE_API_KEY"
+VIDEO_KEY = "VIDEO_API_KEY"
+#: the vault entry each media slot's key goes to
+_MEDIA_KEYS: dict[str, str] = {"image": IMAGE_KEY, "video": VIDEO_KEY}
+#: what a slot needs of a provider, for the sentence that refuses one without it
+_SLOT_NOUNS: dict[str, str] = {
+    "vision": "models that read pictures",
+    "image": "image models",
+    "video": "video models",
+}
 EMAIL_ADDRESS = "EMAIL_ADDRESS"
 EMAIL_PASSWORD = "EMAIL_PASSWORD"
 
@@ -433,6 +444,10 @@ class Connections:
             },
             "gui": self._gui_view(),
             "hands": self.hands_view(),
+            # where pictures and clips come from (the Models contract): the slot as set
+            # and what it resolves to
+            "image": self.media_view("image"),
+            "video": self.media_view("video"),
             "mcp": [
                 {
                     "name": m.name,
@@ -1185,26 +1200,46 @@ class Connections:
             }
         ]
 
+    def _key_source(self, key: str) -> str:
+        """Where a slot's key comes from: ``none`` (the chat model's is used), ``vault``,
+        ``missing`` (a vault reference nothing answers) or ``config``."""
+        if not key:
+            return "none"
+        if self.vault.has_placeholders(key):
+            resolved = self.vault.resolve(key, strict=False)
+            return "missing" if not resolved or self.vault.has_placeholders(resolved) else "vault"
+        return "config"
+
+    def _catalogue_id(self, provider: str, base_url: str | None) -> str:
+        """The catalogue id a slot's provider means: the id it names, else the entry whose
+        host the URL is; "" when the catalogue lists neither."""
+        from nanomuse.llm import catalogue
+
+        cat = catalogue.load()
+        if provider and provider not in PROTOCOLS and cat.get(provider) is not None:
+            return provider
+        entry = cat.by_base_url(base_url)
+        return entry.id if entry is not None else ""
+
     def _gui_view(self) -> dict[str, Any]:
         gui = self.settings.gui
-        key = gui.api_key
-        if not key:
-            key_source = "none"  # the main model's key is used
-        elif self.vault.has_placeholders(key):
-            key_source = "vault" if self.vault.get(GUI_KEY) else "missing"
-        else:
-            key_source = "config"
+        where, model = self.svc.app.hands_choice()
         return {
             "enabled": gui.enabled,
+            # the provider as set: a protocol (`openai` / `openai_responses`) or a catalogue id
             "provider": gui.provider,
+            # the catalogue entry that means, by id or by host; "" for an unlisted host
+            "provider_id": self._catalogue_id(gui.provider, gui.endpoint) if gui.model else "",
             "model": gui.model,
-            # the model the hands use when none is set here: the relay's hands model with
-            # the account, the chat model otherwise (contract C4)
-            "effective_model": self.svc.app.gui_model(),
+            # the model the hands use when none is set here, and where it comes from
+            # (contract C4 and the Models contract §3): `gui` for a model set here, `chat`
+            # for the chat provider's hands model, `cloud` for the relay's
+            "effective_model": model,
+            "effective_source": where,
             "default_model": self.svc.app.gui_model(default_only=True),
             "cloud": self.svc.app.llm_is_cloud(),
             "base_url": gui.base_url or "",
-            "key_source": key_source,
+            "key_source": self._key_source(gui.api_key),
             "max_steps": gui.max_steps,
             "phone": self.svc.phone.status(),
         }
@@ -1213,7 +1248,9 @@ class Connections:
         """The switch for operating the phone, and the operator's model.
 
         ``enabled`` adds or removes the ``phone_*`` tools on the spot; the model fields are
-        optional and default to the main model's endpoint and key.
+        optional and default to the main model's endpoint and key. ``provider`` is a
+        protocol (``openai`` / ``openai_responses``) or a catalogue id, as for the chat
+        model; a catalogue id brings its endpoint along and must have models that see.
         """
         gui = dict(self.data.get("gui") or {})
         if body.get("enabled") is not None:
@@ -1221,8 +1258,12 @@ class Connections:
         for key in ("provider", "model", "base_url"):
             if body.get(key) is not None:
                 gui[key] = str(body[key]).strip()
-        if gui.get("provider") not in (None, "", "openai", "openai_responses"):
-            raise ValueError("provider must be 'openai' or 'openai_responses'")
+        if gui.get("base_url"):
+            gui["base_url"] = normalize_base_url(gui["base_url"])
+        if gui.get("provider") not in (None, ""):
+            gui["provider"] = self._check_slot_provider(
+                str(gui["provider"]), gui.get("base_url") or "", "vision"
+            )
         api_key = body.get("api_key")
         if api_key:
             self.vault.set(GUI_KEY, str(api_key).strip())
@@ -1241,6 +1282,104 @@ class Connections:
         self._publish()
         self.svc.publish_phone()
         return self._gui_view()
+
+    @staticmethod
+    def _check_slot_provider(provider: str, base_url: str, capability: str) -> str:
+        """``provider`` as the chat model takes it — a protocol, a catalogue id, the ChatGPT
+        sign-in — checked against the catalogue for one slot: the entry it names, or the
+        one whose host ``base_url`` is, must have ``capability``. A local server and the
+        custom row have whatever the person installed, so they pass."""
+        from nanomuse.llm import catalogue
+
+        provider = check_provider(provider)
+        noun = _SLOT_NOUNS[capability]
+        if provider == CHATGPT_PROVIDER:
+            if capability == "vision":
+                return provider  # the sign-in reads pictures
+            raise ValueError(f"the ChatGPT sign-in has no {noun}")
+        cat = catalogue.load()
+        entry = cat.get(provider) if provider not in PROTOCOLS else cat.by_base_url(base_url)
+        if (
+            entry is not None
+            and not entry.user_capabilities
+            and not entry.hosts() & {"127.0.0.1", "localhost"}
+            and not entry.has(capability)
+        ):
+            raise ValueError(f"{entry.name} has no {noun}; {cat.unavailable_sentence(capability)}")
+        return provider
+
+    # ------------------------------------------------------------------ pictures and clips
+    def media_view(self, slot: str) -> dict[str, Any]:
+        """The ``[image]`` / ``[video]`` slot as set, and what the slot resolves to today
+        (the Models contract §3): the provider id and model in use and where that answer
+        came from — ``app`` / ``config`` for a choice, ``chat`` for the chat provider's own
+        model, ``cloud`` for the relay."""
+        media = getattr(self.settings, slot)
+        providers = getattr(self.svc, "providers", None)  # not there while the service starts
+        resolved = providers.slots().get(slot) if providers is not None else None
+        if resolved is None:
+            source = ""
+        elif resolved["provider"] == self.CLOUD_PRESET:
+            source = "cloud"
+        elif media.configured:
+            source = "app" if self.data.get(slot) else "config"
+        else:
+            source = "chat"
+        return {
+            "provider": media.provider,
+            "provider_id": self._catalogue_id(media.provider, media.endpoint),
+            "model": media.model,
+            "base_url": media.base_url or "",
+            "key_source": self._key_source(media.api_key),
+            "configured": media.configured,
+            "from_app": bool(self.data.get(slot)),
+            "effective_provider": resolved["provider"] if resolved else "",
+            "effective_model": resolved["model"] if resolved else "",
+            "effective_source": source,
+        }
+
+    def set_media(self, slot: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Where pictures (``image``) or clips (``video``) come from, chosen in the app:
+        ``provider`` (a catalogue id, or ``openai`` / ``openai_responses`` with a
+        ``base_url``), ``model`` (empty: the catalogue's default), ``base_url`` (for a host
+        the catalogue does not list) and ``api_key`` (into the vault; empty: the chat
+        model's key when the host is the same). All four empty clears the slot: the chat
+        provider's own model again, or the account's."""
+        if slot not in _MEDIA_KEYS:
+            raise ValueError("slot must be 'image' or 'video'")
+        media = dict(self.data.get(slot) or {})
+        for key in ("provider", "model", "base_url"):
+            if body.get(key) is not None:
+                media[key] = str(body[key]).strip()
+        if media.get("base_url"):
+            media["base_url"] = normalize_base_url(media["base_url"])
+        if media.get("provider"):
+            media["provider"] = self._check_slot_provider(
+                media["provider"], media.get("base_url") or "", slot
+            )
+        elif media.get("base_url"):
+            # a bare URL: the host must not be one the catalogue knows cannot do this
+            self._check_slot_provider("openai", media["base_url"], slot)
+        vault_name = _MEDIA_KEYS[slot]
+        api_key = body.get("api_key")
+        if api_key and self.vault.has_placeholders(str(api_key)):
+            # a reference to a key already in the vault (the account's, say): kept as written
+            media["api_key"] = str(api_key).strip()
+        elif api_key:
+            self.vault.set(vault_name, str(api_key).strip())
+            media["api_key"] = "{{vault:" + vault_name + "}}"
+        elif api_key == "":
+            self.vault.delete(vault_name)
+            media["api_key"] = ""
+        if any(media.get(k) for k in ("provider", "model", "base_url", "api_key")):
+            self.data[slot] = media
+        else:
+            self.data.pop(slot, None)
+            media = {"provider": "", "model": "", "base_url": "", "api_key": ""}
+        self._save()
+        apply_app_settings(self.settings, {slot: media})
+        self._publish()
+        return self.media_view(slot)
 
     def set_hands(self, body: dict[str, Any]) -> dict[str, Any]:
         """The switch for this computer's own screen and hands, and which backend drives them."""
@@ -1391,4 +1530,13 @@ class Connections:
         self._publish()
 
 
-__all__ = ["EMAIL_ADDRESS", "EMAIL_PASSWORD", "LLM_KEY", "PROVIDERS", "Connections"]
+__all__ = [
+    "EMAIL_ADDRESS",
+    "EMAIL_PASSWORD",
+    "GUI_KEY",
+    "IMAGE_KEY",
+    "LLM_KEY",
+    "PROVIDERS",
+    "VIDEO_KEY",
+    "Connections",
+]
