@@ -1084,6 +1084,11 @@
     <string name="nm_models_new_chats">Yeni sohbetler için geçerlidir.</string>
     <string name="nm_models_media_more">Daha fazla görsel ve klip seçeneği</string>
     <string name="nm_models_media_more_sub">Bir model adı yaz, hangi model olmadan neyin durduğunu gör ya da bir anahtarın hangi video modellerini kullanabildiğini yeniden denetle.</string>
+    <string name="nm_models_cloud_switch">nanoMuse Cloud modellerini kullan</string>
+    <string name="nm_models_cloud_on_sub">nanoMuse Cloud aşağıdaki satırların kaynaklarından biridir; üzerinde çalışanlar kotanızdan düşer.</string>
+    <string name="nm_models_cloud_off_sub">Kapalı: \"Bu sefer nanoMuse Cloud kullan\" seçeneğine dokunmadıkça nanoMuse Cloud üzerinde hiçbir şey çalışmaz. Eşitleme ve cihazlarınız için oturumunuz açık kalır.</string>
+    <string name="nm_cloud_provider_no_delete">Bu sağlayıcı nanoMuse Cloud hesabınızın kendisidir. Modellerini kullanmayı bırakmak için yukarıdan kapatın; oturumu kapatmak için Ayarlar › nanoMuse Cloud bölümünü açın.</string>
+    <string name="nm_welcome_own_key">Bunun yerine kendi API anahtarımı kullan</string>
     <string name="nm_useit_title">Ne için kullanılsın</string>
     <string name="nm_useit_body">Bu anahtarın neleri üstleneceğini seç. Gerisi nanoMuse Cloud’da kalır.</string>
     <string name="nm_useit_body_signed_out">Bu anahtarın neleri üstleneceğini seç.</string>

@@ -116,7 +116,7 @@ model*, *Hands model*, *Making pictures* and *Making clips* cards on
 
 | Row | What it does | Who is listed |
 |---|---|---|
-| Chat | The model that talks with you. | nanoMuse Cloud's chat models while signed in, then every provider of yours with chat models |
+| Chat | The model that talks with you. | nanoMuse Cloud's chat models while signed in and switched on, then every provider of yours with chat models |
 | Operating the screen | Looks at the screen and acts for you. Needs a model that can see images. | nanoMuse Cloud's hands model, then your providers' models that see images; disabled on the iPhone (*Not on iPhone*) |
 | Making pictures | Portraits of your Muse and the pictures you ask for. | nanoMuse Cloud, then your providers with image models |
 | Making clips | Short clips of your Muse. | nanoMuse Cloud, then your providers with video models (Bailian) |
@@ -136,7 +136,7 @@ it started with.
 entry that says what it gives right now (*Currently nanoMuse Cloud ·
 qwen3.8-27b*, say). Pick it and the row forgets any choice made there and
 follows one order: the chat model's provider when it is one of yours and can do
-the job (its catalogue default), else nanoMuse Cloud while signed in, else the
+the job (its catalogue default), else nanoMuse Cloud while signed in and switched on, else the
 first provider of yours that can. A choice you made always wins; nanoMuse Cloud
 never steps in front of a provider you chose. Each device keeps its own choice,
 because keys never leave the device where they were entered.
@@ -146,6 +146,21 @@ switches by itself: the error card offers *Use nanoMuse Cloud this time*
 (signed in only), which runs that one turn on the account's model and changes
 no row. The desktop shows the same button after a failed studio round and a
 failed set of clips.
+
+**Switching nanoMuse Cloud off.** While signed in, the Models page has one
+switch, *Use nanoMuse Cloud models*. Off, the Cloud leaves the pickers and the
+automatic order, no side call (a chat's title, memory, a portrait, the hands)
+runs on it, and the only thing that spends your allowance is the *Use nanoMuse
+Cloud this time* button, each time you tap it. You stay signed in: sync, your
+devices and the account page keep working. The Cloud provider cannot be deleted
+the way one of yours can (deleting it was the same as signing out); signing out
+is under *Settings › nanoMuse Cloud*.
+
+**Without an account.** With a key of your own the app works signed out: chat,
+the hands, pictures and clips run on your providers, and the first screen
+offers *Use your own API key instead* next to the sign-in. The sign-in is
+needed only for nanoMuse Cloud's models, conversation sync and your devices
+reaching each other.
 
 **Known limits.** On the iPhone the pictures and clips rows list, besides
 nanoMuse Cloud, only your providers on a DashScope host (Alibaba Cloud Bailian);

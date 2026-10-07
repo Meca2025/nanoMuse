@@ -1080,6 +1080,11 @@
     <string name="nm_models_new_chats">新しいチャットから適用されます。</string>
     <string name="nm_models_media_more">画像と動画のその他のオプション</string>
     <string name="nm_models_media_more_sub">モデル名を入力する、各モデルがないと何が止まるかを見る、キーで使える動画モデルを再確認する。</string>
+    <string name="nm_models_cloud_switch">nanoMuse Cloud のモデルを使う</string>
+    <string name="nm_models_cloud_on_sub">nanoMuse Cloud は下の各行の提供元のひとつで、そこで動いた分は利用枠から差し引かれます。</string>
+    <string name="nm_models_cloud_off_sub">オフにすると「今回は nanoMuse Cloud を使う」をタップしない限り、nanoMuse Cloud では何も動きません。同期と端末のためにサインインは保たれます。</string>
+    <string name="nm_cloud_provider_no_delete">このプロバイダーは nanoMuse Cloud のアカウントそのものです。モデルを使わないようにするには上のスイッチをオフにし、サインアウトするには「設定 › nanoMuse Cloud」を開いてください。</string>
+    <string name="nm_welcome_own_key">自分の API キーを使う</string>
     <string name="nm_useit_title">何に使うか</string>
     <string name="nm_useit_body">このキーに任せることを選んでください。残りは引き続き nanoMuse Cloud が担当します。</string>
     <string name="nm_useit_body_signed_out">このキーに任せることを選んでください。</string>

@@ -193,9 +193,15 @@ fun NanoMuseHome(
         }
     }
     var setupDone by remember { mutableStateOf(FirstRunSetup.isDone(context)) }
-    val hasProviders = providerConfig.instances.isNotEmpty()
+    // A provider of the person's own that could answer: enabled and holding a credential. The
+    // Cloud instance is the account, counted through `signedIn` below.
+    val cloudId = io.github.nanomuse.cloud.NanoMuseCloud.instance(context)?.id
+    val hasProviders = remember(providerConfig) {
+        providerConfig.instances.any { it.id != cloudId && it.isEnabled && providerRepository.hasAnyCredential(it) }
+    }
     val hasGroups = providerConfig.modelGroups.isNotEmpty()
-    // The account is required: the flow flips when the sign-in lands (or the key is revoked).
+    // The flow flips when the sign-in lands (or the key is revoked); signed out with a key of
+    // one's own the chat stays, the sign-in is an invitation under Settings.
     val signedIn by io.github.nanomuse.cloud.NanoMuseCloud.signedIn(context).collectAsState()
     val phase = when {
         !configLoaded || sessions == null || signedIn == null -> HomePhase.LOADING
@@ -503,6 +509,7 @@ fun NanoMuseHome(
                 agentName = agentName,
                 signedIn = signedIn == true,
                 hasGroups = hasGroups,
+                hasProviders = hasProviders,
                 onSignIn = { navController.safeNavigate(io.github.nanomuse.ui.cloud.ROUTE_CLOUD_SIGN_IN) },
                 onAddProvider = { navController.safeNavigate(Routes.ADD_PROVIDER) },
                 onSelectModels = { navController.safeNavigate(Routes.ONBOARDING_MODELS) },

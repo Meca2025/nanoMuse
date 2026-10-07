@@ -3828,6 +3828,15 @@ class ChatViewModel(
                         }
                     }
                 }
+                // nanoMuse: a pin on a provider switched off since (the Cloud instance above
+                // all: Settings › Models › Use nanoMuse Cloud models) must not keep answering,
+                // and spending, on it; upstream re-resolves group bindings only. Drop the
+                // provider so the default chain below runs; restoreFromBinding refuses the
+                // pin too, so a reload cannot bring it back.
+                if (pinned != null && currentProvider != null && !providerRepository.isEntryProviderEnabled(pinned.id)) {
+                    AppLogger.info(TAG, "🔀RESOLVE pinned entry=${pinned.id} provider disabled — falling back to the default")
+                    currentProvider = null
+                }
                 if (currentProvider == null && config.modelEntries.isNotEmpty()) {
                     // T306: re-attempt the persisted binding now that config
                     // has entries. For an existing session whose loadSession
@@ -4131,7 +4140,9 @@ class ChatViewModel(
                         // session whose model lives on an OAuth provider unable
                         // to restore, despite being signed in.
                         val apiKey = providerRepository.usableApiKey(instance) ?: ""
-                        if (providerRepository.hasAnyCredential(instance)) {
+                        // nanoMuse: `&& instance.isEnabled`, so a remembered model on a provider
+                        // switched off since (the Cloud instance) falls back to the default.
+                        if (providerRepository.hasAnyCredential(instance) && instance.isEnabled) {
                             currentProvider = ProviderFactory.create(instance, apiKey, entry.model, context)
                             _providerName.value = instance.label.ifEmpty { entry.model.provider }
                             resolved = true
@@ -4757,6 +4768,10 @@ class ChatViewModel(
                     // [T-android-group-resolve-skip-uncredentialed] An explicit
                     // entry pin on an OAuth provider must restore too.
                     if (!providerRepository.hasAnyCredential(instance)) return false
+                    // nanoMuse: a pin on a provider that is switched off falls back to the
+                    // default, as a group binding does; the Cloud instance switched off in
+                    // Settings › Models must not answer a chat that once pinned one of its models.
+                    if (!instance.isEnabled) return false
                     val apiKey = providerRepository.usableApiKey(instance) ?: ""
                     currentModel = entry.model
                     _modelName.value = entry.model.displayName

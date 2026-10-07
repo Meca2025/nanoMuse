@@ -1084,6 +1084,11 @@
     <string name="nm_models_new_chats">Se aplica a los chats nuevos.</string>
     <string name="nm_models_media_more">Más opciones de imágenes y clips</string>
     <string name="nm_models_media_more_sub">Escribe el nombre de un modelo, mira qué se detiene sin cada modelo o vuelve a comprobar qué modelos de vídeo puede usar una clave.</string>
+    <string name="nm_models_cloud_switch">Usar modelos de nanoMuse Cloud</string>
+    <string name="nm_models_cloud_on_sub">nanoMuse Cloud es una de las fuentes de las filas de abajo; lo que corre en ella se descuenta de tu cuota.</string>
+    <string name="nm_models_cloud_off_sub">Apagado: nada corre en nanoMuse Cloud salvo que toques \"Usar nanoMuse Cloud esta vez\". Sigues con la sesión iniciada para la sincronización y tus dispositivos.</string>
+    <string name="nm_cloud_provider_no_delete">Este proveedor es tu cuenta de nanoMuse Cloud. Apágalo arriba para dejar de usar sus modelos; para cerrar sesión, abre Ajustes › nanoMuse Cloud.</string>
+    <string name="nm_welcome_own_key">Usar mi propia clave de API</string>
     <string name="nm_useit_title">Usarla para</string>
     <string name="nm_useit_body">Elige de qué debe encargarse esta clave. nanoMuse Cloud se ocupa del resto.</string>
     <string name="nm_useit_body_signed_out">Elige de qué debe encargarse esta clave.</string>

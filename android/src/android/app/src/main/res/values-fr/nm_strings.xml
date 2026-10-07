@@ -1084,6 +1084,11 @@
     <string name="nm_models_new_chats">S’applique aux nouveaux chats.</string>
     <string name="nm_models_media_more">Plus d’options pour les images et les clips</string>
     <string name="nm_models_media_more_sub">Saisir un nom de modèle, voir ce qui s’arrête sans chaque modèle, ou revérifier quels modèles vidéo une clé peut utiliser.</string>
+    <string name="nm_models_cloud_switch">Utiliser les modèles nanoMuse Cloud</string>
+    <string name="nm_models_cloud_on_sub">nanoMuse Cloud est l’une des sources des lignes ci-dessous ; ce qui y tourne est décompté de votre quota.</string>
+    <string name="nm_models_cloud_off_sub">Désactivé : rien ne tourne sur nanoMuse Cloud sauf si vous touchez \"Utiliser nanoMuse Cloud cette fois\". Vous restez connecté pour la synchronisation et vos appareils.</string>
+    <string name="nm_cloud_provider_no_delete">Ce fournisseur est votre compte nanoMuse Cloud. Désactivez-le ci-dessus pour ne plus utiliser ses modèles ; pour vous déconnecter, ouvrez Réglages › nanoMuse Cloud.</string>
+    <string name="nm_welcome_own_key">Utiliser plutôt ma propre clé d’API</string>
     <string name="nm_useit_title">L’utiliser pour</string>
     <string name="nm_useit_body">Choisissez ce que cette clé doit prendre en charge. nanoMuse Cloud garde le reste.</string>
     <string name="nm_useit_body_signed_out">Choisissez ce que cette clé doit prendre en charge.</string>

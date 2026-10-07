@@ -27,10 +27,14 @@ object CloudRetry {
         return !NanoMuseCloud.owns(context, entry)
     }
 
-    /** The relay's recommended chat model as a provider for one turn, or null when signed out or the menu is empty. */
+    /**
+     * The relay's recommended chat model as a provider for one turn, or null when signed out or
+     * the menu is empty. The button is the person's explicit consent, so it works with Cloud
+     * models switched off ([NanoMuseCloud.modelsOn]); nothing else does.
+     */
     fun provider(context: Context): LLMProvider? {
         val repo = (context.applicationContext as? MinisApp)?.providerRepositoryOrNull ?: return null
-        val inst = NanoMuseCloud.instance(context)?.takeIf { it.isEnabled } ?: return null
+        val inst = NanoMuseCloud.instance(context) ?: return null
         val key = repo.usableApiKey(inst)?.takeIf { it.isNotBlank() } ?: return null
         val entries = ModelSlots.chatEntriesOf(context, inst)
         val wanted = NanoMuseCloud.recommendedModelId(context)

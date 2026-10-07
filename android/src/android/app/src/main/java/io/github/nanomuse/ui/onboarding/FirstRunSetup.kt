@@ -127,22 +127,25 @@ object FirstRunSetup {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /**
-     * Whether the home should show the setup instead of the chat. The account is required —
-     * it is what keeps a person's devices together and what the free model runs on — so
-     * without a sign-in the setup always comes back, as it does without any provider (the chat
-     * could not answer). Otherwise it stays only for a brand-new install — no conversation yet —
-     * until *Start* has been tapped, so the last page is a real step and the hand-off into the
-     * first conversation is deliberate.
+     * Whether the home should show the setup instead of the chat. The setup comes back when
+     * nothing could answer: no account *and* no provider of the person's own with a key
+     * ([hasProviders]). An account is one way in, a key of one's own is the other; the sign-in
+     * stays an invitation (sync, the devices, the free allowance), never a wall, so a phone
+     * with its own key works signed out. Otherwise the setup stays only for a brand-new
+     * install, no conversation yet, until *Start* has been tapped, so the last page is a real
+     * step and the hand-off into the first conversation is deliberate.
      */
     fun needed(signedIn: Boolean, hasProviders: Boolean, hasSessions: Boolean, done: Boolean): Boolean =
-        !signedIn || !hasProviders || (!hasSessions && !done)
+        (!signedIn && !hasProviders) || (!hasSessions && !done)
 
     enum class Stage { WELCOME, PASSWORD, SOURCE, MODELS, HANDS, MEET }
 
     /**
      * The page to show, from what the app has. A sign-in that *created* the account
      * ([fresh]) is followed by one short, skippable page — a password, so the next device
-     * signs in without a code; it can be set under Account later.
+     * signs in without a code; it can be set under Account later. Signed out with a
+     * provider of one's own ([hasProviders]), the account pages (password, which model
+     * answers) are skipped: the source is the key already there.
      */
     fun stage(
         signedIn: Boolean,
@@ -153,10 +156,11 @@ object FirstRunSetup {
         handsPossible: Boolean = Build.VERSION.SDK_INT >= Hands.MIN_SDK,
         fresh: Boolean = false,
         passwordAnswered: Boolean = true,
+        hasProviders: Boolean = signedIn,
     ): Stage = when {
-        !signedIn -> Stage.WELCOME
-        fresh && !passwordAnswered -> Stage.PASSWORD
-        !sourceChosen -> Stage.SOURCE
+        !signedIn && !hasProviders -> Stage.WELCOME
+        signedIn && fresh && !passwordAnswered -> Stage.PASSWORD
+        signedIn && !sourceChosen -> Stage.SOURCE
         !hasGroups && !modelsSkipped -> Stage.MODELS
         !handsSeen && handsPossible -> Stage.HANDS
         else -> Stage.MEET
@@ -182,6 +186,7 @@ fun FirstRunSetupScreen(
     onSelectModels: () -> Unit,
     onStart: () -> Unit,
     onSettings: () -> Unit,
+    hasProviders: Boolean = signedIn,
 ) {
     val context = LocalContext.current
     var modelsSkipped by remember { mutableStateOf(false) }
@@ -192,7 +197,7 @@ fun FirstRunSetupScreen(
     var passwordAnswered by remember { mutableStateOf(false) }
     val stage = FirstRunSetup.stage(
         signedIn, hasGroups, sourceChosen, modelsSkipped, handsSeen,
-        fresh = fresh, passwordAnswered = passwordAnswered,
+        fresh = fresh, passwordAnswered = passwordAnswered, hasProviders = hasProviders,
     )
     val onSurface = MaterialTheme.colorScheme.onSurface
 
@@ -222,7 +227,10 @@ fun FirstRunSetupScreen(
                 modifier = Modifier.weight(1f),
             ) { current ->
                 when (current) {
-                    FirstRunSetup.Stage.WELCOME -> WelcomePage(onSignIn = onSignIn)
+                    FirstRunSetup.Stage.WELCOME -> WelcomePage(
+                        onSignIn = onSignIn,
+                        onOwnKey = { FirstRunSetup.markSourceChosen(context); sourceChosen = true; onAddProvider() },
+                    )
                     FirstRunSetup.Stage.PASSWORD -> PasswordPage(
                         onDone = { NanoMuseCloud.clearFreshAccount(context); passwordAnswered = true; fresh = false },
                     )
@@ -243,9 +251,12 @@ fun FirstRunSetupScreen(
 
 // ── the pages ──────────────────────────────────────────────────────────────
 
-/** The first page: the app's icon, one line on what it is, the notice, and the one door — the account. */
+/**
+ * The first page: the app's icon, one line on what it is, the notice, and two doors: the
+ * account, or a key of one's own (the provider screen; the sign-in can come later).
+ */
 @Composable
-private fun WelcomePage(onSignIn: () -> Unit) {
+private fun WelcomePage(onSignIn: () -> Unit, onOwnKey: () -> Unit) {
     val context = LocalContext.current
     Page(
         hero = { io.github.nanomuse.ui.muse.NmBrandMark(size = 104.dp) }, // the face comes with the conversation, on the last page
@@ -253,6 +264,8 @@ private fun WelcomePage(onSignIn: () -> Unit) {
         subtitle = stringResource(R.string.nm_welcome_tagline),
         primaryLabel = stringResource(R.string.nm_welcome_email),
         onPrimary = onSignIn,
+        secondaryLabel = stringResource(R.string.nm_welcome_own_key),
+        onSecondary = onOwnKey,
         finePrint = stringResource(R.string.nm_welcome_fine_print),
         onLearnMore = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))) } },
     ) {

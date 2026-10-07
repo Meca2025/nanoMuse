@@ -280,9 +280,29 @@ object NanoMuseCloud {
         return !repo(context)?.loadApiKey(inst.id).isNullOrBlank()
     }
 
+    /**
+     * Whether nanoMuse Cloud is one of the model sources: signed in and the Cloud provider
+     * instance switched on (upstream's `isEnabled`, the switch Settings › Models shows as *Use
+     * nanoMuse Cloud models*). Off, no automatic choice and no side call (title, memory,
+     * pictures, clips) goes through the relay; only the explicit *Use nanoMuse Cloud this time*
+     * button does ([io.github.nanomuse.chat.CloudRetry]). The sign-in itself is untouched:
+     * sync, the hub and the account page keep working.
+     */
+    fun modelsOn(context: Context): Boolean {
+        val inst = instance(context) ?: return false
+        return inst.isEnabled && isSignedIn(context)
+    }
+
+    /** Switches the Cloud provider instance on or off as a model source; the sign-in stays. */
+    fun setModelsOn(context: Context, on: Boolean) {
+        val inst = instance(context) ?: return
+        if (inst.isEnabled == on) return
+        repo(context)?.updateInstance(inst.copy(isEnabled = on))
+    }
+
     private val _signedIn = MutableStateFlow<Boolean?>(null)
 
-    /** Whether this phone is signed in, as a flow the home screen can follow (the account is required). */
+    /** Whether this phone is signed in, as a flow the home screen can follow. */
     fun signedIn(context: Context): StateFlow<Boolean?> {
         if (_signedIn.value == null) _signedIn.value = isSignedIn(context)
         return _signedIn
