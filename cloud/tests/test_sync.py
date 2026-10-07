@@ -550,6 +550,31 @@ async def test_a_body_over_the_limit_names_both_sizes():
     assert RelaySettings(database=":memory:", secret="s").max_request_bytes == 16 * 1024 * 1024
 
 
+async def test_a_body_over_the_limit_is_refused_as_it_arrives_not_after():
+    """The relay used to read the whole body and measure it afterwards, so a client that
+    lied about (or left out) Content-Length could park any amount of memory. A declared
+    size over the limit is refused before a byte is read; a chunked body is counted as it
+    streams and cut the moment it passes the limit."""
+    app, client, sender, up, cloud, settings = make(max_request_bytes=1024)
+    key = await signed_in(client, sender)
+    seen = 0
+
+    async def body():
+        nonlocal seen
+        for _ in range(100):  # 100 KiB on offer; the relay should not want it all
+            seen += 1
+            yield b"x" * 1024
+
+    r = await client.post("/v1/sync/changes", content=body(), headers={**auth(key), "Content-Type": "application/json"})
+    assert r.status_code == 413
+    err = r.json()["error"]
+    assert err["code"] == "too_large" and err["message"] == "Request body is over 0 MB; this relay accepts up to 0 MB"
+    assert seen < 100, "the relay read the whole body before deciding"
+    # a declared size over the limit is refused without reading
+    r = await client.post("/v1/sync/changes", content=b"{}", headers={**auth(key), "Content-Length": "4096"})
+    assert r.status_code == 413 and r.json()["error"]["message"].startswith("Request body is 0.0 MB")
+
+
 async def test_deleting_the_account_purges_everything_and_the_next_sign_in_starts_empty():
     """The phone's "Delete account": nothing of the account stays on the relay — not its
     synced conversations, not its cursor, not its devices or profile, not the presence kept

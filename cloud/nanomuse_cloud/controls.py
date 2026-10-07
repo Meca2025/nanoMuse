@@ -23,6 +23,7 @@ happens here is written to ``control_audit`` (who, when, what) and shown on the 
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections.abc import Callable
 from email.message import EmailMessage
@@ -56,6 +57,10 @@ class Controls:
         self.db = db
         self.s = settings
         self._mailer = mailer
+        # notices a sign-in queued instead of sending (evaluate(defer_mail=True)): sent by
+        # flush_notices, on a thread of its own or by the minute timer
+        self._pending: list[tuple[str, list[str], str]] = []
+        self._pending_lock = threading.Lock()
         self._on: dict[str, bool] = dict.fromkeys(SWITCHES, True)
         for key, row in db.controls_all().items():
             if key in self._on:
@@ -180,19 +185,22 @@ class Controls:
         self.db.rule_delete(rule_id)
         self.db.audit_add(actor, "rule.delete", str(rule_id), f"#{rule_id}: at {int(row['threshold'])} → {row['action']}")
 
-    def evaluate(self, accounts_total: int) -> list[dict[str, Any]]:
+    def evaluate(self, accounts_total: int, *, defer_mail: bool = False) -> list[dict[str, Any]]:
         """Fire every enabled, not-yet-fired rule whose threshold the count has reached.
-        Returns the rules that fired. Called when an account is created and once a minute."""
+        Returns the rules that fired. Called when an account is created and once a minute.
+        A switch flips at once either way; with ``defer_mail`` the e-mail of a *notify*
+        rule is queued for ``flush_notices`` instead of sent here, so the sign-in that
+        crossed the line does not wait on SMTP."""
         fired: list[dict[str, Any]] = []
         for r in self.db.rules_all():
             if not r["enabled"] or r["last_fired_at"] is not None or accounts_total < int(r["threshold"]):
                 continue
             rule = self._rule_dict(r)
-            self._fire(rule, accounts_total)
+            self._fire(rule, accounts_total, defer_mail)
             fired.append(rule)
         return fired
 
-    def _fire(self, rule: dict[str, Any], total: int) -> None:
+    def _fire(self, rule: dict[str, Any], total: int, defer_mail: bool = False) -> None:
         actor = f"rule:{rule['id']}"
         t = int(time.time())
         self.db.rule_update(rule["id"], last_fired_at=t, fired_accounts=int(total))
@@ -204,16 +212,34 @@ class Controls:
         if switch is not None:
             self.set(switch, False, actor=actor, note=f"rule #{rule['id']} at {total} accounts")
         if rule["action"] == "notify":
-            self.notify(
-                f"{total} accounts: rule #{rule['id']} fired",
-                [
-                    f"The relay at {self.s.public_base} has {total} accounts; rule #{rule['id']} (threshold {rule['threshold']}) asked to be told.",
-                    f"中继 {self.s.public_base} 的账号数达到 {total}（规则 #{rule['id']}，阈值 {rule['threshold']}）。",
-                    f"Time (UTC): {time.strftime('%Y-%m-%d %H:%M', time.gmtime(t))}",
-                    f"Console: {self.s.public_base.rstrip('/')}/app/admin/#controls",
-                ],
-                actor=actor,
-            )
+            subject = f"{total} accounts: rule #{rule['id']} fired"
+            lines = [
+                f"The relay at {self.s.public_base} has {total} accounts; rule #{rule['id']} (threshold {rule['threshold']}) asked to be told.",
+                f"中继 {self.s.public_base} 的账号数达到 {total}（规则 #{rule['id']}，阈值 {rule['threshold']}）。",
+                f"Time (UTC): {time.strftime('%Y-%m-%d %H:%M', time.gmtime(t))}",
+                f"Console: {self.s.public_base.rstrip('/')}/app/admin/#controls",
+            ]
+            if defer_mail:
+                with self._pending_lock:
+                    self._pending.append((subject, lines, actor))
+            else:
+                self.notify(subject, lines, actor=actor)
+
+    def flush_notices(self) -> int:
+        """Send what ``evaluate(defer_mail=True)`` queued; how many went. Safe to call from
+        any thread and when nothing is queued."""
+        with self._pending_lock:
+            batch, self._pending = self._pending, []
+        return sum(1 for subject, lines, actor in batch if self.notify(subject, lines, actor=actor))
+
+    def flush_notices_later(self) -> bool:
+        """Send the queued notices on a thread of their own, so the request that queued
+        them answers now. The minute timer flushes too, in case this thread never ran."""
+        with self._pending_lock:
+            if not self._pending:
+                return False
+        threading.Thread(target=self.flush_notices, name="nm-notices", daemon=True).start()
+        return True
 
     # -- notify ---------------------------------------------------------------------------------
 

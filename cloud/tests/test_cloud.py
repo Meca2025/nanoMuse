@@ -1952,6 +1952,12 @@ async def test_session_keys_expire_on_their_own(stack):
     r = await client.post("/v1/auth/session-key", headers=headers, json={"ttl_s": 10**9})
     assert r.json()["expires_at"] - __import__("time").time() <= cloud.SESSION_KEY_MAX_S + 1
     assert (await client.post("/v1/auth/session-key", headers=headers, json={"ttl_s": "soon"})).status_code == 400
+    # a session key cannot mint another: a key good for two minutes would otherwise hand
+    # itself ninety days, and a leaked container key would hold the account for ever
+    before = len((await client.get("/v1/me/sessions", headers=headers)).json()["sessions"])
+    r = await client.post("/v1/auth/session-key", headers=short_headers, json={"ttl_s": 86400})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "session_from_session"
+    assert len((await client.get("/v1/me/sessions", headers=headers)).json()["sessions"]) == before
     # past its time it is no key at all — without being revoked by anyone
     key_hash = __import__("hashlib").sha256(short["api_key"].encode()).hexdigest()
     cloud.db._conn.execute("UPDATE api_keys SET expires_at=? WHERE key_hash=?", (int(__import__("time").time()) - 1, key_hash))

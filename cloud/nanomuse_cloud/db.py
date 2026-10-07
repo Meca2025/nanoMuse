@@ -632,12 +632,17 @@ class Database:
     def seed_grants(self, allowance_uy: int) -> int:
         """Accounts from before 0.5 start the new model with what they have spent so far plus
         the allowance, and keep any 0.4 credit they had not used — nobody wakes up in debt or
-        loses what an invite earned. Returns how many accounts were seeded."""
+        loses what an invite earned. Returns how many accounts were seeded.
+
+        Only accounts no 0.15+ relay has seen (``allowance_uy`` still -1) qualify: an account
+        whose pool the operator set to zero (0.16) has ``allowance_uy`` >= 0 and must stay at
+        zero across a restart, and one made under ``ALLOWANCE_CNY=0`` is reached by
+        ``raise_allowance`` when the allowance goes up, with a ledger line saying so."""
         with self.tx() as c:
             cur = c.execute(
                 """UPDATE accounts SET grant_uy = ? + MAX(0, credit_uy - credit_used_uy)
                      + (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l WHERE l.account_id=accounts.id AND l.cost_uy>0)
-                   WHERE grant_uy = 0""",
+                   WHERE grant_uy = 0 AND allowance_uy < 0""",
                 (max(0, int(allowance_uy)),),
             )
             return int(cur.rowcount or 0)
@@ -960,6 +965,18 @@ class Database:
                 "INSERT INTO ledger(account_id, ts, kind, charged, extra) VALUES (?,?,?,?,?)",
                 (account_id, now(), "credit", 0, json.dumps({"credit_uy": credit_uy, "from": "operator", "note": note[:200]})),
             )
+
+    def invite_earned_uy(self, inviter_id: str) -> int:
+        """What invites have put into this account's pool, summed from the ledger lines
+        ``record_invite`` wrote (``from: invite``), so the figure stays right when the bonus
+        changes between one invite and the next."""
+        with self._lock:
+            r = self._conn.execute(
+                "SELECT COALESCE(SUM(json_extract(extra, '$.credit_uy')), 0) FROM ledger "
+                "WHERE account_id=? AND kind='credit' AND json_extract(extra, '$.from')='invite'",
+                (inviter_id,),
+            ).fetchone()
+        return int(r[0] or 0)
 
     def invitees(self, inviter_id: str, limit: int = 50) -> list[sqlite3.Row]:
         with self._lock:

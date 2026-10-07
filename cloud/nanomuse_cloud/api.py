@@ -267,7 +267,7 @@ def create_app(
         while True:
             await asyncio.sleep(60)
             # off the loop: a *notify* rule sends an e-mail, and SMTP may take its whole timeout
-            await asyncio.to_thread(cloud.evaluate_thresholds)
+            await asyncio.to_thread(cloud.rules_tick)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -1590,22 +1590,36 @@ def create_app(
 
     # -- helpers ------------------------------------------------------------------------------------
 
+    def _too_large(size: int | None) -> CloudError:
+        # a dozen screenshots in one chat request got here (0.19): name the two sizes so
+        # the person, or the log, can tell at once which side has to give
+        limit_mb = settings.max_request_bytes / 1048576
+        said = f"Request body is {size / 1048576:.1f} MB" if size is not None else f"Request body is over {limit_mb:.0f} MB"
+        return CloudError(413, "too_large", f"{said}; this relay accepts up to {limit_mb:.0f} MB")
+
     async def _json(request: Request) -> dict:
+        """The body as a JSON object, read within MAX_REQUEST_BYTES: a declared length over
+        it is refused before a byte is read, and a body that grows past it (chunked, or a
+        length that lied) is refused as it arrives, so the relay never holds more than the
+        limit for one request."""
+        limit = settings.max_request_bytes
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > limit:
+            raise _too_large(int(declared))
+        chunks: list[bytes] = []
+        size = 0
         try:
-            raw = await request.body()
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > limit:
+                    raise _too_large(int(declared) if declared.isdigit() else None)
+                chunks.append(chunk)
         except ClientDisconnect as e:
             # the caller went away while its body was still arriving (a phone changing
             # networks, a tab closed mid-request): nobody is there to answer, and it is not
             # a server error worth a traceback in the log
             raise CloudError(400, "client_disconnected", "The request ended before its body") from e
-        if len(raw) > settings.max_request_bytes:
-            # a dozen screenshots in one chat request got here (0.19): name the two sizes so
-            # the person, or the log, can tell at once which side has to give
-            raise CloudError(
-                413,
-                "too_large",
-                f"Request body is {len(raw) / 1048576:.1f} MB; this relay accepts up to {settings.max_request_bytes / 1048576:.0f} MB",
-            )
+        raw = b"".join(chunks)
         try:
             obj = json.loads(raw or b"{}")
         except ValueError as e:

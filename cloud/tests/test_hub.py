@@ -3,8 +3,10 @@ pass calls; a second account sees nothing of it."""
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +15,7 @@ from starlette.websockets import WebSocketDisconnect
 from nanomuse_cloud.api import create_app
 from nanomuse_cloud.config import Settings
 from nanomuse_cloud.db import Database
+from nanomuse_cloud.hub import SEND_QUEUE_FRAMES, Connection
 from nanomuse_cloud.senders import LogSender
 from nanomuse_cloud.service import Cloud
 
@@ -212,6 +215,74 @@ def test_binary_and_unknown_frames_are_answered_not_fatal(client):
         assert ws.receive_json()["code"] == "bad_frame"
         ws.send_json({"type": "ping"})
         assert ws.receive_json()["type"] == "pong"  # still alive
+
+
+class _StalledSocket:
+    """A peer that reads only when told to: send_text waits on the gate."""
+
+    def __init__(self):
+        self.sent: list[str] = []
+        self.closed: tuple[int, str] | None = None
+        self.gate = asyncio.Event()
+
+    async def send_text(self, text: str) -> None:
+        await self.gate.wait()
+        self.sent.append(text)
+
+    async def close(self, code: int, reason: str = "") -> None:
+        self.closed = (code, reason)
+
+
+def _conn(ws) -> Connection:
+    return Connection(ws=ws, account_id="a", key_hash="k", device_id="pc-1", name="desk", kind="computer")
+
+
+async def test_a_send_never_waits_on_the_peer_and_order_is_kept():
+    """A slow phone used to hold the computer calling it: send awaited the phone's socket
+    inside the caller's receive loop. Now a send queues and returns; the writer drains in
+    order once the peer reads."""
+    ws = _StalledSocket()
+    conn = _conn(ws)
+    conn.start()
+    try:
+        t0 = time.monotonic()
+        for i in range(5):
+            await conn.send({"type": "event", "i": i})
+        assert time.monotonic() - t0 < 0.5 and ws.sent == [] and not conn.closed
+        ws.gate.set()
+        for _ in range(100):
+            if len(ws.sent) == 5:
+                break
+            await asyncio.sleep(0.01)
+        assert [json.loads(t)["i"] for t in ws.sent] == [0, 1, 2, 3, 4]
+        assert conn.queued_bytes == 0 and not conn.queue
+    finally:
+        conn.stop()
+
+
+async def test_a_peer_that_stops_reading_is_closed_with_4009():
+    ws = _StalledSocket()
+    conn = _conn(ws)
+    conn.start()
+    # the writer takes the first frame and blocks in send_text; the queue fills behind it
+    for i in range(SEND_QUEUE_FRAMES + 2):
+        await conn.send({"type": "event", "i": i})
+    assert conn.closed and conn.overflowed
+    for _ in range(100):
+        if ws.closed:
+            break
+        await asyncio.sleep(0.01)
+    assert ws.closed == (4009, "slow_consumer")
+    assert conn.writer is not None and (conn.writer.cancelled() or conn.writer.done())
+    # bytes count too: two frames of 12 MiB fit, the third does not
+    ws2 = _StalledSocket()
+    conn2 = _conn(ws2)
+    conn2.start()
+    big = "x" * (12 * 1024 * 1024)
+    for _ in range(3):
+        await conn2.send({"type": "event", "body": big})
+    assert conn2.overflowed and len(conn2.queue) <= 2
+    conn2.stop()
 
 
 def test_accounts_are_separate_and_frames_are_capped(client):
