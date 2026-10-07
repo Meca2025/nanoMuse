@@ -38,9 +38,9 @@
 
 ## 🗞️ 소식
 
-- **2026-10-07 · [논문](https://arxiv.org/abs/2610.08699)** — 보고서 *nanoMuse: An Open-Source Personal Agent for Every Device You Own*이 arXiv에 올라왔습니다. 개인 에이전트란 무엇인지, Muse는 어떻게 만들어졌는지, nanoMuse는 그것에 오픈소스로 어떻게 답하는지.
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — 최신 버전: iPhone의 입력창이 다시 보이고, 휴대폰의 모든 대화는 각자의 계정에 속하며, 릴레이의 모든 거절은 어느 클라이언트에서든 분명한 한 문장이나 카드로 표시됩니다. Mac은 실제 화면을 찍거나 왜 못 찍는지 말해 주고, Windows는 앱 위치를 옮긴 업데이트 뒤에도 다시 실행되며, 릴레이 콘솔에 제어, 통계, 사이트 페이지가 생겼습니다.
-- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse 공개: OpenMinis 1.13을 nanoMuse로, 첫 공개 버전입니다.
+- `2026-10-07` 📄 저희 논문이 [arXiv](https://arxiv.org/abs/2610.08699)에 공개되었습니다.
+- `2026-10-06` 🚀 최신 버전: [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40).
+- `2026-09-25` 🎉 nanoMuse를 공개했습니다.
 
 모든 버전: [releases](https://github.com/nano-muse/nanoMuse/releases).
 

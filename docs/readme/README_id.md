@@ -38,9 +38,9 @@
 
 ## 🗞️ Kabar
 
-- **2026-10-07 · [Makalah](https://arxiv.org/abs/2610.08699)** — laporan kami *nanoMuse: An Open-Source Personal Agent for Every Device You Own* sudah ada di arXiv: apa itu agen pribadi, bagaimana Muse dibangun, dan bagaimana nanoMuse menjawabnya secara terbuka.
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — versi terbaru: kolom input iPhone terlihat lagi, setiap obrolan di ponsel milik akunnya sendiri, dan setiap penolakan dari relay adalah satu kalimat jelas atau satu kartu di semua klien. Mac mengambil gambar layar yang sebenarnya atau menjelaskan kenapa tidak bisa, Windows bisa dibuka lagi setelah pembaruan yang memindahkan aplikasi, dan konsol relay punya halaman Kontrol, Statistik, dan Situs.
-- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse dirilis: OpenMinis 1.13 sebagai nanoMuse, versi publik pertama.
+- `2026-10-07` 📄 Makalah kami tersedia di [arXiv](https://arxiv.org/abs/2610.08699).
+- `2026-10-06` 🚀 Versi terbaru: [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40).
+- `2026-09-25` 🎉 nanoMuse dirilis.
 
 Semua versi: [releases](https://github.com/nano-muse/nanoMuse/releases).
 

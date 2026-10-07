@@ -38,9 +38,9 @@
 
 ## 🗞️ 动态
 
-- **2026-10-07 · [论文](https://arxiv.org/abs/2610.08699)**——我们的报告《nanoMuse: An Open-Source Personal Agent for Every Device You Own》上了 arXiv：什么是个人智能体，Muse 是怎么搭的，nanoMuse 又是怎样用开源的方式回应的。
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)**——最新版本：iPhone 的输入框重新露出来了，手机上每条聊天都归自己的账号，中继的每一次拒绝在每个客户端上都是一句直白的话或一张卡片。Mac 拍到的是屏幕的真实画面、拍不到就说明原因，Windows 在挪了安装位置的那次更新之后能再启动，中继的控制台多了「控制」「统计」「官网」三页。
-- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)**——nanoMuse 发布：把 OpenMinis 1.13 做成 nanoMuse，第一个公开版本。
+- `2026-10-07` 📄 我们的论文已发布在 [arXiv](https://arxiv.org/abs/2610.08699)。
+- `2026-10-06` 🚀 最新版本：[0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)。
+- `2026-09-25` 🎉 nanoMuse 发布。
 
 全部版本：[releases](https://github.com/nano-muse/nanoMuse/releases)。
 

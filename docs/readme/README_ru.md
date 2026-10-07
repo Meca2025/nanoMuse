@@ -38,9 +38,9 @@
 
 ## 🗞️ Новости
 
-- **2026-10-07 · [Статья](https://arxiv.org/abs/2610.08699)** — наш отчёт *nanoMuse: An Open-Source Personal Agent for Every Device You Own* опубликован на arXiv: что такое персональный агент, как устроен Muse и как nanoMuse отвечает на это открыто.
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — последняя версия: поле ввода на iPhone снова видно, каждый чат на телефоне принадлежит своему аккаунту, и каждый отказ реле — одна ясная фраза или карточка на любом клиенте. Mac делает настоящий снимок экрана или объясняет, почему не может, Windows снова запускается после обновления, которое переместило приложение, а в консоли реле появились страницы «Управление», «Статистика» и «Сайт».
-- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse выпущен: OpenMinis 1.13 как nanoMuse, первая публичная версия.
+- `2026-10-07` 📄 Наша статья доступна на [arXiv](https://arxiv.org/abs/2610.08699).
+- `2026-10-06` 🚀 Последняя версия: [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40).
+- `2026-09-25` 🎉 nanoMuse выпущен.
 
 Все версии: [releases](https://github.com/nano-muse/nanoMuse/releases).
 

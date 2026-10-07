@@ -38,9 +38,9 @@
 
 ## 🗞️ ニュース
 
-- **2026-10-07 · [論文](https://arxiv.org/abs/2610.08699)** — 私たちのレポート『nanoMuse: An Open-Source Personal Agent for Every Device You Own』が arXiv に公開されました。パーソナルエージェントとは何か、Muse はどう作られているか、nanoMuse はそれにオープンソースでどう応えるか。
-- **2026-10-06 · [0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)** — 最新版：iPhone の入力欄がまた見えるようになり、スマホ上の各チャットはそのアカウントのものになり、リレーからの拒否はどのクライアントでも分かりやすい一文かカードで表示されます。Mac は画面の実際の画像を撮るか、撮れない理由を伝えます。Windows はアプリの場所を移したアップデートの後も起動し、リレーのコンソールに「コントロール」「統計」「サイト」のページが加わりました。
-- **2026-09-25 · [0.1.1 Foundation](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.1)** — nanoMuse を公開。OpenMinis 1.13 を nanoMuse として、最初の公開版です。
+- `2026-10-07` 📄 私たちの論文が [arXiv](https://arxiv.org/abs/2610.08699) に公開されました。
+- `2026-10-06` 🚀 最新版：[0.1.40 Clear](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.40)。
+- `2026-09-25` 🎉 nanoMuse を公開しました。
 
 すべてのバージョン: [releases](https://github.com/nano-muse/nanoMuse/releases)。
 
