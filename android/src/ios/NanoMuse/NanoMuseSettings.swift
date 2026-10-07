@@ -41,26 +41,29 @@ struct NanoMuseSettingsHomeView: View {
 
     // MARK: Card 1 — the model
 
-    private var defaultGroup: ModelGroup? {
-        guard let id = store.defaultPrimaryGroupId else { return nil }
-        return store.group(for: id)
+    /// The chat slot's line, `<provider> · <model>`, under the card's title.
+    private var chatLine: String? {
+        _ = store.modelGroups
+        _ = store.instances
+        return NanoMuseModelSlots.line(.chat)
     }
 
     private var modelCard: some View {
         NanoMuseCard {
             NavigationLink {
-                ModelGroupsView()
+                NanoMuseModelsView()
             } label: {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(defaultGroup?.name ?? AppLocalized("No model yet"))
+                        Text(AppLocalized("Models"))
                             .font(.headline)
                             .foregroundStyle(.primary)
                             .lineLimit(1)
-                        Text(defaultGroup == nil ? AppLocalized("Add a provider and pick its models") : AppLocalized("Model Groups"))
+                        Text(chatLine ?? AppLocalized("Add a provider and pick its models"))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                            .truncationMode(.middle)
                     }
                     Spacer(minLength: 8)
                     Text(AppLocalized("Change"))

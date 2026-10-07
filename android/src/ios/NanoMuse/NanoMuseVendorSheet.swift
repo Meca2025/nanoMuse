@@ -125,8 +125,9 @@ enum NanoMuseVendorSetup {
     }
 
     /// A group named after the vendor with its chat default first (only if none of ours has
-    /// that model); the default group is set when the person had none; a vendor that draws
-    /// becomes the face's image route when none was chosen.
+    /// that model), so the group picker and the per-chat picker list the provider. The
+    /// default group is set only when the person had none at all: which slots the new key
+    /// takes over is the "Use it for" card's question (0.1.41), not a side effect of saving.
     private static func adoptDefaults(_ inst: ProviderInstance, vendor: NanoMuseVendor) {
         let store = ProviderConfigStore.shared
         let entries = store.entries(for: inst.id).filter { !$0.isHidden }
@@ -134,14 +135,11 @@ enum NanoMuseVendorSetup {
         let chat = entries.first { $0.model.id == wanted }
             ?? entries.first { !wanted.isEmpty && $0.model.id.hasSuffix("/" + wanted) }
             ?? entries.first { $0.model.id.lowercased().contains("deepseek") && NanoMuseVision.deepSeekSees($0.model.id.lowercased()) == true }
-            ?? entries.first { !NanoMuseImageGen.drawsNatively($0.model.id) && $0.model.capabilities.supportedModalities.contains(.textOutput) }
+            ?? entries.first { NanoMuseModelSlots.chats($0) }
         if let chat, !store.modelGroups.contains(where: { $0.memberEntryIds.contains(chat.id) }) {
             let group = ModelGroup(name: inst.label, memberEntryIds: [chat.id])
             store.addGroup(group)
             if store.defaultPrimaryGroupId == nil { store.defaultPrimaryGroupId = group.id }
-        }
-        if vendor.capabilities.contains("image"), vendor.id == NanoMuseCatalogue.bailian {
-            NanoMuseImageGen.save(instanceId: inst.id, model: NanoMuseImageGen.suggestedModel(for: inst))
         }
     }
 }
@@ -161,6 +159,8 @@ struct NanoMuseVendorSheet: View {
     @State private var message: String?
     @State private var kimi = false
     @State private var kimiInstanceId = UUID().uuidString
+    /// The provider just saved: the form gives way to the "Use it for" card (0.1.41).
+    @State private var saved: ProviderInstance?
 
     private var mainland: Bool { NanoMuseRegion.isMainland }
     private var chinese: Bool { NanoMuseCatalogue.chinese }
@@ -169,109 +169,131 @@ struct NanoMuseVendorSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let auth {
-                    Section {
-                        Button {
-                            if auth == NanoMuseCatalogue.authKimi { kimiInstanceId = UUID().uuidString; kimi = true } else { Task { await runSignIn(auth) } }
-                        } label: {
-                            HStack {
-                                Label(String(format: AppLocalized("Sign in with %@"), NanoMuseCatalogue.planName(auth: auth, vendor: vendor, chinese: chinese)), systemImage: "person.crop.circle.badge.checkmark")
-                                if busy { Spacer(); ProgressView() }
-                            }
-                        }
-                        .disabled(busy)
-                    } header: {
-                        Text(AppLocalized("A plan you already pay for"))
-                    } footer: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(String(format: AppLocalized("Covers %@."), NanoMuseCatalogue.covers(vendor.capabilitiesFor(auth))))
-                            if auth == NanoMuseCatalogue.authChatGPT {
-                                Text(NanoMuseAllowance.storedGuidance()?.caveat(chinese: chinese).nilIfEmpty ?? AppLocalized("OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does."))
-                            }
-                        }
+            Group {
+                if let saved {
+                    NanoMuseUseItForView(instance: saved) {
+                        onDone(saved)
+                        dismiss()
                     }
+                } else {
+                    form
                 }
-                if vendor.local {
-                    Section {
-                        TextField(AppLocalized("Address"), text: $address)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .keyboardType(.URL)
-                            .disabled(busy)
-                        Button {
-                            Task { await saveLocal() }
-                        } label: {
-                            HStack {
-                                Text(AppLocalized("Use this server"))
-                                if busy { Spacer(); ProgressView() }
-                            }
-                        }
-                        .disabled(busy || address.trimmingCharacters(in: .whitespaces).isEmpty)
-                    } header: {
-                        Text(AppLocalized("On a computer of your own"))
-                    } footer: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            if let message { Text(message).foregroundStyle(.red) }
-                            Text(AppLocalized("The phone must reach the computer: the same Wi-Fi, or a tunnel. Nothing leaves your network."))
-                            let note = vendor.note(chinese: chinese)
-                            if !note.isEmpty { Text(note) }
-                        }
-                    }
-                }
-                if vendor.takesKey {
-                    Section {
-                        SecureField(vendor.keyHint.map { String(format: AppLocalized("Paste the API key (%@)"), $0) } ?? AppLocalized("Paste the API key"), text: $key)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .disabled(busy)
-                        Button {
-                            Task { await save() }
-                        } label: {
-                            HStack {
-                                Text(AppLocalized("Use this key"))
-                                if busy { Spacer(); ProgressView() }
-                            }
-                        }
-                        .disabled(busy || key.trimmingCharacters(in: .whitespaces).isEmpty)
-                        if let url = URL(string: vendor.keyURL(mainland: mainland)), !vendor.keyURL(mainland: mainland).isEmpty {
-                            Button {
-                                openURL(url)
-                            } label: {
-                                Label(AppLocalized("Get a key"), systemImage: "arrow.up.right.square")
-                            }
-                        }
-                    } header: {
-                        Text(AppLocalized("A key of your own"))
-                    } footer: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            if let message {
-                                Text(message).foregroundStyle(.red)
-                            } else {
-                                Text(String(format: AppLocalized("The key stays on this phone and is sent only to %@. Covers %@."), NanoMuseProxy.hostOf(vendor.baseURL(mainland: mainland)) ?? name, NanoMuseCatalogue.covers(vendor.capabilities)))
-                            }
-                            let note = vendor.note(chinese: chinese)
-                            if !note.isEmpty { Text(note) }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(name)
-            .navigationBarTitleDisplayMode(.inline)
-            .onAppear { if address.isEmpty { address = vendor.baseURL } }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Cancel")) { dismiss() } }
             }
             .sheet(isPresented: $kimi) {
                 KimiDeviceLoginSheet(instanceId: kimiInstanceId) { success in
                     guard success else { return }
                     Task {
                         let inst = await NanoMuseVendorSetup.finishSignIn(vendor, auth: NanoMuseCatalogue.authKimi, instanceId: kimiInstanceId, mainland: mainland, chinese: chinese)
-                        onDone(inst)
-                        dismiss()
+                        finish(inst)
                     }
                 }
             }
+        }
+    }
+
+    /// After a save: the "Use it for" card when the provider can take a slot, else straight out.
+    private func finish(_ inst: ProviderInstance?) {
+        if let inst, NanoMuseUseItForView.worthAsking(inst) {
+            saved = inst
+        } else {
+            onDone(inst)
+            dismiss()
+        }
+    }
+
+    private var form: some View {
+        Form {
+            if let auth {
+                Section {
+                    Button {
+                        if auth == NanoMuseCatalogue.authKimi { kimiInstanceId = UUID().uuidString; kimi = true } else { Task { await runSignIn(auth) } }
+                    } label: {
+                        HStack {
+                            Label(String(format: AppLocalized("Sign in with %@"), NanoMuseCatalogue.planName(auth: auth, vendor: vendor, chinese: chinese)), systemImage: "person.crop.circle.badge.checkmark")
+                            if busy { Spacer(); ProgressView() }
+                        }
+                    }
+                    .disabled(busy)
+                } header: {
+                    Text(AppLocalized("A plan you already pay for"))
+                } footer: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(String(format: AppLocalized("Covers %@."), NanoMuseCatalogue.covers(vendor.capabilitiesFor(auth))))
+                        if auth == NanoMuseCatalogue.authChatGPT {
+                            Text(NanoMuseAllowance.storedGuidance()?.caveat(chinese: chinese).nilIfEmpty ?? AppLocalized("OpenAI's terms cover using a ChatGPT plan inside OpenAI's own Codex; other apps have had this access cut off before (OpenCode, January 2026). If it stops working, an API key does."))
+                        }
+                    }
+                }
+            }
+            if vendor.local {
+                Section {
+                    TextField(AppLocalized("Address"), text: $address)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                        .disabled(busy)
+                    Button {
+                        Task { await saveLocal() }
+                    } label: {
+                        HStack {
+                            Text(AppLocalized("Use this server"))
+                            if busy { Spacer(); ProgressView() }
+                        }
+                    }
+                    .disabled(busy || address.trimmingCharacters(in: .whitespaces).isEmpty)
+                } header: {
+                    Text(AppLocalized("On a computer of your own"))
+                } footer: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let message { Text(message).foregroundStyle(.red) }
+                        Text(AppLocalized("The phone must reach the computer: the same Wi-Fi, or a tunnel. Nothing leaves your network."))
+                        let note = vendor.note(chinese: chinese)
+                        if !note.isEmpty { Text(note) }
+                    }
+                }
+            }
+            if vendor.takesKey {
+                Section {
+                    SecureField(vendor.keyHint.map { String(format: AppLocalized("Paste the API key (%@)"), $0) } ?? AppLocalized("Paste the API key"), text: $key)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .disabled(busy)
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        HStack {
+                            Text(AppLocalized("Use this key"))
+                            if busy { Spacer(); ProgressView() }
+                        }
+                    }
+                    .disabled(busy || key.trimmingCharacters(in: .whitespaces).isEmpty)
+                    if let url = URL(string: vendor.keyURL(mainland: mainland)), !vendor.keyURL(mainland: mainland).isEmpty {
+                        Button {
+                            openURL(url)
+                        } label: {
+                            Label(AppLocalized("Get a key"), systemImage: "arrow.up.right.square")
+                        }
+                    }
+                } header: {
+                    Text(AppLocalized("A key of your own"))
+                } footer: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let message {
+                            Text(message).foregroundStyle(.red)
+                        } else {
+                            Text(String(format: AppLocalized("The key stays on this phone and is sent only to %@. Covers %@."), NanoMuseProxy.hostOf(vendor.baseURL(mainland: mainland)) ?? name, NanoMuseCatalogue.covers(vendor.capabilities)))
+                        }
+                        let note = vendor.note(chinese: chinese)
+                        if !note.isEmpty { Text(note) }
+                    }
+                }
+            }
+        }
+        .navigationTitle(name)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { if address.isEmpty { address = vendor.baseURL } }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button(AppLocalized("Cancel")) { dismiss() } }
         }
     }
 
@@ -282,8 +304,7 @@ struct NanoMuseVendorSheet: View {
             message = AppLocalized("Nothing to add")
             return
         }
-        onDone(inst)
-        dismiss()
+        finish(inst)
     }
 
     private func saveLocal() async {
@@ -293,8 +314,7 @@ struct NanoMuseVendorSheet: View {
             message = AppLocalized("That is not an address the phone can reach.")
             return
         }
-        onDone(inst)
-        dismiss()
+        finish(inst)
     }
 
     private func runSignIn(_ auth: String) async {
@@ -302,8 +322,7 @@ struct NanoMuseVendorSheet: View {
         defer { busy = false }
         do {
             let inst = try await NanoMuseVendorSetup.signIn(vendor, auth: auth, mainland: mainland, chinese: chinese)
-            onDone(inst)
-            dismiss()
+            finish(inst)
         } catch {
             message = error.localizedDescription
         }

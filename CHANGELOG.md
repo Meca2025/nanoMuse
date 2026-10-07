@@ -60,6 +60,8 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The star card showed the sentence set in the relay's console** (`star.text`, `star.text_zh` for a Chinese UI) when the operator set one, as on Android; the title and the buttons stay the app's.
 - **Chinese copy writes 非营利 / 非營利** (not 非盈利) in the welcome and Cloud notices.
 - ***Report a bug* fills in the issue form's own fields** (where, version, iOS version and model) instead of a plain `body`, which the form drops.
+- **Settings › Models showed four rows: Chat, Operating the screen (not on iPhone), Making pictures, Making clips**, each with its provider and model and a picker grouped nanoMuse Cloud first, then your own providers that can do it; picking a chat model changed the default for new chats, for any provider, and the page said so. Pictures and clips followed one order when nothing was chosen: the chat provider's own default, then nanoMuse Cloud, then the first key that can, with the models taken from the catalogue.
+- **After a key was saved, a *Use it for* card asked which slots it should take**, all switched on, with *Use it* and *Not now*; saving alone no longer switched anything. When a model of your own failed, the card offered *Use nanoMuse Cloud this time* while signed in, retrying that one request on the relay without changing a slot.
 
 ### Project
 

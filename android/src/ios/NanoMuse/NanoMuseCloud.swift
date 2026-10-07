@@ -329,7 +329,9 @@ enum NanoMuseCloud {
         // The models the relay serves — the same `/v1/models` call every provider gets; the
         // relay includes modalities so a picture model is recognised as one.
         await store.refreshModels(for: inst)
-        provisionDefaults(store: store, instance: inst, models: reply["models"] as? [[String: Any]] ?? [])
+        let menu = reply["models"] as? [[String: Any]] ?? []
+        NanoMuseRelayMenu.store(menu) // the pickers' Cloud group (Settings › Models) reads it without a round trip
+        provisionDefaults(store: store, instance: inst, models: menu)
 
         let parsed = parseAccount(reply)
         account = parsed
@@ -548,6 +550,7 @@ enum NanoMuseCloud {
         UserDefaults.standard.removeObject(forKey: Keys.instance)
         UserDefaults.standard.removeObject(forKey: Keys.account)
         UserDefaults.standard.removeObject(forKey: Keys.fresh)
+        NanoMuseRelayMenu.forget()
         NanoMuseAllowance.shared.forget() // the pinned card, the heads-up and the guidance were this account's
         // another account's devices and their connections are not ours to list
         NanoMuseProfileSync.shared.forget()

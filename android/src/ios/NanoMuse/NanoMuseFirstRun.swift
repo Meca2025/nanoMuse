@@ -178,7 +178,7 @@ struct NanoMuseFirstRunView: View {
             onSecondary: { NanoMuseFirstRun.markSourceChosen(); sourceChosen = true; showOwnKey = true },
             finePrint: AppLocalized("The two do not compete: the Cloud model stays available, and each model group picks its own.")
         ) {
-            NanoMuseFeatureRow(symbol: "cloud", title: AppLocalized("Use the nanoMuse Cloud model"), subtitle: AppLocalized("DeepSeek for chat and Qwen for the hands, with a free allowance per account paid by the developer. Nothing to configure."))
+            NanoMuseFeatureRow(symbol: "cloud", title: AppLocalized("Use the nanoMuse Cloud model"), subtitle: AppLocalized("DeepSeek for chat, with pictures and clips too, and a free allowance per account paid by the developer. Nothing to configure."))
             NanoMuseFeatureRow(symbol: "key", title: AppLocalized("I have my own API key"), subtitle: AppLocalized("Alibaba Cloud Bailian, OpenRouter, OpenAI, Anthropic, DeepSeek and other OpenAI-compatible endpoints. The key stays on this phone."))
         }
     }

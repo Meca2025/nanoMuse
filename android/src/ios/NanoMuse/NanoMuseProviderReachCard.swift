@@ -150,6 +150,12 @@ struct NanoMuseProviderReachCard: View {
 
     // MARK: - Actions
 
+    /// A key of one's own failed and the relay could take this one turn: the slots stay as
+    /// they are, the retry runs on nanoMuse Cloud (NanoMuseCloudOnce). Not for the relay's own failures.
+    private var cloudOnce: Bool {
+        onRetry != nil && reach.kind != .relay && !NanoMuseProxy.isRelayHost(reach.host) && NanoMuseCloudOnce.available
+    }
+
     @ViewBuilder
     private var actions: some View {
         HStack(spacing: 8) {
@@ -159,11 +165,13 @@ struct NanoMuseProviderReachCard: View {
                 }
                 .buttonStyle(.borderedProminent).tint(NanoMuseTones.action).controlSize(.small)
                 if let onRetry { Button(AppLocalized("Try again"), action: onRetry).buttonStyle(.plain).font(.footnote).foregroundStyle(NanoMuseTones.action) }
+                if cloudOnce { NanoMuseCloudOnceButton(onRetry: onRetry) }
             } else {
                 if let onRetry {
                     Button(AppLocalized("Try again"), action: onRetry)
                         .buttonStyle(.borderedProminent).tint(NanoMuseTones.action).controlSize(.small)
                 }
+                if cloudOnce { NanoMuseCloudOnceButton(onRetry: onRetry) }
                 if reach.kind == .unreachable || reach.kind == .regionBlocked {
                     Button {
                         network = true
@@ -183,5 +191,36 @@ struct NanoMuseProviderReachCard: View {
             }
         }
         .padding(.top, 2)
+    }
+}
+
+// MARK: - "Use nanoMuse Cloud this time"
+
+/// The small action that arms a one-turn fallback to the relay and retries; nothing in
+/// Settings › Models changes.
+struct NanoMuseCloudOnceButton: View {
+    var onRetry: (() -> Void)?
+
+    var body: some View {
+        Button {
+            NanoMuseCloudOnce.arm()
+            onRetry?()
+        } label: {
+            Label(AppLocalized("Use nanoMuse Cloud this time"), systemImage: "cloud").font(.footnote)
+        }
+        .buttonStyle(.plain).foregroundStyle(NanoMuseTones.action)
+    }
+}
+
+/// The same under upstream's plain inline error, which has no provider card: shown when the
+/// relay is signed in and can answer, and the failing model was not the relay's own.
+struct NanoMuseCloudOnceRow: View {
+    var onRetry: (() -> Void)?
+
+    var body: some View {
+        if onRetry != nil, NanoMuseCloudOnce.available, !NanoMuseCloudOnce.lastTurnWasCloud {
+            NanoMuseCloudOnceButton(onRetry: onRetry)
+                .padding(.top, 2)
+        }
     }
 }

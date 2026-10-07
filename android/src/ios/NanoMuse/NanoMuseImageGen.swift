@@ -36,15 +36,39 @@ enum NanoMuseImageGen {
     static let defaultsModelKey = "nanomuse.avatar.model"
     static let defaultsInstanceKey = "nanomuse.avatar.instance"
     private static let defaultsPreferRelayKey = "nanomuse.avatar.prefer_relay"
+    private static let defaultsRelayModelKey = "nanomuse.avatar.relay_model"
 
-    /// The person chose nanoMuse Cloud for pictures although a Bailian key is on this phone
-    /// (Settings → Image & video models). Off by default: a key of one's own draws first.
+    /// The person chose nanoMuse Cloud for pictures (Settings › Models, or the older Image &
+    /// video models page). An explicit choice: it wins over any key on the phone while signed in.
     static var preferRelay: Bool {
         get { UserDefaults.standard.bool(forKey: defaultsPreferRelayKey) }
         set { UserDefaults.standard.set(newValue, forKey: defaultsPreferRelayKey) }
     }
-    /// ¥0.18 a picture; the Pro tier draws the same face for more.
-    static let recommendedBailianModel = "qwen-image-3.0"
+
+    /// The relay's image model the person picked (0.1.41); nil for the relay's own first choice.
+    static var relayModel: String? {
+        let s = UserDefaults.standard.string(forKey: defaultsRelayModelKey)?.trimmingCharacters(in: .whitespaces) ?? ""
+        return s.isEmpty ? nil : s
+    }
+
+    /// Pictures through nanoMuse Cloud from now on, with `model` when the person picked one.
+    @MainActor
+    static func useRelay(model: String? = nil) {
+        preferRelay = true
+        UserDefaults.standard.set(model?.trimmingCharacters(in: .whitespaces) ?? "", forKey: defaultsRelayModelKey)
+    }
+
+    /// The relay's image model for the next picture: the one picked, else the first the menu lists.
+    @MainActor
+    static func relayImageModel() async throws -> String {
+        if let model = relayModel { return model }
+        return try await NanoMuseRelayMedia.imageModel()
+    }
+    /// The catalogue's `defaults.image` for Bailian (¥0.18 a picture; the Pro tier draws the
+    /// same face for more); the known id only if the catalogue is missing.
+    static var recommendedBailianModel: String {
+        NanoMuseCatalogue.bundled.first { $0.id == NanoMuseCatalogue.bailian }?.defaults["image"] ?? "qwen-image-3.0"
+    }
 
     private static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
@@ -88,17 +112,19 @@ enum NanoMuseImageGen {
         }
     }
 
-    /// Where the next picture is drawn.
+    /// Where the next picture is drawn (0.1.41, the contract's section 3): the person's choice
+    /// first; without one, the chat provider's own image model when the chat runs on a key of
+    /// their own that draws, then nanoMuse Cloud when signed in, then the first key on the
+    /// phone that draws. Cloud no longer loses to a Bailian key the person did not pick, and a
+    /// Bailian key the person did pick is never passed over for Cloud. `.relay` when nothing
+    /// can draw: the relay call then says *Sign in to nanoMuse Cloud first*.
     @MainActor
     static func route() -> Route {
         let candidates = bailianInstances()
-        guard !candidates.isEmpty else { return .relay }
-        if preferRelay, NanoMuseCloud.isSignedIn { return .relay }
-        let savedId = UserDefaults.standard.string(forKey: defaultsInstanceKey)
-        let inst = candidates.first { $0.id == savedId } ?? candidates[0]
-        guard let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty else { return .relay }
-        let saved = UserDefaults.standard.string(forKey: defaultsModelKey)?.trimmingCharacters(in: .whitespaces)
-        let model = (savedId == inst.id && saved?.isEmpty == false) ? saved! : suggestedModel(for: inst)
+        guard let resolved = NanoMuseModelSlots.imageValue() else { return .relay }
+        guard let inst = candidates.first(where: { $0.id == resolved.providerId }),
+              let key = ProviderKeychainHelper.loadAPIKey(instanceId: inst.id), !key.isEmpty else { return .relay }
+        let model = resolved.model.isEmpty ? suggestedModel(for: inst) : resolved.model
         return .ownKey(OwnKey(instanceId: inst.id, label: inst.label, baseURL: inst.customBaseURL ?? "", apiKey: key, model: model))
     }
 
@@ -147,7 +173,7 @@ enum NanoMuseImageGen {
     static func generate(prompt: String) async throws -> UIImage {
         switch route() {
         case .relay:
-            let model = try await NanoMuseRelayMedia.imageModel()
+            let model = try await relayImageModel()
             return try await NanoMuseRelayMedia.generate(prompt: prompt, model: model)
         case .ownKey(let k):
             var parameters: [String: Any] = ["size": "1024*1024", "watermark": false]
@@ -160,7 +186,7 @@ enum NanoMuseImageGen {
     static func edit(_ image: UIImage, prompt: String) async throws -> UIImage {
         switch route() {
         case .relay:
-            let model = try await NanoMuseRelayMedia.imageModel()
+            let model = try await relayImageModel()
             return try await NanoMuseRelayMedia.edit(image, prompt: prompt, model: model)
         case .ownKey(let k):
             // qwen-image-3.x, wan-image and qwen-image-edit-* take a picture themselves; an
