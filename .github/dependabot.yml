@@ -20,7 +20,8 @@ updates:
   # should not sit on one past its end of life again. @types/node follows Electron's Node,
   # Vite follows electron-vite's peer range, TypeScript's majors are a hand upgrade.
   - package-ecosystem: npm
-    directory: /desktop/app
+    # the Electron shell (npm), the dsh plugin (pnpm) and the docs site (npm)
+    directories: ["/harness/desktop", "/harness/dsh-nanomuse", "/website"]
     schedule:
       interval: monthly
     groups:

@@ -114,6 +114,13 @@ RELAY_BIND=0.0.0.0 docker compose -f docker-compose.yml -f docker-compose.local.
 Back up `data/cloud.db` together with `CLOUD_SECRET`: the hashes are useless
 without the secret, and the secret alone is useless without the database.
 
+The visitor's address — what the per-address limits on codes and sign-ins key on,
+and what the operator's page shows — is the first hop of `X-Forwarded-For` when
+the request came through a proxy on the same box or network (Caddy, a tailnet:
+every loopback, private, link-local or shared address, or the list in
+`TRUSTED_PROXIES`), else the socket's peer. A relay reached directly from the
+internet ignores the header, so a request cannot name its own address.
+
 Point the app at it: in nanoMuse, *Sign in — free* → enter a phone number or an e-mail → code.
 The app stores the key in its encrypted preferences and sets up a provider
 with `PUBLIC_BASE` as its base URL. Nothing else in the app changes; you can

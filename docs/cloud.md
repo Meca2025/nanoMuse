@@ -394,10 +394,11 @@ The relay is also the meeting point for the account's devices — the **hub** at
 turns it off, `HUB_FRAME_LIMIT` caps one frame (files and screenshots travel
 inside frames, 16 MB by default).
 
-The Android app talks to `https://cloud.nanomuse.cn` by default. A debug build
-shows a *Relay* field on the sign-in screen for pointing at another one (on the
-emulator, the host machine is `http://10.0.2.2:8787`). Making the relay address
-a user-facing setting in release builds is on the roadmap.
+The apps talk to `https://cloud.nanomuse.cn` by default. *Use a different
+server* under the phone's sign-in form takes the address of a relay you run
+yourself ([android.md](android.md), [ios.md](ios.md)); the desktop reads it from
+the plugin's `config.baseURL` ([desktop.md](desktop.md)) and the web console is
+whatever relay serves it at `/app`.
 
 ## Protocol
 

@@ -272,6 +272,22 @@ _UNLISTED_MODALITIES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
 }
 
 
+# Where a reverse proxy in front of the relay can be: loopback, the private ranges, the
+# shared range carrier-grade NAT and tailnets use, link-local. uvicorn believes
+# X-Forwarded-For from these peers only (TRUSTED_PROXIES replaces the list).
+NON_GLOBAL_NETWORKS: tuple[str, ...] = (
+    "127.0.0.0/8",
+    "::1/128",
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "100.64.0.0/10",
+    "169.254.0.0/16",
+    "fc00::/7",
+    "fe80::/10",
+)
+
+
 def _env(name: str, default: str = "") -> str:
     v = os.environ.get(name)
     return default if v is None or v == "" else v
@@ -348,6 +364,11 @@ class Settings:
     # since 0.20: a computer-use turn carries a few screenshots, and the apps now keep at most
     # four and scale them down, so a body that still passes this is a bug on their side.
     max_request_bytes: int = field(default_factory=lambda: _int("MAX_REQUEST_BYTES", 16 * 1024 * 1024))
+    # Whose X-Forwarded-For to believe: the proxy in front (Caddy on the same box or network,
+    # a tailnet). Comma-separated addresses or networks; empty = every loopback, private,
+    # link-local and shared (100.64/10) address. A relay reached straight from the internet
+    # then ignores the header, so a request cannot name its own address.
+    trusted_proxies: str = field(default_factory=lambda: _env("TRUSTED_PROXIES"))
     # Requests under way for one account at the same time (0 = no cap). Each holds a
     # reservation against the allowance while it runs — a picture's or a clip's known price,
     # a chat's typical one — so several requests cannot each pass the check and together
@@ -502,6 +523,12 @@ class Settings:
     # 0.22: where a threshold rule's *notify* goes (controls.py), through the SMTP settings
     # above; empty = the rule writes its audit line and the log says there was nobody to tell.
     admin_email: str = field(default_factory=lambda: _env("ADMIN_EMAIL"))
+
+    @property
+    def trusted_proxy_list(self) -> list[str]:
+        """TRUSTED_PROXIES as a list, else the non-global networks (client.py agrees)."""
+        given = [x.strip() for x in self.trusted_proxies.split(",") if x.strip()]
+        return given or list(NON_GLOBAL_NETWORKS)
 
     @property
     def github_repo_path(self) -> str:

@@ -21,8 +21,8 @@ export const strings = {
   setup_own_key: '我有自己的 API key',
   setup_own_server: '连接自己的 nanoMuse',
   welcome_get_app: '这是模拟器里的演示；完整体验请下载 App',
-  welcome_notice_title: '免费 · 开源 · 非盈利',
-  welcome_notice: 'nanoMuse 是非盈利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。',
+  welcome_notice_title: '免费 · 开源 · 非营利',
+  welcome_notice: 'nanoMuse 是非营利的开源社区项目，永久免费。模型自带一份由开发者承担的免费额度，用完换自己的 key。数据不会出售；服务器保存什么写在隐私政策里，「设置 → 数据控制」由你决定。',
   welcome_notice_closing: '发现问题、想要新功能、愿意改代码，都欢迎到 GitHub 上提。',
   // the sign-in before a Muse on the showcase (nm_welcome_email / nm_cloud_* on Android)
   welcome_signin: '登录，免费开始',

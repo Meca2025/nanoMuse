@@ -14,7 +14,7 @@ from nanomuse.triggers import TriggerStore, matches
 
 def test_matches_needs_every_word_anywhere():
     assert matches("", "anything")
-    assert matches("landlord", "From: The Landlord <l@x.io>", "Subject: rent")
+    assert matches("landlord", "From: The Landlord <l@landlord.example>", "Subject: rent")
     assert matches("landlord rent", "The Landlord", "about the RENT")
     assert not matches("landlord rent", "The Landlord", "about the flat")
     assert matches("房东", "房东 <fd@example.cn>", "本月房租")
@@ -235,7 +235,7 @@ async def test_mail_watcher_reads_new_messages_by_uid(monkeypatch: pytest.Monkey
     server = _TinyImap(messages)
     server.start()
     settings.imap_port = server.port
-    settings.address = "someone@else.com"
+    settings.address = "someone@else.example"
     with pytest.raises(RuntimeError, match="IMAP error"):
         await watcher.look(40)
     # no credentials at all

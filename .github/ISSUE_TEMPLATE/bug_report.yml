@@ -1,5 +1,5 @@
-name: Bug report (Python line)
-description: Something in the Python package, the web app or the showcase does not work the way the docs say it does.
+name: Bug report
+description: Something in the runtime, the web console, the desktop app, the iPhone app, the relay or the showcase does not work the way the docs say it does. (The Android app has its own form.)
 labels: ["bug"]
 body:
   - type: markdown
@@ -38,11 +38,15 @@ body:
     attributes:
       label: Where
       options:
-        - Phone / web app (nanomuse serve)
+        - Web console (nanomuse serve)
+        - Desktop app
+        - iPhone app
+        - nanoMuse Cloud (the relay)
         - Terminal (nanomuse chat / run)
         - Daemon (nanomuse daemon / goals run)
         - Docker
         - Library / API
+        - The showcase (demo.nanomuse.dev)
     validations:
       required: true
   - type: input
@@ -53,8 +57,8 @@ body:
   - type: input
     id: os
     attributes:
-      label: OS and Python
-      description: e.g. macOS 15 / Python 3.12, Ubuntu 24.04 / Docker
+      label: OS and runtime
+      description: e.g. macOS 15 / Python 3.12, Ubuntu 24.04 / Docker, Windows 11 / desktop 0.1.40, iOS 18 / iPhone 15
   - type: textarea
     id: logs
     attributes:

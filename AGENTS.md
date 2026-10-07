@@ -39,6 +39,7 @@ cd web && npm ci && npm run check && npm run build
 
 # Desktop plugin (harness/dsh-nanomuse/)
 cd harness/dsh-nanomuse && pnpm install --frozen-lockfile && pnpm build && pnpm typecheck && pnpm test
+# from the repository root (the scripts live in scripts/, not in the plugin)
 node scripts/connectors-json.mjs --check        # the phones' copies of the connectors catalogue are current
 node scripts/providers-json.mjs --check         # the clients' copies of the provider catalogue are current
 
