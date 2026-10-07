@@ -39,7 +39,9 @@ import { PageBar } from "../components/BackBar";
 import { ChatGptSignIn } from "../components/ChatGptSignIn";
 import { CloudCard } from "../components/CloudCard";
 import { Card, inputCls, primaryBtn, secondaryBtn } from "../components/Form";
+import { ModelPicker } from "../components/ModelPicker";
 import { getLocale, useT } from "../i18n";
+import type { ModelGroup } from "../model-list";
 import { useStore } from "../store";
 import { CLOUD_ID, CLOUD_KEY_REF, CUSTOM_ID, currentChoice, handsValue, mediaChoices, slotValue, type MediaChoice } from "../models";
 import { CATALOGUE, catalogueIdFor, coversLine, editionFor, invalidateProviders, presetFor, providerName, regionOf, unavailableLine, type Capability } from "../providers";
@@ -415,6 +417,11 @@ export function ModelCard({
       ...models.list.filter((m) => models.vision.includes(m) || modelSees(m) === true),
     ]),
   ).filter(Boolean);
+  // the hands picker's one group: this provider's models that see, the catalogue's hands
+  // default first (the relay's recommended one on nanoMuse Cloud), folded past eight
+  const handsProviderLabel = p?.cloud ? "nanoMuse Cloud" : catalogueEntry ? providerName(catalogueEntry, locale) : hostOf(effectiveUrl) || preset;
+  const handsPreset = p?.cloud ? (models.gui[0] ?? p.gui_model ?? "") : (catalogueEntry?.defaults.hands ?? p?.gui_model ?? "");
+  const handsGroups: ModelGroup[] = [{ key: "hands", label: handsProviderLabel, rows: handsOptions.map((id) => ({ id, name: id })), ...(handsPreset ? { default: handsPreset } : {}) }];
   const willAppendV1 = needsUrl && /^https?:\/\/[^/]+\/?$/.test(baseUrl.trim());
 
   return (
@@ -636,15 +643,16 @@ export function ModelCard({
               : t("The model that looks at screens when the hands run: a small, fast one that takes pictures, on the same endpoint and key. Default: this provider's own hands model.")
         }
       >
-        <select value={guiModel} onChange={(e) => setGuiModel(e.target.value)} className={cx(inputCls, "text-fg")}>
-          <option value="">{t("Automatic")}</option>
-          {handsOptions.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-          {guiModel && !handsOptions.includes(guiModel) && <option value={guiModel}>{guiModel}</option>}
-        </select>
+        <ModelPicker
+          label={t("Hands model")}
+          text={guiModel ? `${handsProviderLabel} · ${guiModel}` : t("Automatic")}
+          heads={[{ value: "", label: t("Automatic") }]}
+          headValue={guiModel ? undefined : ""}
+          groups={handsGroups}
+          current={guiModel ? { group: "hands", id: guiModel } : undefined}
+          onHead={() => setGuiModel("")}
+          onPick={(_group, row) => setGuiModel(row.id)}
+        />
         {handsNow && <p className="mt-1.5 text-[12px] text-muted">{t("Currently {value}", { value: handsNow })}</p>}
         {!p?.cloud && model.trim() && !guiModel && modelSees(model.trim()) === false && (
           <div className="mt-1.5 text-[12px] text-amber-700 dark:text-amber-300">
@@ -989,6 +997,7 @@ export function MediaSlotCard({
       {choice && (
         <StudioModelPick
           label={slot === "image" ? t("Picture model") : t("Clip model")}
+          provider={choice === CLOUD_ID ? "nanoMuse Cloud" : choice === CUSTOM_ID ? hostOf(baseUrl) || t("Other OpenAI-compatible endpoint") : (chosen?.label ?? choice)}
           value={model}
           options={models.list}
           more={models.more}
@@ -3230,9 +3239,16 @@ function VaultCard({
  *  free field otherwise; the empty choice leaves the pick to the runtime */
 const OTHER_MODEL = "\u0000other";
 
-/** A model from the list, or — when `other` — one typed by its id (the list's last entry opens the field). */
+/**
+ * A model from the list, or one typed by its id when `other` (the list's last entry opens
+ * the field). The list is the picker of the Models contract (`ModelPicker`): one group
+ * named after the provider with its catalogue default first, or on nanoMuse Cloud the menu
+ * and the account's other models as two groups; each folds past eight rows, and a search
+ * field appears once the rows pass eight in all.
+ */
 function StudioModelPick({
   label,
+  provider,
   value,
   options,
   more = [],
@@ -3241,6 +3257,8 @@ function StudioModelPick({
   placeholder,
 }: {
   label: string;
+  /** the provider's name, for the group's title and the button's `<provider> · <model>` */
+  provider: string;
   value: string;
   options: string[];
   /** a second group — on nanoMuse Cloud, the other models under the Cloud key a member may use */
@@ -3254,59 +3272,44 @@ function StudioModelPick({
   const listed = options.includes(value) || more.includes(value);
   const [typing, setTyping] = useState(false);
   const automatic = placeholder ? t("Automatic · {model}", { model: placeholder }) : t("Automatic");
+  const asRows = (ids: string[]) => ids.map((id) => ({ id, name: id }));
+  const groups: ModelGroup[] = more.length
+    ? [
+        { key: "menu", label: t("Menu"), rows: asRows(options), ...(placeholder ? { default: placeholder } : {}) },
+        { key: "more", label: t("More models on your account"), rows: asRows(more) },
+      ]
+    : [{ key: "list", label: provider, rows: asRows(options), ...(placeholder ? { default: placeholder } : {}) }];
+  const current = value && listed ? { group: options.includes(value) ? groups[0].key : "more", id: value } : undefined;
   return (
-    <label className="block text-[12.5px] text-muted">
+    <div className="block text-[12.5px] text-muted">
       <span className="block mb-1">{label}</span>
       {(options.length || more.length) && (listed || !value) && !typing ? (
-        <select
-          value={value}
-          onChange={(e) => {
-            if (e.target.value === OTHER_MODEL) {
-              setTyping(true);
-              onChange("");
-              return;
-            }
-            onChange(e.target.value);
+        <ModelPicker
+          label={label}
+          text={value ? `${provider} · ${value}` : automatic}
+          heads={[{ value: "", label: automatic }]}
+          headValue={value ? undefined : ""}
+          groups={groups}
+          current={current}
+          onHead={() => onChange("")}
+          onPick={(_group, row) => onChange(row.id)}
+          tail={other ? t("Other model…") : undefined}
+          onTail={() => {
+            setTyping(true);
+            onChange("");
           }}
-          className={cx(inputCls, "text-fg")}
-        >
-          <option value="">{automatic}</option>
-          {more.length ? (
-            <optgroup label={t("Menu")}>
-              {options.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </optgroup>
-          ) : (
-            options.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))
-          )}
-          {more.length > 0 && (
-            <optgroup label={t("More models on your account")}>
-              {more.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {other && <option value={OTHER_MODEL}>{t("Other model…")}</option>}
-        </select>
+        />
       ) : (
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={automatic}
+          aria-label={label}
           className={cx(inputCls, "text-fg")}
           spellCheck={false}
         />
       )}
-    </label>
+    </div>
   );
 }
 

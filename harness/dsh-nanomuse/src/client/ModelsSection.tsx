@@ -9,10 +9,13 @@
  * Account page (`OwnKey.tsx` `ModelPickers`); that page now links here.
  */
 import { createElement as h, Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
+import type { ProviderEntry } from '../catalogue.ts'
 import { call, errorStyle, muted, type Translate } from './api.ts'
 import { settingsBus } from './bus.ts'
 import { IconHand, IconImage, IconMessage, IconVideo } from './icons.tsx'
 import { useLive } from './live.ts'
+import type { ModelGroup } from './model-list.ts'
+import { ModelPicker, type PickerHead } from './ModelPicker.tsx'
 import { ACCOUNT_SECTION, MODELS_SECTION, providersNamed, useProviders, type ModelOption } from './OwnKey.tsx'
 
 export { MODELS_SECTION }
@@ -47,7 +50,6 @@ export interface ModelsView {
   handsExcluded: string[]
 }
 
-const SEP = '\u0000'
 const ROUTE: Record<Slot, string> = { chat: 'chat-model', hands: 'hands-model', image: 'image-model', video: 'video-model' }
 /** The capability the gate's sentence names providers for. */
 const CAPABILITY: Record<Slot, 'chat' | 'vision' | 'image' | 'video'> = { chat: 'chat', hands: 'vision', image: 'image', video: 'video' }
@@ -84,36 +86,56 @@ export function useModels(): { view: ModelsView | undefined; error: string | und
 }
 
 /**
- * One picker: `nanoMuse Cloud` first (its recommended model marked), then one group per own
- * provider. The value is `<provider>\0<model>`; a current model the list does not carry (an
- * older choice, a model the provider stopped listing) is shown as its own option so the
- * picker never looks empty. The three dependent slots have *Automatic* first: selected when
- * no choice is stored, and picking it drops the stored choice (`onPick('', 'auto')`) so the
- * slot follows the order again; the video slot's *Off* sits under it.
+ * The groups of one picker: `nanoMuse Cloud` first (its recommended model marked and first),
+ * then one group per own provider in the order the options came, each keyed by the
+ * provider's id and carrying the provider's catalogue default for the slot, which the
+ * folded view shows first (`model-list.ts`).
  */
-export function SlotPicker({ t, slot, view, disabled, onPick }: { t: Translate; slot: Slot; view: SlotView; disabled: boolean; onPick(provider: string, model: string): void }): ReactNode {
+export function slotGroups(slot: Slot, options: readonly ModelOption[], catalogue: readonly Pick<ProviderEntry, 'id' | 'defaults'>[] = []): ModelGroup<ModelOption>[] {
+  const groups: ModelGroup<ModelOption>[] = []
+  for (const o of options) {
+    let group = groups.find((g) => g.key === o.provider)
+    if (!group) {
+      const preset = catalogue.find((p) => p.id === o.provider)?.defaults[slot]
+      group = { key: o.provider, label: o.providerLabel, rows: [], ...(preset ? { default: preset } : {}) }
+      groups.push(group)
+    }
+    group.rows.push(o)
+  }
+  return groups
+}
+
+/**
+ * One picker (`ModelPicker.tsx`): the button reads what the slot uses, `<provider> · <model>`;
+ * the panel has *Automatic* first on the three dependent slots (selected when no choice is
+ * stored; picking it drops the stored choice, `onPick('', 'auto')`, so the slot follows the
+ * order again), the video slot's *Off* under it, then `nanoMuse Cloud` and one group per own
+ * provider, each folded past a few rows, with a search once the lists are long. A current
+ * model the list does not carry (an older choice, a model the provider stopped listing)
+ * still reads on the button, so the picker never looks empty.
+ */
+export function SlotPicker({ t, slot, view, disabled, catalogue, onPick }: { t: Translate; slot: Slot; view: SlotView; disabled: boolean; catalogue?: readonly Pick<ProviderEntry, 'id' | 'defaults'>[]; onPick(provider: string, model: string): void }): ReactNode {
   const automatic = DEPENDENT.includes(slot)
-  const value = view.off ? 'off' : automatic && !view.chosen ? 'auto' : view.model ? `${view.provider}${SEP}${view.model}` : ''
-  const known = value === 'off' || value === 'auto' || view.options.some((o) => `${o.provider}${SEP}${o.id}` === value)
-  const groups = new Map<string, ModelOption[]>()
-  for (const o of view.options) groups.set(o.providerLabel, [...(groups.get(o.providerLabel) ?? []), o])
-  return h('select', {
-    className: 'nm-field nm-select',
-    value,
+  const onHead = view.off ? 'off' : automatic && !view.chosen ? 'auto' : ''
+  const text = onHead === 'off' ? t('mdVideoOff') : onHead === 'auto' ? t('mlAutomatic') : view.model ? valueText(view.provider, view.providerLabel, view.model) : t('mdPick')
+  const heads: PickerHead[] = [
+    ...(automatic ? [{ value: 'auto', label: t('mlAutomatic') }] : []),
+    ...(slot === 'video' ? [{ value: 'off', label: t('mdVideoOff') }] : []),
+  ]
+  return h(ModelPicker<ModelOption>, {
+    t,
+    label: slotTitle(t, slot),
+    text,
+    heads,
+    headValue: onHead,
+    groups: slotGroups(slot, view.options, catalogue),
+    ...(onHead || !view.model ? {} : { current: { group: view.provider, id: view.model } }),
     disabled,
-    'aria-label': slotTitle(t, slot),
-    'data-testid': `nm-ml-${slot}`,
-    onChange: (e: { currentTarget: HTMLSelectElement }) => {
-      const [provider, model] = e.currentTarget.value.split(SEP)
-      if (slot === 'video' && e.currentTarget.value === 'off') onPick('', 'off')
-      else if (automatic && e.currentTarget.value === 'auto') onPick('', 'auto')
-      else if (provider && model) onPick(provider, model)
-    },
-  },
-    known ? null : h('option', { value }, value ? valueText(view.provider, view.providerLabel, view.model) : t('mdPick')),
-    automatic ? h('option', { value: 'auto' }, t('mlAutomatic')) : null,
-    slot === 'video' ? h('option', { value: 'off' }, t('mdVideoOff')) : null,
-    [...groups.entries()].map(([label, options]) => h('optgroup', { key: label, label }, options.map((o) => h('option', { key: `${o.provider}${SEP}${o.id}`, value: `${o.provider}${SEP}${o.id}` }, o.recommended ? `${o.name} · ${t('mlRecommended')}` : o.name)))))
+    testId: `nm-ml-${slot}`,
+    onHead: (value) => onPick('', value),
+    onPick: (provider, row) => onPick(provider, row.id),
+    rowText: (o) => (o.recommended ? `${o.name} · ${t('mlRecommended')}` : o.name),
+  })
 }
 
 export function openAccountWays(): void {
@@ -163,7 +185,7 @@ export function makeModelsSection(t: Translate) {
           h('span', { className: 'nm-row-title' }, slotTitle(t, slot)),
           h('span', { className: 'nm-row-sub nm-wrap' }, sub),
           slot === 'hands' && view.handsExcluded.length ? h('span', { className: 'nm-row-sub nm-wrap', style: muted }, t('mlHandsExcluded', { providers: view.handsExcluded.join(t('langTag') === 'zh' ? '、' : ', ') })) : null),
-        empty ? null : h(SlotPicker, { t, slot, view: row, disabled: busy !== null, onPick: (provider, model) => pick(slot, provider, model) }))
+        empty ? null : h(SlotPicker, { t, slot, view: row, disabled: busy !== null, ...(gate ? { catalogue: gate.catalogue } : {}), onPick: (provider, model) => pick(slot, provider, model) }))
     })
     return h('div', { className: 'nm-section', 'data-testid': 'nm-models-section' },
       h('p', null, t('mlLead')),
