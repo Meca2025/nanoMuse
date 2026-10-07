@@ -1095,4 +1095,7 @@
     <string name="nm_hands_why_chat_provider">implicitul mâinilor de la furnizorul tău de chat</string>
     <string name="nm_models_auto">Automat</string>
     <string name="nm_models_auto_currently">În prezent %1$s</string>
+    <string name="nm_models_show_more">Afișează încă %1$d</string>
+    <string name="nm_models_search">Caută modele</string>
+    <string name="nm_models_no_match">Niciun model nu se potrivește</string>
 </resources>

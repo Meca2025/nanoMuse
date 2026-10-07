@@ -1087,4 +1087,7 @@
     <string name="nm_hands_why_chat_provider">ค่าเริ่มต้นของมือจากผู้ให้บริการแชทของคุณ</string>
     <string name="nm_models_auto">อัตโนมัติ</string>
     <string name="nm_models_auto_currently">ตอนนี้ %1$s</string>
+    <string name="nm_models_show_more">แสดงอีก %1$d รายการ</string>
+    <string name="nm_models_search">ค้นหาโมเดล</string>
+    <string name="nm_models_no_match">ไม่มีโมเดลที่ตรงกัน</string>
 </resources>

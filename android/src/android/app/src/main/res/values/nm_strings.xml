@@ -1068,4 +1068,7 @@
     <string name="nm_hands_why_chat_provider">the hands\' default of your chat provider</string>
     <string name="nm_models_auto">Automatic</string>
     <string name="nm_models_auto_currently">Currently %1$s</string>
+    <string name="nm_models_show_more">Show %1$d more</string>
+    <string name="nm_models_search">Search models</string>
+    <string name="nm_models_no_match">No model matches</string>
 </resources>

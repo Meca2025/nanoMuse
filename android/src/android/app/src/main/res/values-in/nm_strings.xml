@@ -1087,4 +1087,7 @@
     <string name="nm_hands_why_chat_provider">bawaan tangan dari penyedia chat-mu</string>
     <string name="nm_models_auto">Otomatis</string>
     <string name="nm_models_auto_currently">Saat ini %1$s</string>
+    <string name="nm_models_show_more">Tampilkan %1$d lagi</string>
+    <string name="nm_models_search">Cari model</string>
+    <string name="nm_models_no_match">Tidak ada model yang cocok</string>
 </resources>

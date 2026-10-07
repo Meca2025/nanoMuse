@@ -36,7 +36,11 @@ update*) and offers the download.
    key); **Making pictures** and **Making clips**. Each row shows `<provider> · <model>` and
    opens a picker: the *nanoMuse Cloud* group first when signed in, the recommended model
    first and marked, then one group per provider of your own with only the models that fit
-   the row. A chat pick there, or in the chat's own `•••` menu, is the default for new chats
+   the row. A group shows eight models until you tap *Show N more* (the catalogue's default
+   for the row first, then the one in use, then the rest as the provider lists them); past
+   eight models in all, a *Search models* field above the groups filters every group live by
+   id or name, and *No model matches* says when nothing does. A chat pick there, or in the
+   chat's own `•••` menu, is the default for new chats
    (*Applies to new chats.*); a chat already open keeps its model. The other three pickers
    open with *Automatic* (*Currently nanoMuse Cloud · qwen3.8-27b*), which forgets a choice
    made there and lets the row follow the order below again. Running everything yourself
@@ -248,7 +252,7 @@ like the Python package's version does.
 | `account/` | Contract C12 (0.1.40, [sync.md](sync.md)): `AccountScope` (the rules — whose chat a session is, the account's key, what the lists leave out, what a refused key keeps (`keepOnRefusedKey`: everything, unless the relay says `account_deleted`); unit-tested), `AccountData` (applies them: every chat an owner row, `leave` puts the account's chats, memory, feed, goals, routines, face and preferences aside or deletes them, `enter` brings an account's back) |
 | `hub/` | `Hub` (state, device identity, settings), `HubClient` (the socket with backoff; stops when the relay refuses the key), `HubService` (the foreground service), `HubActions` (what other devices may ask this phone), `HubErrors` (failures in words) |
 | `reach/` | `Computers` (paired computers, tokens in the encrypted store), the offload handler that sends work to a computer |
-| `models/` | Settings → Models behind the screens: `ModelSlots` (the four slots, what each is set to and where that is kept, the groups a picker shows, `followPick` for the chat default, `applyProvider` for the *Use it for* card), `SlotOrder` (the resolution order and the catalogue default, pure Kotlin, unit-tested) |
+| `models/` | Settings → Models behind the screens: `ModelSlots` (the four slots, what each is set to and where that is kept, the groups a picker shows, `followPick` for the chat default, `applyProvider` for the *Use it for* card), `SlotOrder` (the resolution order and the catalogue default, pure Kotlin, unit-tested), `PickerList` (the picker's eight-row groups, their order and the search filter, pure Kotlin, unit-tested) |
 | `ui/models/` | The Models page, the picker behind each row, the *Use it for* card (`minis://settings/models`) |
 | `chat/CloudRetry.kt` | *Use nanoMuse Cloud this time*: whether the card offers it and the one-turn provider `ChatViewModel.retryLast` uses |
 | `hands/` | The accessibility service as the hand, the stage and the capsule, the screen reader; `Hands.screenModel` picks the screen's model (chosen → the chat provider's own default when it sees → the Cloud's `qwen3.8-27b` → the same under your own key → a chat model that sees → the Vision Group) |

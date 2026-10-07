@@ -1091,4 +1091,7 @@
     <string name="nm_hands_why_chat_provider">le modèle par défaut des mains de votre fournisseur de chat</string>
     <string name="nm_models_auto">Automatique</string>
     <string name="nm_models_auto_currently">Actuellement %1$s</string>
+    <string name="nm_models_show_more">Afficher %1$d de plus</string>
+    <string name="nm_models_search">Rechercher des modèles</string>
+    <string name="nm_models_no_match">Aucun modèle ne correspond</string>
 </resources>

@@ -1091,4 +1091,7 @@
     <string name="nm_hands_why_chat_provider">der Standard der Hände bei deinem Chat-Anbieter</string>
     <string name="nm_models_auto">Automatisch</string>
     <string name="nm_models_auto_currently">Derzeit %1$s</string>
+    <string name="nm_models_show_more">Noch %1$d anzeigen</string>
+    <string name="nm_models_search">Modelle suchen</string>
+    <string name="nm_models_no_match">Kein Modell passt</string>
 </resources>
