@@ -195,7 +195,9 @@ a `working` note that goes through the relay's memory and the hub, is never
 stored, and dies after ten minutes if the device never says it is done.
 
 The relay keeps at most 20 000 messages per account (the oldest conversations'
-messages go first, their titles stay) and 16 384 bytes per message (longer
+messages go first, their titles stay), 2 000 live side conversations (relay
+0.23: a new one past that is refused with `conversation_limit` and stays on
+the device; deleting one frees a place) and 16 384 bytes per message (longer
 text is cut and marked `truncated`). Turning the switch off on any device tells
 the relay, which deletes everything stored and refuses the other devices with
 `sync_off` until the switch is turned on again — their switches follow.
@@ -210,7 +212,7 @@ The API, all under the account's key (401 without one; 409 `sync_off` while the
 switch is off, for reads as well as writes):
 
 ```
-GET    /v1/sync/state                   → {enabled, cursor, counts{conversations, messages}, limits{messages, text_bytes}, working[]}
+GET    /v1/sync/state                   → {enabled, cursor, counts{conversations, messages}, limits{messages, text_bytes, conversations}, working[]}
 PUT    /v1/sync/state   {enabled}       → the same; false deletes everything stored, the counter keeps counting
 GET    /v1/sync/changes ?since=0&limit=500&scope=all|main&tail=K   → {cursor, more, conversations[], messages[], skipped?}
 POST   /v1/sync/changes {device, conversations[], messages[]}   → {cursor, accepted, rejected[{cid | mid, reason, cid_main?}]}
@@ -248,7 +250,8 @@ order, and the relay adds the conversation of every message in the page even
 when that conversation's own `seq` lies ahead (a rename moves it), so a client
 applies the page's conversations first, then its messages, and is never handed
 an orphan. Refusals name the row: `main_exists` with `cid_main` when a second
-`main` is pushed — the device then re-sends under `cid_main` —, `unknown_cid`,
+`main` is pushed — the device then re-sends under `cid_main` —, `conversation_limit`
+(relay 0.23, the account's side conversations are at their cap), `unknown_cid`,
 `conversation_deleted`, `bad_cid`, `bad_mid`, `bad_kind`, `bad_role`. A
 tombstone keeps its row for 30 days and is then swept. After an accepted push
 or a deletion the hub tells the account's other devices with a `sync` frame

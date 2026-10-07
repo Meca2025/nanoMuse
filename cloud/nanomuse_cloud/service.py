@@ -1828,8 +1828,9 @@ class Cloud:
         for r in self.db.samples_meta(since):
             name = _platform_of(_load_meta(r["meta"]).get("ua", ""))
             platforms[name] = platforms.get(name, 0) + int(r["n"])
-        hints = {r["id"]: r["hint"] for r in self.db.list_accounts(limit=5000)}
-        recent = [{**smp, "hint": hints.get(smp["account_id"], "?")} for smp in self.admin_samples(None, 0, 30)]
+        samples = self.admin_samples(None, 0, 30)
+        hints, _ = self._labels([smp["account_id"] for smp in samples], decrypt=False)
+        recent = [{**smp, "hint": hints.get(smp["account_id"], "?")} for smp in samples]
         # every account with turns kept, as the way in to each one's data (the drawer pages
         # through all of them)
         by_account = [
@@ -2136,13 +2137,16 @@ class Cloud:
             }
 
         counts = self.db.event_counts(day_start)
-        rows = self.db.list_accounts(limit=100_000)
-        hints = {r["id"]: r["hint"] for r in rows}
+        top_rows = self.db.top_accounts_since(since, limit=20)
+        event_rows = self.db.events_recent(60)
         # 0.22: the console shows accounts in full (decrypted for the admin token only);
-        # the hint stays beside it for anything that leaves the console
-        idents = {r["id"]: (self.crypto.decrypt(r["id"], r["identifier_enc"] or "") or "") for r in rows}
+        # the hint stays beside it for anything that leaves the console. Only the accounts
+        # on this page are read and decrypted, not every account the relay has.
+        hints, idents = self._labels(
+            [r["account_id"] for r in top_rows] + [r["account_id"] for r in event_rows if r["account_id"]]
+        )
         top = []
-        for r in self.db.top_accounts_since(since, limit=20):
+        for r in top_rows:
             top.append(
                 {
                     "account_id": r["account_id"],
@@ -2154,7 +2158,7 @@ class Cloud:
                 }
             )
         events = []
-        for r in self.db.events_recent(60):
+        for r in event_rows:
             d = dict(r)
             d["hint"] = hints.get(d["account_id"], "") if d["account_id"] else ""
             d["identifier"] = idents.get(d["account_id"], "") if d["account_id"] else ""
@@ -2418,13 +2422,26 @@ class Cloud:
         return {"ip": ip, "accounts": rows}
 
     def admin_events(self, limit: int = 200, kinds: tuple[str, ...] | None = None) -> list[dict]:
-        hints = {r["id"]: r["hint"] for r in self.db.list_accounts(limit=5000)}
+        rows = self.db.events_recent(max(1, min(limit, 1000)), kinds)
+        hints, _ = self._labels([r["account_id"] for r in rows if r["account_id"]], decrypt=False)
         out = []
-        for r in self.db.events_recent(max(1, min(limit, 1000)), kinds):
+        for r in rows:
             d = dict(r)
             d["hint"] = hints.get(d["account_id"], "") if d["account_id"] else ""
             out.append(d)
         return out
+
+    def _labels(self, ids: list[str], decrypt: bool = True) -> tuple[dict[str, str], dict[str, str]]:
+        """`{id: hint}` and `{id: identifier}` for these accounts only (the identifier
+        decrypted for the admin token; empty dict when `decrypt` is False). Reading the
+        newest N accounts for this used to leave an older account's rows labelled `?`."""
+        hints: dict[str, str] = {}
+        idents: dict[str, str] = {}
+        for r in self.db.accounts_brief(ids):
+            hints[r["id"]] = r["hint"]
+            if decrypt:
+                idents[r["id"]] = self.crypto.decrypt(r["id"], r["identifier_enc"] or "") or ""
+        return hints, idents
 
     def admin_settings(self) -> dict:
         return {

@@ -502,6 +502,9 @@ class Hub:
         kind = frame.get("type")
         if kind == "ping":
             await conn.send({"type": "pong", "time": now()})
+            # every client pings; a caller with one call outstanding and nothing more to
+            # ask would otherwise never hear `timeout` (the sweep ran on new calls only)
+            await self._sweep()
         elif kind == "devices":
             await conn.send({"type": "devices", "devices": self.devices(conn.account_id)})
         elif kind == "call":

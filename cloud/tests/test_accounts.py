@@ -233,6 +233,55 @@ async def test_admin_overview_and_account_detail():
     assert all("password_hash" not in x for x in accounts)
 
 
+async def test_the_accounts_list_is_one_grouped_query_with_the_old_numbers():
+    """0.23: `admin_accounts` joins grouped sums instead of seven correlated subqueries per
+    account. The numbers must be the ones the correlated form gave, row for row."""
+    app, client, sender, up, cloud, settings = make()
+    a = await sign_up(client, sender, "13800138000", "pixel")
+    b = await sign_up(client, sender, "dev-a@example.com", "mac")
+    c = await sign_up(client, sender, "dev-b@example.com", "pc")
+    ha, hb = auth(a["api_key"]), auth(b["api_key"])
+    for _ in range(3):
+        await client.post("/v1/chat/completions", json={"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "hi"}]}, headers=ha)
+    await client.post("/v1/images/generations", json={"model": "qwen-image-3.0", "prompt": "a cat"}, headers=hb)
+    await client.post("/v1/auth/session-key", json={"device": "mac-2"}, headers=hb)
+    await client.delete("/v1/me/sessions/" + b["api_key"][:12], headers=hb)
+    day_start = cloud.s.day_start(int(cloud.clock()))
+    rows = {r["id"]: dict(r) for r in cloud.db.admin_accounts(day_start, limit=1000)}
+    assert set(rows) == {a["account"]["id"], b["account"]["id"], c["account"]["id"]}
+    old = cloud.db._conn.execute(
+        """SELECT a.id,
+                  (SELECT COALESCE(SUM(l.charged),0) FROM ledger l WHERE l.account_id=a.id AND l.ts>=? AND l.charged>0) AS used_today,
+                  (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l WHERE l.account_id=a.id AND l.ts>=? AND l.cost_uy>0) AS spent_today_uy,
+                  (SELECT COALESCE(SUM(l.cost_uy),0) FROM ledger l WHERE l.account_id=a.id AND l.cost_uy>0) AS spent_uy,
+                  (SELECT COUNT(*) FROM ledger l WHERE l.account_id=a.id AND l.kind IN ('chat','image','video','realtime')) AS requests,
+                  (SELECT MAX(k.last_used_at) FROM api_keys k WHERE k.account_id=a.id) AS last_active_at,
+                  (SELECT COUNT(*) FROM api_keys k WHERE k.account_id=a.id AND k.revoked_at IS NULL) AS live_keys,
+                  (SELECT COUNT(*) FROM devices d WHERE d.account_id=a.id) AS device_count
+           FROM accounts a""",
+        (day_start, day_start),
+    ).fetchall()
+    fields = ("used_today", "spent_today_uy", "spent_uy", "requests", "last_active_at", "live_keys", "device_count")
+    for o in old:
+        assert {k: rows[o["id"]][k] for k in fields} == {k: o[k] for k in fields}, o["id"]
+    ra, rb, rc = rows[a["account"]["id"]], rows[b["account"]["id"]], rows[c["account"]["id"]]
+    assert ra["requests"] == 3 and ra["used_today"] > 0 and ra["spent_uy"] == ra["spent_today_uy"] > 0
+    assert rb["requests"] == 1 and rb["live_keys"] == 1  # the first key revoked, the session key live
+    assert rc["requests"] == 0 and rc["spent_uy"] == 0 and rc["live_keys"] == 1 and rc["last_active_at"] is None
+
+    # labels come from the ids a page shows, not from the newest N accounts
+    brief = {r["id"]: r for r in cloud.db.accounts_brief([a["account"]["id"], "no-such-account", ""])}
+    assert set(brief) == {a["account"]["id"]} and brief[a["account"]["id"]]["hint"] == "138****8000"
+    hints, idents = cloud._labels([a["account"]["id"], c["account"]["id"]])
+    assert hints[c["account"]["id"]] == "de***@example.com" and idents[a["account"]["id"]] == "+8613800138000"
+    assert cloud.db.accounts_brief([]) == []
+
+    # the allowance distribution reads four columns per account and the same spend
+    allowance = {r["id_hash"]: dict(r) for r in cloud.db.allowance_rows()}
+    assert len(allowance) == 3 and sorted(r["spent_uy"] for r in allowance.values()) == sorted(r["spent_uy"] for r in rows.values())
+    assert all(r["grant_uy"] == 25_000_000 and r["unlimited"] == 0 for r in allowance.values())
+
+
 VIDEO = "/api/v1/services/aigc/video-generation/video-synthesis"
 
 

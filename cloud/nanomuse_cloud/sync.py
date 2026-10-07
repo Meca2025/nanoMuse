@@ -16,6 +16,8 @@ On by default for a signed-in account; turning it off deletes everything stored.
 a chat tombstones the conversation (so the other devices drop it) and removes its texts at
 once; tombstones go after 30 days. At most 20,000 messages per account: beyond that, the
 oldest conversations' messages are dropped from the relay (devices keep their own copies).
+At most 2,000 live side conversations: a new one past that is refused with
+`conversation_limit` (0.23) and stays on the device.
 
 Main first (0.20, contract C9). A device that only wants the account's main conversation
 pulls with ``scope=main``; a fresh device asks for the tail — ``since=0&tail=300`` — and
@@ -37,7 +39,7 @@ from typing import Any
 from .db import Database
 from .service import CloudError
 
-LIMITS = {"messages": 20000, "text_bytes": 16384}
+LIMITS = {"messages": 20000, "text_bytes": 16384, "conversations": 2000}
 MAX_POST_MESSAGES = 200
 DEFAULT_PAGE = 500
 MAX_PAGE = 1000
@@ -347,6 +349,12 @@ class SyncStore:
             name = self._device_names(c, account_id).get(device, "")
         return self.presence.set(account_id, cid_ok, device, name, bool(working))
 
+    @staticmethod
+    def _live_conversations(c: sqlite3.Connection, account_id: str) -> int:
+        return int(
+            c.execute("SELECT COUNT(*) FROM sync_conversations WHERE account_id=? AND kind='side' AND deleted=0", (account_id,)).fetchone()[0]
+        )
+
     def _enabled(self, c: sqlite3.Connection, account_id: str) -> bool:
         row = c.execute("SELECT sync_enabled FROM accounts WHERE id=?", (account_id,)).fetchone()
         return bool(row["sync_enabled"]) if row is not None else False
@@ -390,6 +398,12 @@ class SyncStore:
                 deleted = bool(conv.get("deleted"))
                 row = c.execute("SELECT * FROM sync_conversations WHERE account_id=? AND cid=?", (account_id, cid)).fetchone()
                 if row is None:
+                    if kind == "side" and not deleted and self._live_conversations(c, account_id) >= LIMITS["conversations"]:
+                        # messages are trimmed past their cap; conversations had none and grew
+                        # without end (two hundred empty ones per request). The device keeps
+                        # its copy; it learns from the refusal as it does from `main_exists`.
+                        rejected.append({"cid": cid, "reason": "conversation_limit"})
+                        continue  # its messages are refused below as `unknown_cid`
                     if kind == "main" and not deleted:
                         main = c.execute(
                             "SELECT cid FROM sync_conversations WHERE account_id=? AND kind='main' AND deleted=0 ORDER BY seq LIMIT 1",

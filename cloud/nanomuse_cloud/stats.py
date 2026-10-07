@@ -369,7 +369,7 @@ def _allowance_distribution(s: Stats, days: int) -> list[dict[str, Any]]:
     counts = {name: 0 for name, _lo, _hi in ALLOWANCE_BUCKETS}
     counts["no limit"] = 0
     cloud = s.cloud
-    for a in s.db.admin_accounts(cloud.s.day_start(int(time.time())), limit=100_000):
+    for a in s.db.allowance_rows():
         member = bool(a["unlimited"]) or a["id_hash"] in cloud.member_hashes
         grant = int(a["grant_uy"] or 0)
         if member or cloud.s.allowance_cny <= 0 or grant <= 0:

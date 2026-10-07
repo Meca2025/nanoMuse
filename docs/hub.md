@@ -197,7 +197,9 @@ the close with `4008`. A send to a device never waits on that device: frames
 queue per connection and are written in order as the socket drains; a socket
 that stops reading is closed with `4009` once 512 frames or 32 MB are waiting,
 so one stalled phone cannot hold the computer calling it. A `call` nobody
-answers within 15 minutes fails with `timeout` to its caller; `forget` of a device that is connected right now is
+answers within 15 minutes fails with `timeout` to its caller (the relay checks
+when a call or a `ping` arrives, so a caller that pings hears it within a
+minute of the deadline); `forget` of a device that is connected right now is
 refused with `device_online`.
 
 Device ids are per installation (`phone-…`, `pc-…`); names are for people and
