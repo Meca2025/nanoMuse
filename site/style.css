@@ -286,8 +286,7 @@ h1 { font-size: clamp(40px, 6vw, 68px); font-weight: 800; }
 .more.left { text-align: left; margin-top: 12px; }
 
 /* screens */
-.screens { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
-@media (max-width: 1000px) { .screens { grid-template-columns: repeat(3, 1fr); } }
+.screens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 @media (max-width: 640px) { .screens { grid-template-columns: repeat(2, 1fr); } }
 .screens figure { margin: 0; }
 .screens img { width: 100%; height: auto; border-radius: 22px; border: 1px solid var(--border); box-shadow: 0 20px 40px -28px rgba(0,0,0,.4); display: block; }

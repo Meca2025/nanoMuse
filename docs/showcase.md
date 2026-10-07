@@ -103,7 +103,7 @@ The phone's own capabilities as MCP tools ([device.md](device.md)); nothing leav
 | the Sentinel | the tap on 提交订单 is SENSITIVE (`sensitive_words`): **Allow once** / **Deny** on the capsule itself, on the Android phone and in the hosted demo's phone alike; the chat card carries the same request |
 | the stop | the operator ends on the payment page and says so; paying is yours, in the app |
 
-The only case on the screen, because 美团 has no personal API and its web needs the app's login. Everything the operator saw and did is in the trace, every tap drawn on its screenshot. Two models share the work: the chat model plans and reports (`deepseek-v4.1-flash` on the showcase box, `MAIN_MODEL`), the hands model reads each screenshot and picks the tap (`qwen3.8-27b`, `GUI_MODEL`); a visitor's own OpenRouter key gets `qwen/qwen3.8-27b` for the hands.
+The only case on the screen, because 美团 has no personal API and its web needs the app's login. Everything the operator saw and did is in the trace, every tap drawn on its screenshot. Two models share the work: the chat model plans and reports (`MAIN_MODEL` in the showcase box's `.env`; `deepseek-v4.1-flash` when it is empty), the hands model reads each screenshot and picks the tap (`qwen3.8-27b`, `GUI_MODEL`); a visitor's own OpenRouter key gets `qwen/qwen3.8-27b` for the hands.
 
 **Trace:** *pending* — an Android phone with 美团 installed (the x86 emulator cannot run it). The executor, the capsule and Stop were verified on the emulator in [gui.md](gui.md).
 

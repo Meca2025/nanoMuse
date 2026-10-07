@@ -75,7 +75,7 @@ cd android
 ./gradlew assembleConnectRelease  # app/build/outputs/apk/connect/release/app-connect-release.apk
 ```
 
-The `local` flavour also needs the root file system and PRoot in place first — `scripts/rootfs/build.sh` (Docker + QEMU) and `android/native/build-proot.sh` (the NDK) put them under `android/app/src/local/`; see [local-runtime.md](../local-runtime.md#building-the-pieces). Then `./gradlew assembleLocalDebug`.
+The `local` flavour also needs the root file system and PRoot in place first — `scripts/rootfs/build.sh` (Docker + QEMU) and `android/native/build-proot.sh` (the NDK), both in the history at the tag `pre-openminis`, put them under `android/app/src/local/`; see [local-runtime.md](../local-runtime.md#building-the-pieces). Then `./gradlew assembleLocalDebug`.
 
 Without a signing key the release build is signed with the debug key, which installs fine but cannot update a build signed with a different key. To sign properly, create a key once and keep it outside the repository:
 

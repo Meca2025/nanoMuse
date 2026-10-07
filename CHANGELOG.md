@@ -121,6 +121,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - The showcase's dark theme is whole: a dark stage, dark guide and dock cards, readable group headings; the side column fades at its lower edge while there is more below; *Power off* has its own row on narrow screens instead of sitting on the phone's status bar.
 - A wheel turned over the showcase frame where the showcase has nothing to scroll is handed up to the page around it, so the homepage scrolls with the pointer over the demo.
 - The phone's welcome, sign-in and capsule texts lost their em dashes and say nanoMuse Cloud by name.
+- Removed `scripts/rootfs/`, the rootfs builder of the retired Python line (it stays in the history at the tag `pre-openminis`), and added an `.editorconfig` that states the indentation and line endings the tree already uses.
 
 ## [0.1.41] - 2026-10-07 · Choice
 
