@@ -6,7 +6,7 @@ Mac runner 上构建后交给 TestFlight。这一页说的是：源码树里有�
 
 **现状。** 源码树、品牌、nanoMuse Cloud 登录、hub 客户端和流水线都是在一台 Linux 机器上
 写的。这个 App **能构建、能签名、已经上了 TestFlight**：第一个构建 0.1.31 (2) 于 2026-10-03 走完
-*iOS · TestFlight* 工作流；0.1.40 是构建 13，在内部测试员手里，并已提交 Apple 的 beta 审核，
+*iOS · TestFlight* 工作流；0.1.41 是构建 14，在内部测试员手里，并已提交 Apple 的 beta 审核，
 为的是公开链接（`https://testflight.apple.com/join/ZHexbDqc`，审核通过后这个链接就能装——见
 下文*现状*）。测试员的反馈推动了发布说明里的那些修复（输入框、引导、退出登录）；「设备」区
 和来自其他设备的通知仍是真机上跑得最少的部分。第一次归档教会了流水线一件事：
@@ -390,8 +390,8 @@ open src/ios/Minis.xcodeproj
   以及每个构建的 *What to Test*（没有一处提到别的产品）；外部组 *nanoMuse Beta* 和它的公开
   链接 `https://testflight.apple.com/join/ZHexbDqc`；*Beta App Review Information* 里的 beta
   审核联系人和中继上的一个审核账号；
-- **构建 13（0.1.40）** 在内部测试员手里，2026-10-06 加进了 *nanoMuse Beta* 并提交 Apple 的
-  beta 审核；公开链接只在审核通过后才会给出构建，在那之前它显示的是一个没有 App 的
+- **构建 14（0.1.41）** 在内部测试员手里，已加进 *nanoMuse Beta* 并提交 Apple 的 beta 审核
+  （构建 13，0.1.40，是 2026-10-06 提交的）；公开链接只在审核通过后才会给出构建，在那之前它显示的是一个没有 App 的
   TestFlight 页面。以后每个版本都要重复这一步（审核按版本进行）。任何通往 App Store 的事
   都没有：这个 App 不上架。
 
@@ -500,5 +500,5 @@ nanoMuse 的样子长在 Android App 里；从 0.1.34 起，iPhone 在 OpenMinis
 手机上 iOS 批不批刷新，多久批一次）；对账号下一台电脑的编程会话；第二台设备登录后的
 连接器列表。
 
-不在计划里：App Review。在外壳移植完成、商店页面能如实说明 iPhone App 是什么之前，
-TestFlight 内部测试就是分发方式。
+不在计划里：App Store。TestFlight 就是分发方式：内部测试组，以及某个版本通过 Apple 的 beta
+审核之后的公开链接。

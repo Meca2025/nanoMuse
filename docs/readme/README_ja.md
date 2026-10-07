@@ -39,7 +39,7 @@ https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
 - `2026-10-07` 🚀 最新版：[0.1.41 Choice](https://github.com/nano-muse/nanoMuse/releases/tag/v0.1.41)。
 - `2026-09-25` 🎉 nanoMuse を公開しました。
 
-すべてのバージョン: [releases](https://github.com/nano-muse/nanoMuse/releases)。
+すべてのバージョン：[releases](https://github.com/nano-muse/nanoMuse/releases)。
 
 ## インストール
 
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
 
 ## 仕組み
 
-どのデバイスも自分のエージェントを動かします。スマホは APK の中で(proot 上の Alpine Linux、シェル、ブラウザ、MCP)、パソコンは nanoMuse Desktop の中で(DeepSeek Harness と、手のための Python ランタイム)。サインインするとリレーで出会い、互いに頼みごとができます。会話のテキストはリレーを通りますが、ファイルやスクリーンショットは作られたデバイスに残ります。
+どのデバイスも自分のエージェントを動かします。スマホは APK の中で（proot 上の Alpine Linux、シェル、ブラウザ、MCP）、パソコンは nanoMuse Desktop の中で（DeepSeek Harness と、手のための Python ランタイム）。サインインするとリレーで出会い、互いに頼みごとができます。会話のテキストはリレーを通りますが、ファイルやスクリーンショットは作られたデバイスに残ります。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/nano-muse/nanoMuse/main/assets/brand/devices-loop.png" alt="Android、デスクトップ（Mac、Windows、Linux）、iPhone と iPad、ウェブ版がひとつのアカウントを囲む：リレーが各端末をサインインさせ、端末間で会話を運ぶ" width="92%">
@@ -102,7 +102,7 @@ https://github.com/user-attachments/assets/c7694d5a-9450-4f99-9254-5d70560d7565
 
 ## セルフホスティング
 
-VPS 1 台、1 時間: [docs/self-hosting.md](../self-hosting.md)。三つの道 — サーバーなしで自分のキーだけ、`scripts/self-host.sh` で自分のリレー、ウェブアプリ用に自分のランタイム。
+VPS 1 台、1 時間：[docs/self-hosting.md](../self-hosting.md)。三つの道 — サーバーなしで自分のキーだけ、`scripts/self-host.sh` で自分のリレー、ウェブアプリ用に自分のランタイム。
 
 ## 貢献する
 
@@ -139,4 +139,4 @@ nanoMuse は独立したコミュニティプロジェクトで、Meta Platforms
 
 ## ライセンス
 
-[GPL-3.0-or-later](../../LICENSE)。スマホアプリは OpenMinis 1.13(GPL-3.0)をもとに 2026-09-24 以降改変しています — [NOTICE](../../NOTICE) を参照。それ以前の Python 系統のバージョンは MIT でした(タグ `pre-openminis`)。
+[GPL-3.0-or-later](../../LICENSE)。スマホアプリは OpenMinis 1.13（GPL-3.0）をもとに 2026-09-24 以降改変しています — [NOTICE](../../NOTICE) を参照。それ以前の Python 系統のバージョンは MIT でした（タグ `pre-openminis`）。

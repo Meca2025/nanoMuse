@@ -10,7 +10,7 @@ this page is about the product shape and the code around it.
 ## One Muse per device, one shape
 
 Every device runs its own Muse — the phone its OpenMinis-based agent, the
-computer the Python runtime — and every one of them shows the same app. The
+computer nanoMuse Desktop with the Python runtime for the hands — and every one of them shows the same app. The
 Android app is the reference; the others follow its shape, not its pixels:
 
 | On every device | Android today | Computer (this stage) |
@@ -262,10 +262,9 @@ adds the hub, the Cloud account and the hands to it.
   computer* — is retired; those come back on the harness's seams
   ([harness.md](harness.md), phase 7). The web app still lays itself out the
   Muse way on a wide window for anyone who opens `nanomuse serve` in a browser.
-- **The standard-library binary** (`desktop/nanomuse_desktop`) stays as the
-  zero-install fallback for a machine without Python; its hub code is the
-  origin of `nanomuse/hub`. In time its terminal becomes a client of the
-  service like the other two doors.
+- **The standard-library binary** (`desktop/nanomuse_desktop`) was the
+  zero-install fallback for a machine without Python and the origin of
+  `nanomuse/hub`; dropped in 0.1.39, since nanoMuse Desktop carries the runtime.
 
 ### Hands on this computer
 
@@ -341,10 +340,10 @@ frameworks on macOS only.
 
 Already both roles since 0.1.12/0.1.13/0.1.17: the sandbox shell and Hands
 locally, `nanomuse-pc` and the hub outward, `task` inward through the headless
-chat runner. Left for this stage's Android pass, in order: the hub `approve`
-reaching the RiskGate card (today a task the desk delegates is approved on the
-phone's screen only), the desk's Hands events shown while it works, a
-*Devices* entry in the drawer. None of it blocks the desktop work.
+chat runner. This stage's Android pass, in order: the hub `approve`
+reaching the RiskGate card, a *Devices* entry in the drawer (both done in
+0.1.19, see [The phone, in 0.1.19](#the-phone-in-0-1-19)), and the desk's
+Hands events shown while it works. None of it blocks the desktop work.
 
 ## The browser: a demo on a simulated phone
 
@@ -371,8 +370,8 @@ the project's server since 0.1.26. Details and the settings in
 
 ## iOS, the web console, glasses
 
-iOS speaks the hub (`info`, `open`, `notify`) and gets the shape later
-([ios.md](ios.md)). The cloud console (`/app/`) is a front door with no hands
+iOS speaks the hub (`info`, `open`, `notify`, `task`) and has had the shape
+since 0.1.34 ([ios.md](ios.md)). The cloud console (`/app/`) is a front door with no hands
 of its own and stays that way. Glasses are a sentence in and a sentence back,
 the hands elsewhere — the hub is already enough for them.
 
@@ -401,8 +400,8 @@ the hands elsewhere — the hub is already enough for them.
 | Local shell / files / browser | yes | yes (runtime) | yes, inside its container | no hands | no |
 | Screen as a hand | Hands (0.1.12) | `computer_*` (0.1.19) | — | — | — |
 | Drives other devices | `nanomuse-pc`, hub | `device_*`, `delegate` (0.1.19) | the same runtime | picks a device, sends a task | — |
-| Answers other devices | yes | in a visible side chat (0.1.19) | yes | — | info / open / notify |
-| GUI in the Android shape | reference | web app (sidebar on wide screens) + window (0.1.19) | the web app | console | later |
+| Answers other devices | yes | in a visible side chat (0.1.19) | yes | — | info / open / notify / task |
+| GUI in the Android shape | reference | web app (sidebar on wide screens) + window (0.1.19) | the web app | console | since 0.1.34 |
 | Stage while the hands work | `HandsStage` | Hands card; the stage overlay in the window | — | — | — |
 
 Released with 0.1.19: the APK, the desktop installers (`nanoMuse-Desktop-…`,

@@ -207,7 +207,7 @@ the relay and the hub are TLS only. The in-app web view is not exported to other
 
 ## Building it yourself
 
-JDK 17 and the Android SDK (Android Studio installs both); `scripts/android/env.sh` sets
+JDK 17 or 21 (CI uses 21) and the Android SDK (Android Studio installs both); `scripts/android/env.sh` sets
 the environment on a bare machine. The project is under `android/src/android`:
 
 ```bash

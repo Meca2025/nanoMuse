@@ -30,7 +30,7 @@ On the phone, in any chat:
 - "让电脑把项目编译一遍，把日志发给我" — `nanomuse-pc task "…" --on desk`
 - "电脑截个图给我看" — `nanomuse-pc screen --on desk`
 
-On the computer, in the terminal (`nanomuse-desktop`):
+On the computer, in nanoMuse Desktop (or `nanomuse chat` in a terminal):
 
 - "on my phone, take a screenshot" — `device_screen`
 - "tell the phone's Muse to read me the last notification" — `delegate`
@@ -73,14 +73,16 @@ Two kinds of request travel over the hub:
   announces these actions: a runtime that has the module, or the desktop app.
   [coding-agents.md](coding-agents.md).
 
-Each device decides what it lets others do. **Remote control** off (phone:
-*Settings → nanoMuse Cloud → Devices*; desktop: `set remote_control off`) makes
-the device answer `info` and nothing else — it still sees and drives the others.
+Each device decides what it lets others do. On the phone, *Let other devices
+operate this phone* (*Settings → nanoMuse Cloud → Devices*) off makes the phone
+answer `info` and nothing else — it still sees and drives the others.
 With it on, a raw action that does something *to* the device (`shell`, `files`,
 `file.get`, `file.put`, `open`, `screen`, `coding.send`, `coding.stop`) is first
 agreed to by the person at that device: the usual approval card, *once* or
 *always for that device* — the standing answer is a grant
-(`remote_control:<device id>`) under Permissions. Nobody there, and the caller
+(`remote_control:<device id>`) under Permissions. nanoMuse Desktop asks with the
+same card by default; its *Remote control without asking* (*Settings → Devices*)
+lets every device of the account run things there without the card. Nobody there, and the caller
 hears `not_allowed` when the card expires. `info` and `notify` never ask; a
 `task` runs under the device's own Sentinel, whose cards travel back to the
 caller as before. A device may `approve` only cards of its own runs that were
@@ -222,7 +224,13 @@ computer's own hands — is in [every-device.md](every-device.md).
   others, including `task` through the headless chat runner), `HubService`
   (foreground, `remoteMessaging`). `nanomuse-pc` (`io.github.nanomuse.reach`)
   reaches the hub devices from the phone's sandbox shell.
-- Runtime (the windowed desktop, `nanomuse serve`): [`nanomuse/cloud.py`](../nanomuse/cloud.py)
+- nanoMuse Desktop: [`harness/dsh-nanomuse/src/hub.ts`](../harness/dsh-nanomuse/src/hub.ts)
+  (the socket, reconnect), [`harness/dsh-nanomuse/src/actions.ts`](../harness/dsh-nanomuse/src/actions.ts)
+  (what this computer does for others, the card before a remote action) — [desktop.md](desktop.md).
+- iOS: [`NanoMuse/NanoMuseHub.swift`](../android/src/ios/NanoMuse/NanoMuseHub.swift) —
+  `info`, `open`, `notify`, `task`; `screen` is refused (`no_screen`), the shell and
+  files actions with `not_supported`.
+- Runtime (`nanomuse serve`): [`nanomuse/cloud.py`](../nanomuse/cloud.py)
   (the account), [`nanomuse/hub/client.py`](../nanomuse/hub/client.py) (the
   socket, reconnect), [`nanomuse/hub/actions.py`](../nanomuse/hub/actions.py)
   (what this computer does for others), [`nanomuse/hub/service.py`](../nanomuse/hub/service.py)
