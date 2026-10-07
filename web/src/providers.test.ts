@@ -1,8 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { t } from "./i18n";
+import { beforeAll, describe, expect, it } from "vitest";
+import { setLocaleSetting, t } from "./i18n";
 import { CATALOGUE, catalogueIdFor, plans, presetFor, providersFor, unavailableLine } from "./providers";
 
 describe("the own-key catalogue (contract C11)", () => {
+  // the sentences below are the English ones; `t` follows the machine's language otherwise
+  beforeAll(() => setLocaleSetting("en"));
+
   it("is the runtime's file, with the four capabilities and chat on every entry", () => {
     expect(CATALOGUE.length).toBeGreaterThan(10);
     for (const p of CATALOGUE) expect(p.capabilities, p.id).toContain("chat");

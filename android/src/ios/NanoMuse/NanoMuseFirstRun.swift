@@ -276,7 +276,7 @@ struct NanoMuseNotificationsPage: View {
 
     var body: some View {
         NanoMuseSetupPage(
-            hero: { NanoMuseHeroGlyph(symbol: "bell.badge") },
+            hero: { NanoMuseBrandMark(size: 96) }, // the permission ask carries the app's mark, as the sign-in does (#224.6)
             title: AppLocalized("Notifications"),
             subtitle: AppLocalized("Routines and goal check-ins run at a set time. On the iPhone the agent cannot wake itself, so a reminder brings you back when one is due."),
             primaryLabel: granted ? AppLocalized("Continue") : AppLocalized("Allow notifications"),
@@ -542,7 +542,7 @@ final class NanoMuseFirstConversation: ObservableObject {
     func intro() -> [String] {
         [
             AppLocalized("Hi, I'm nanoMuse, the assistant that lives on your phone. Let me take a few things off your plate."),
-            AppLocalized("A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone; your messages go only to the model you configured."),
+            AppLocalized("A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone. Your messages go to the model you configured; signed in to nanoMuse Cloud, this conversation also follows you to your other devices — Data controls switches that off."),
             AppLocalized("Before we start — what should I call you?"),
         ]
     }

@@ -4,6 +4,8 @@ import { cx, fileKind, relativeTime, timeShort, truncate } from "./util";
 
 describe("relativeTime", () => {
   beforeEach(() => {
+    // the words are the app language's; a developer's machine set to Chinese must not change them
+    setLocaleSetting("en");
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-22T12:00:00Z"));
   });

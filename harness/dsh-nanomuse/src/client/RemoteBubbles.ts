@@ -156,7 +156,7 @@ export function renderRemoteBubbles(t: Translate): () => void {
       // the working line under the other device's last prompt (C9), and nowhere else
       const working = shown.querySelector('.nm-remote-working')
       if (line === under) {
-        if (!working) shown.append(el('div', 'nm-remote-working', t('chWorking')))
+        if (!working) shown.append(el('div', 'nm-remote-working', t('chWorking', { device: remote.working?.deviceName || line.deviceName || line.device || '?' })))
       } else working?.remove()
     }
     // a bubble whose row left the document (paged out, re-rendered elsewhere) goes; the next sweep brings it back

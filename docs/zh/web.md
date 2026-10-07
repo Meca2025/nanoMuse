@@ -1,0 +1,54 @@
+# 网页控制台：你的模型、你的 key、你的套餐
+
+> 网页控制台是 `nanomuse serve` 在 `/` 上托管的那个应用——桌面版和自己部署的运行时的大门（[app.md](app.md)）。这一页只讲它的一部分：它怎么挑选回答的模型，以及模型缺了什么时它给出什么。做一把 key 的指南在 [own-key.md](own-key.md)。
+
+## 一份目录 {#one-catalogue}
+
+控制台读的服务商列表和手机、桌面版、中继是同一份：[`nanomuse/llm/providers.json`](../../nanomuse/llm/providers.json)（约定 C11）。每个服务商写明一把 key 在那里能覆盖什么——`chat`、`vision`（手看截图）、`image`（形象工作室的图片）、`video`（它的短视频）——以及除了 key 之外还有哪些登录方式。控制台先问运行时（`GET /api/providers`，它还会说今天配置了哪些位置、各覆盖什么），在旧版运行时上退回构建时打包的那份副本，这时对配置了什么一无所知。模块是 `web/src/providers.ts`；`web/src/providers.test.ts` 检查排序、映射和那些句子。
+
+## 显示在哪里 {#where-it-shows}
+
+**连接 → 对话模型。** 服务商卡片是运行时的预设，所在地区的首选排第一（中国大陆是阿里云百炼，其他地方是 OpenRouter——[region.ts](../../web/src/region.ts)）。卡片下面是所选服务商在目录里的那一行：它的 key 覆盖什么，以及需要知道的事（Kimi 的几个版本、OpenRouter 的 Image API、ChatGPT 的注意事项）。「动手模型」选择器列出能看图的模型；没有 `vision` 的服务商得到的是那一句话，而不是一个看不见的动手模型。在「图片与短片」下，没有 `image` 或 `video` 的服务商在选择器的位置显示那句话；有的话则显示「自动——目录的默认值」，让你知道「自动」会用什么来画。
+
+**连接 → 或者用 ChatGPT 套餐登录。** 这张卡片让运行时启动 Codex 登录（`POST /api/chatgpt/login` → `{url}`），在新标签页打开那个页面，每两秒轮询一次 `GET /api/chatgpt/status`，最多十分钟，令牌进了运行时的存储之后，提供「让它来回答对话」（`[llm] provider = "chatgpt"`）和「退出 ChatGPT」（`POST /api/chatgpt/logout`）。卡片写明这个登录覆盖什么——对话和手，不包括图片和短视频——并带着关于 OpenAI 条款的那句实话。没有这些路由的运行时回答 404；这时卡片直接给出要在终端里跑的命令 `nanomuse chatgpt login`，而不是装作能行。登录的回调落在运行时所在机器的 1455 端口。浏览器够不到它时（运行时在另一台电脑上，或者端口被占——登录回答里 `port_bound: false`），浏览器最后会停在一个打不开的地址上；卡片有一个输入框接收这个地址，再交给运行时（`POST /api/chatgpt/callback {url}`；过期的链接是 400 `state_mismatch`，超过十分钟的登录是 409 `no_login`）。这个输入框任何情况下都在，端口绑不上时会多一句话说明原因（[configuration.md](configuration.md#a-chatgpt-plan-instead-of-a-key)）。
+
+**额度卡片**（在「账号」里，以及聊天里出现 `allowance_exhausted` 时）给出三条路：「换成自己的 key」，带所在地区的首选、一个打开「连接」并定位到该服务商的「设置一下」、「到 … 获取密钥」、指南，以及「其他服务商，以及各自的 key 能做什么」下面地区列表里的其余服务商（中继发来 `guidance.providers` 时用中继的，中继 0.21；否则用目录的），每一个都带自己的覆盖说明、自己的「设置一下」和 key 链接；「用你已经在付费的套餐登录」，ChatGPT 卡片就嵌在里面；还有邀请。80 % 的提前提醒和第一次登录的面板指向同一个地方。
+
+**形象工作室。** 没有图像模型时，「画」按钮不可用，下面那一行就是那一句话——中国大陆是「画图需要一个有图像模型的服务商——阿里云百炼、智谱 GLM、硅基流动或火山方舟」，其他地方是「OpenRouter、OpenAI、Google Gemini 或 xAI Grok」——旁边是「更换」。**设置 → 图像与视频模型**在运行时说图片或短视频没有覆盖时，把同一句话显示为它的值。
+
+## 那些句子 {#the-sentences}
+
+每个不可用的功能都是一句话，从不是原始错误，由 `unavailableLine(cap, region, locale)` 根据所在地区具备该能力的服务商生成（最多四个，按目录顺序）：
+
+| 能力 | English | 中文 |
+|---|---|---|
+| `image` | Pictures need a provider with image models — {providers}. | 画图需要一个有图像模型的服务商——{providers}。 |
+| `video` | Clips need a provider with video models — {providers}. | 生成视频需要一个有视频模型的服务商——{providers}。 |
+| `vision` | The hands need a model that sees pictures — {providers}. | 动手需要一个能看图的模型——{providers}。 |
+| `chat` | Chat needs a model — {providers}. | 对话需要一个模型——{providers}。 |
+
+每句旁边有一个「怎么做」链接，指向 [own-key.md](own-key.md)。服务商的名字按控制台的语言取自目录（`name` / `name_zh`）。
+
+**中继拒绝的一个回合**也是一句话，按中继的 `code` 来（`nanomuse/server/failures.py`；这句话就是 `web/src/i18n/zh-CN.ts` 里的键，所以中文是从英文查出来的）：额度用完（下面带那张几条路的卡片）、每日上限、限流、key 无效、账号被停用、中继不提供的模型、中继背后的服务商出了问题——以及从 0.1.40 起，原来落到「模型服务商返回了一个错误：…」的那四种，和运营者的开关发出的那五种（[cloud.md](cloud.md#controls)）：
+
+| 中继说 | 聊天里显示 |
+|---|---|
+| `413 too_large` | 这条消息超出了模型的上下文窗口。精简一下、去掉部分附件，或者开一个新对话。 |
+| `403 not_invited` | 这个中继只接受邀请注册；在「账号」里用邀请码登录。 |
+| `429 too_many_in_flight` | 这个账号同时进行的对话太多了，等一轮结束后再试。 |
+| `429 provider_busy` | 模型服务商正忙，稍后再试。 |
+| `429 allowance_exhausted` 且 `paused: true` | 这个中继暂时停发了免费额度，不是用完了。在「连接」里填上你自己的模型 key 就能继续；你的登录、设备和剩余额度都保持原样。——和额度用完时同一张几条路的卡片，通知带着 `paused` |
+| `403 signup_closed` | 这个中继暂时停止了新注册，已有账号照常使用。稍后再试。 |
+| `503 service_paused` | nanoMuse Cloud 被运营者暂时停用了，你的登录和数据都保留着。稍后再试。 |
+| `503 sync_paused` | 这个中继暂时停止了对话同步，已存的内容保留着，各设备各自继续使用。 |
+| `503 hub_paused` | 这个中继暂时停止了设备互联，各设备各自继续使用。 |
+
+原始回复留在「详情」下面，供提 bug 时用，从不作为唯一显示的内容。
+
+## 检查 {#checks}
+
+```sh
+cd web && npm run lint && LANG=en_US.UTF-8 npx vitest run && npm run build
+```
+
+构建会写出 `nanomuse/server/static/`，它随改动一起提交；`web/tsconfig.tsbuildinfo` 是副产物，不提交。

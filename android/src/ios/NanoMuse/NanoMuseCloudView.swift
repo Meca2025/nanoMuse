@@ -230,12 +230,28 @@ struct NanoMuseCloudView: View {
         }
 
         Section {
-            TextField(AppLocalized("Phone number or e-mail"), text: $identifier)
+            // The app's mark above the field (docs/brand.md: the sign-in stands for the app), as on Android.
+            HStack {
+                Spacer()
+                NanoMuseBrandMark(size: 64)
+                    .accessibilityHidden(true)
+                Spacer()
+            }
+            .padding(.vertical, 8)
+            .listRowBackground(Color.clear)
+            // SMS codes reach mainland-China numbers only: the placeholder says so, and a number
+            // from elsewhere gets the e-mail sentence while it is being typed, before any tap.
+            TextField(AppLocalized("Mainland China phone number or e-mail"), text: $identifier)
                 .keyboardType(.emailAddress)
                 .textContentType(.username)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .disabled(busy || codeSent)
+            if !codeSent, NanoMuseCloud.needsEmailInstead(identifier: identifier) {
+                Text(NanoMuseCloud.phoneRegionSentence)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             if usePassword {
                 SecureField(AppLocalized("Password"), text: $password)
                     .textContentType(.password)
@@ -334,10 +350,11 @@ struct NanoMuseCloudView: View {
         }
     }
 
+    /// Android's `nm_cloud_fine_print`: what the relay keeps, and where the rest is written.
     private var privacyFooter: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(AppLocalized("The relay keeps a hashed identifier and token counts. Messages are passed to the model and not stored."))
-            Link(AppLocalized("How nanoMuse Cloud works"), destination: URL(string: "https://github.com/nano-muse/nanoMuse/blob/main/docs/cloud.md")!)
+            Text(AppLocalized("The relay keeps an account id, a masked identifier, usage counts and your agent's name and look; what else, and what is yours to switch off, is in the privacy policy."))
+            Link(AppLocalized("Privacy policy"), destination: NanoMuseLinks.privacy)
         }
     }
 

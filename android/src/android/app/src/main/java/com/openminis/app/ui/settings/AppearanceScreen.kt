@@ -315,7 +315,7 @@ fun AppearanceScreen(
             )
         }
 
-        // nanoMuse: -- Conversation -- the agent's steps, off by default; the
+        // nanoMuse: -- Conversation -- the agent's steps, on by default (0.1.37); off, the
         // status line under the face carries the gist instead.
         SettingsSection(
             header = stringResource(R.string.nm_appearance_section_chat),

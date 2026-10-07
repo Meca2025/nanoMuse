@@ -1240,6 +1240,65 @@
         }
       }
     },
+    "A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone. Your messages go to the model you configured; signed in to nanoMuse Cloud, this conversation also follows you to your other devices — Data controls switches that off." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurz dazu, wie ich arbeite:\n\n- Ich habe einen eigenen Computer — eine Linux-Sandbox und einen Browser — und kann damit Befehle ausführen, Websites öffnen und Formulare ausfüllen.\n- Ich kann die Dateien und Fotos lesen und ordnen, die du mit mir teilst, und mich um Erinnerungen und geplante Aufgaben kümmern.\n- Vor jedem Schritt, der zählt, frage ich dich zuerst.\n- Alles läuft auf diesem Telefon. Deine Nachrichten gehen an das Modell, das du eingerichtet hast; mit nanoMuse Cloud folgt dir dieses Gespräch auch auf deine anderen Geräte — in der Datenkontrolle lässt sich das abschalten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone. Your messages go to the model you configured; signed in to nanoMuse Cloud, this conversation also follows you to your other devices — Data controls switches that off."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un poco sobre cómo trabajo:\n\n- Tengo mi propia computadora, un sandbox Linux y un navegador, así que puedo ejecutar comandos, abrir sitios web y completar formularios.\n- Puedo leer y organizar los archivos y fotos que compartes conmigo, y ocuparme de recordatorios y tareas programadas.\n- Antes de cualquier paso que importe, te pregunto primero.\n- Todo se ejecuta en este teléfono. Tus mensajes van al modelo que configuraste; con nanoMuse Cloud, esta conversación también te sigue a tus otros dispositivos — en Control de datos puedes desactivarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un mot sur ma façon de travailler :\n\n- J’ai mon propre ordinateur — un bac à sable Linux et un navigateur — donc je peux exécuter des commandes, ouvrir des sites et remplir des formulaires.\n- Je peux lire et organiser les fichiers et photos que vous partagez avec moi, et m’occuper des rappels et des tâches planifiées.\n- Avant toute étape qui compte, je vous demande d’abord.\n- Tout tourne sur ce téléphone. Vos messages vont au modèle que vous avez configuré ; avec nanoMuse Cloud, cette conversation vous suit aussi sur vos autres appareils — Contrôle des données permet de le désactiver."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "私の働き方について少し:\n\n- 自分のコンピューター — Linux のサンドボックスとブラウザー — を持っているので、コマンドの実行、ウェブサイトを開くこと、フォームの入力ができます。\n- 共有してもらったファイルや写真を読んで整理し、リマインダーや予定されたタスクを引き受けます。\n- 重要な操作の前には、必ず先にあなたに確認します。\n- すべてはこの端末上で動きます。メッセージは設定したモデルに送られます。nanoMuse Cloud にサインインしていると、この会話はほかの端末にも同期されます — データ管理でオフにできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제가 일하는 방식을 조금 소개할게요:\n\n- 저만의 컴퓨터 — Linux 샌드박스와 브라우저 — 가 있어서 명령을 실행하고, 웹사이트를 열고, 양식을 채울 수 있어요.\n- 공유해 주신 파일과 사진을 읽고 정리하고, 알림과 예약 작업을 챙길 수 있어요.\n- 중요한 단계 앞에서는 먼저 여쭤봐요.\n- 모든 것은 이 휴대전화에서 실행돼요. 메시지는 설정한 모델에 전달되고, nanoMuse Cloud에 로그인해 두면 이 대화는 다른 기기에도 함께 보여요 — 데이터 관리에서 끌 수 있어요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немного о том, как я работаю:\n\n- У меня есть свой компьютер — песочница Linux и браузер, — так что я могу выполнять команды, открывать сайты и заполнять формы.\n- Я могу читать и раскладывать файлы и фото, которыми вы со мной делитесь, и следить за напоминаниями и задачами по расписанию.\n- Перед любым важным шагом я сначала спрашиваю вас.\n- Всё работает на этом телефоне. Ваши сообщения уходят той модели, которую вы настроили; с nanoMuse Cloud этот разговор следует за вами и на другие устройства — отключить это можно в «Управлении данными»."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "简单说说我是怎么工作的：\n\n- 我有自己的电脑——一个 Linux 沙盒和一个浏览器——可以运行命令、打开网页、填表单。\n- 我能读取和整理你分享给我的文件和照片，也能照看提醒和定时任务。\n- 凡是要紧的步骤，我都会先问你。\n- 一切都在这台手机上运行。你的消息发给你配置的模型；登录 nanoMuse Cloud 后，这段对话也会同步到你的其他设备——可以在「数据控制」里关掉。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "簡單說說我是怎麼工作的：\n\n- 我有自己的電腦——一個 Linux 沙盒和一個瀏覽器——可以運行命令、打開網頁、填表單。\n- 我能讀取和整理你分享給我的文件和照片，也能照看提醒和定時任務。\n- 凡是要緊的步驟，我都會先問你。\n- 一切都在這臺手機上運行。你的消息發給你配置的模型；登入 nanoMuse Cloud 後，這段對話也會同步到你的其他裝置——可以在「資料控制」裡關掉。"
+          }
+        }
+      }
+    },
     "A key of your own" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4360,6 +4419,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在尋找備份…"
+          }
+        }
+      }
+    },
+    "Mainland China phone number or e-mail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telefonnummer aus Festlandchina oder E-Mail"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mainland China phone number or e-mail"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Número de teléfono de China continental o correo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Numéro de Chine continentale ou e-mail"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中国本土の電話番号またはメールアドレス"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "중국 본토 휴대전화 번호 또는 이메일"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Номер телефона материкового Китая или e-mail"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中国大陆手机号或邮箱"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中國大陸手機號或信箱"
           }
         }
       }
@@ -7516,6 +7634,65 @@
         }
       }
     },
+    "Tap a device that is online to write to it from the chat: the message starts with @ and its name, and that device does the work." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe auf ein Gerät, das online ist, um es aus dem Chat anzuschreiben: Die Nachricht beginnt mit @ und seinem Namen, und dieses Gerät erledigt die Arbeit."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap a device that is online to write to it from the chat: the message starts with @ and its name, and that device does the work."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca un dispositivo en línea para escribirle desde el chat: el mensaje empieza con @ y su nombre, y ese dispositivo hace el trabajo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchez un appareil en ligne pour lui écrire depuis la discussion : le message commence par @ et son nom, et cet appareil fait le travail."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オンラインのデバイスをタップすると、チャットからそのデバイスに書けます: メッセージは @ とその名前で始まり、そのデバイスが作業します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "온라인인 기기를 탭하면 채팅에서 그 기기에 쓸 수 있습니다. 메시지가 @와 기기 이름으로 시작하고, 그 기기가 일을 합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите на устройство в сети, чтобы написать ему из чата: сообщение начинается с @ и его имени, и работу делает это устройство."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点一台在线的设备，就能在聊天里对它说话：消息以 @ 加设备名开头，由那台设备去做。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點一台在線的裝置，就能在聊天裡對它說話：訊息以 @ 加裝置名開頭，由那台裝置去做。"
+          }
+        }
+      }
+    },
     "Tap a suggestion or type one emoji. These render the same on iOS and Android." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8489,6 +8666,65 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "手機要能連到那台電腦：同一個 Wi-Fi，或者一條隧道。資料不會離開你的網路。"
+          }
+        }
+      }
+    },
+    "The relay keeps an account id, a masked identifier, usage counts and your agent's name and look; what else, and what is yours to switch off, is in the privacy policy." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Relay behält eine Konto-ID, eine maskierte Kennung, Nutzungszahlen sowie Name und Aussehen deines Agenten; was sonst noch, und was du abschalten kannst, steht in der Datenschutzerklärung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The relay keeps an account id, a masked identifier, usage counts and your agent's name and look; what else, and what is yours to switch off, is in the privacy policy."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El relay guarda un id de cuenta, un identificador enmascarado, recuentos de uso y el nombre y el aspecto de tu agente; qué más, y qué puedes desactivar, está en la política de privacidad."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le relais conserve un identifiant de compte, un identifiant masqué, des compteurs d’usage et le nom et l’apparence de votre agent ; le reste, et ce que vous pouvez désactiver, est dans la politique de confidentialité."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リレーが保持するのはアカウント ID、マスクした識別子、利用回数、そしてエージェントの名前と見た目です。ほかに何を保持し、何をオフにできるかはプライバシーポリシーにあります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "릴레이는 계정 ID, 가려진 식별자, 사용량 집계, 에이전트의 이름과 모습을 보관합니다. 그 밖의 것과 직접 끌 수 있는 것은 개인정보 처리방침에 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Релей хранит идентификатор аккаунта, замаскированный идентификатор, счётчики использования, а также имя и образ вашего агента; что ещё и что вы можете отключить — в политике конфиденциальности."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务器保存账号 id、打码后的手机号或邮箱、用量，以及你的智能体的名字和形象；其余保存什么、哪些由你决定，见隐私政策。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器保存帳號 id、打碼後的手機號或信箱、用量，以及你的智慧體的名字和形象；其餘保存什麼、哪些由你決定，見隱私政策。"
           }
         }
       }
@@ -122668,65 +122904,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "- %@：用戶把我的虛擬形象換成了\"%@\"。"
-          }
-        }
-      }
-    },
-    "A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone; your messages go only to the model you configured." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kurz dazu, wie ich arbeite:\n\n- Ich habe einen eigenen Computer — eine Linux-Sandbox und einen Browser — und kann damit Befehle ausführen, Websites öffnen und Formulare ausfüllen.\n- Ich kann die Dateien und Fotos lesen und ordnen, die du mit mir teilst, und mich um Erinnerungen und geplante Aufgaben kümmern.\n- Vor jedem Schritt, der zählt, frage ich dich zuerst.\n- Alles läuft auf diesem Telefon; deine Nachrichten gehen nur an das Modell, das du eingerichtet hast."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you share with me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone; your messages go only to the model you configured."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un poco sobre cómo trabajo:\n\n- Tengo mi propia computadora, un sandbox Linux y un navegador, así que puedo ejecutar comandos, abrir sitios web y completar formularios.\n- Puedo leer y organizar los archivos y fotos que compartes conmigo, y ocuparme de recordatorios y tareas programadas.\n- Antes de cualquier paso que importe, te pregunto primero.\n- Todo se ejecuta en este teléfono; tus mensajes van solo al modelo que configuraste."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un mot sur ma façon de travailler :\n\n- J’ai mon propre ordinateur — un bac à sable Linux et un navigateur — donc je peux exécuter des commandes, ouvrir des sites et remplir des formulaires.\n- Je peux lire et organiser les fichiers et photos que vous partagez avec moi, et m’occuper des rappels et des tâches planifiées.\n- Avant toute étape qui compte, je vous demande d’abord.\n- Tout tourne sur ce téléphone ; vos messages ne vont qu’au modèle que vous avez configuré."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "私の働き方について少し:\n\n- 自分のコンピューター — Linux のサンドボックスとブラウザー — を持っているので、コマンドの実行、ウェブサイトを開くこと、フォームの入力ができます。\n- 共有してもらったファイルや写真を読んで整理し、リマインダーや予定されたタスクを引き受けます。\n- 重要な操作の前には、必ず先にあなたに確認します。\n- すべてはこの端末上で動きます。メッセージは設定したモデルにだけ送られます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "제가 일하는 방식을 조금 소개할게요:\n\n- 저만의 컴퓨터 — Linux 샌드박스와 브라우저 — 가 있어서 명령을 실행하고, 웹사이트를 열고, 양식을 채울 수 있어요.\n- 공유해 주신 파일과 사진을 읽고 정리하고, 알림과 예약 작업을 챙길 수 있어요.\n- 중요한 단계 앞에서는 먼저 여쭤봐요.\n- 모든 것은 이 휴대전화에서 실행되고, 메시지는 설정한 모델에만 전달돼요."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Немного о том, как я работаю:\n\n- У меня есть свой компьютер — песочница Linux и браузер, — так что я могу выполнять команды, открывать сайты и заполнять формы.\n- Я могу читать и раскладывать файлы и фото, которыми вы со мной делитесь, и следить за напоминаниями и задачами по расписанию.\n- Перед любым важным шагом я сначала спрашиваю вас.\n- Всё работает на этом телефоне; ваши сообщения уходят только той модели, которую вы настроили."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "简单说说我是怎么工作的：\n\n- 我有自己的电脑——一个 Linux 沙盒和一个浏览器——可以运行命令、打开网页、填表单。\n- 我能读取和整理你分享给我的文件和照片，也能照看提醒和定时任务。\n- 凡是要紧的步骤，我都会先问你。\n- 一切都在这台手机上运行；你的消息只会发给你配置的模型。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "簡單說說我是怎麼工作的：\n\n- 我有自己的電腦——一個 Linux 沙盒和一個瀏覽器——可以運行命令、打開網頁、填表單。\n- 我能讀取和整理你分享給我的文件和照片，也能照看提醒和定時任務。\n- 凡是要緊的步驟，我都會先問你。\n- 一切都在這臺手機上運行；你的消息只會發給你配置的模型。"
           }
         }
       }

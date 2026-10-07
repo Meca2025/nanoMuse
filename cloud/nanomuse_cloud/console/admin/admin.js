@@ -18,6 +18,7 @@
   "use strict";
 
   const zh = (navigator.language || "").toLowerCase().startsWith("zh");
+  document.documentElement.lang = zh ? "zh-CN" : "en"; // the markup says zh-CN; the page follows the browser
   const fmt = (n) => Number(n || 0).toLocaleString();
   const T = zh ? {
     title: "nanoMuse Cloud 后台", tokenLabel: "管理口令", tokenHint: "服务器上 /opt/nanomuse/relay/ADMIN_TOKEN.txt 里的那一行；只留在这个标签页里。",

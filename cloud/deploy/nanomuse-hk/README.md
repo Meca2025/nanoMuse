@@ -99,17 +99,33 @@ someone more: *加额度* on the admin page (into their pool), or press *设为�
 next to their account on the admin page (no restart), or add the number or
 address to `ALLOWED_IDENTIFIERS` in `.env` and `docker compose up -d`.
 Removing someone: disable or delete the account on the admin page. Closing
-the door again: `SIGNUP_OPEN=0` (members only) and `docker compose up -d`.
+the door again: the *Sign-ups* switch under *Controls* on the admin page
+(relay 0.22; no restart, a note for the audit log, members still sign in) —
+or `SIGNUP_OPEN=0` in `.env` and `docker compose up -d` to make it the
+default a restart comes back to.
 
-Kill switch — the relay stops answering, nothing else on the box changes:
+Pausing — the switches under *Controls* on the admin page, or
+`python -m nanomuse_cloud admin controls off <switch> --note "…"` from the
+relay's shell ([docs/cloud.md › Controls](../../../docs/cloud.md#controls)):
+*Free allowance* stops the spending while sign-in, the hub and sync keep
+working (the apps say so and offer the other ways on); *Cloud service*
+answers every API call with 503 `service_paused` while the console, the health
+check and `/v1/config` keep answering; *Conversation sync* and *Device hub*
+pause one thing each. All of it comes back with the switch, nothing restarts.
+A threshold rule (*at N accounts → notify / close sign-ups / pause the
+allowance*) does the same by itself; `ADMIN_EMAIL` in `.env` is where
+*notify* goes, and `ALERT_URL` is where the self-check posts a problem; with
+either empty the line lands only in the audit log or the journal.
+
+Kill switch — the process stops, nothing else on the box changes:
 
 ```bash
 ssh nanomuse-hk 'cd /opt/nanomuse/relay && docker compose stop'
 ```
 
-and `docker compose start` brings it back. To cut only the spending, blank
-`UPSTREAM_KEY` and `up -d`: sign-in and the hub keep working, the models
-answer 503.
+and `docker compose start` brings it back. Blanking `UPSTREAM_KEY` and `up -d`
+also cuts the spending (the models answer 503 `upstream_unconfigured`), but
+the *Free allowance* switch says it better to the apps.
 
 ## Restoring
 

@@ -340,6 +340,22 @@ Ours, in `NanoMuse/`:
   device only (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, never iCloud Keychain); a
   fresh install with no marker, no provider and no chat sweeps the device-only Keychain items a
   previous install left. The full table is [sync.md](sync.md).
+- **The audit's small things (round 9)** (`NanoMuseCloudView.swift`, `NanoMuseFirstRun.swift`,
+  `NanoMuseAvatarFlow.swift`, `NanoMuseDevicesSection.swift`, `NanoMuseShell.swift`): the
+  sign-in sheet opens with the app's mark above the field, the field says *Mainland China phone
+  number or e-mail*, and a number with another country code gets *Text-message codes reach
+  mainland-China numbers only…* under the field while it is typed, not after a tap; the footer
+  carries Android's fine print (what the relay keeps — an account id, a masked identifier, usage
+  counts, the agent's name and look) and links the privacy policy, not the GitHub page. The
+  Notifications page of the first run shows the mark, as the welcome and sign-in do. After a
+  new face is picked with a video model set, the reply says the four clips follow in the
+  background (Android's sentence). In the account's Devices list an offline device shows when
+  it was last seen and a tap on an online one opens the main chat with `@〈name〉 ` in the
+  composer (the Reach sheet's *Ask this device*). `NanoMuseRoot` draws nothing until it knows
+  whether the setup is due, so a fresh install never shows the shell for a frame before the
+  welcome page. The first conversation's fourth line no longer says the messages go *only* to
+  the model: signed in, the main conversation also follows the person to their other devices,
+  and *Data controls* switches that off — the same words on Android, in every language.
 
 ## Building on a Mac
 

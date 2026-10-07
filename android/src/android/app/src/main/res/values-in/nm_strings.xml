@@ -40,7 +40,7 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Hai, aku nanoMuse, asisten yang tinggal di ponselmu. Biar aku bantu ringankan beberapa urusanmu.</string>
-    <string name="nm_intro_how_i_work">Sedikit tentang cara kerjaku:\n\n- Aku punya komputer sendiri — sandbox Linux dan browser — jadi aku bisa menjalankan perintah, membuka situs web dan mengisi formulir.\n- Aku bisa membaca dan merapikan file dan foto yang kamu pasang untukku, serta mengurus pengingat dan tugas terjadwal.\n- Sebelum langkah yang penting, aku bertanya dulu padamu.\n- Semuanya berjalan di ponsel ini; pesanmu hanya dikirim ke model yang kamu atur.</string>
+    <string name="nm_intro_how_i_work">Sedikit tentang cara kerjaku:\n\n- Aku punya komputer sendiri — sandbox Linux dan browser — jadi aku bisa menjalankan perintah, membuka situs web dan mengisi formulir.\n- Aku bisa membaca dan merapikan file dan foto yang kamu pasang untukku, serta mengurus pengingat dan tugas terjadwal.\n- Sebelum langkah yang penting, aku bertanya dulu padamu.\n- Semuanya berjalan di ponsel ini. Pesanmu dikirim ke model yang kamu atur; dengan nanoMuse Cloud, percakapan ini juga mengikutimu ke perangkatmu yang lain — bisa dimatikan di Kontrol data.</string>
     <string name="nm_intro_ask_name">Sebelum mulai — aku harus memanggilmu apa?</string>
 
     <!-- First conversation: the name chooser -->

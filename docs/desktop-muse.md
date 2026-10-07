@@ -59,7 +59,7 @@ stylesheet over the harness's stable DOM hooks (`data-composer-card`,
   bottom, as in Muse, with the workspace and preset row above it.
 - The composer is one pill: *+* (attach), *Message*, the send disc (the stop square
   while a turn runs). The harness's model picker, permission mode and plan toggle are
-  hidden from it — the model lives in Settings → Models and the default permission mode
+  hidden from it — the model lives in Settings → nanoMuse Cloud (dsh's own Models page is under Advanced) and the default permission mode
   in General, as in Muse — and come back with *Show DeepSeek Harness controls* under
   General. The microphone appears when the harness's voice input is switched on in
   Plugins (Settings → Dictation says how).
@@ -394,7 +394,7 @@ stock General plugin switched off in the bundle layer:
 - **Media** — the models that draw the face and its clips. The image row names the
   account's model, or an own row with image models; the video row the account's or a
   Bailian key's. When nothing configured covers pictures or clips the row says who could,
-  where you are, with the way to Settings → Account — the same sentence the avatar studio
+  where you are, with the way to Settings → nanoMuse Cloud — the same sentence the avatar studio
   shows in place of the estimate — and with only the ChatGPT sign-in, that pictures and
   clips are not covered by it.
   Below: *Animate the avatar after a change*, *Make / Redo clips* with the state of each

@@ -44,7 +44,7 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Bună, sunt nanoMuse, asistentul care trăiește pe telefonul tău. Lasă-mă să-ți iau câteva lucruri de pe cap.</string>
-    <string name="nm_intro_how_i_work">Câteva lucruri despre cum lucrez:\n\n- Am propriul computer — un sandbox Linux și un browser — așa că pot rula comenzi, deschide site-uri și completa formulare.\n- Pot citi și organiza fișierele și fotografiile pe care mi le pui la dispoziție și pot avea grijă de mementouri și de sarcinile programate.\n- Înainte de orice pas care contează, te întreb mai întâi.\n- Totul rulează pe acest telefon; mesajele tale ajung doar la modelul pe care l-ai configurat.</string>
+    <string name="nm_intro_how_i_work">Câteva lucruri despre cum lucrez:\n\n- Am propriul computer — un sandbox Linux și un browser — așa că pot rula comenzi, deschide site-uri și completa formulare.\n- Pot citi și organiza fișierele și fotografiile pe care mi le pui la dispoziție și pot avea grijă de mementouri și de sarcinile programate.\n- Înainte de orice pas care contează, te întreb mai întâi.\n- Totul rulează pe acest telefon. Mesajele tale ajung la modelul pe care l-ai configurat; cu nanoMuse Cloud, această conversație te urmează și pe celelalte dispozitive — se poate opri din Controlul datelor.</string>
     <string name="nm_intro_ask_name">Înainte să începem — cum să-ți spun?</string>
 
     <!-- First conversation: the name chooser -->

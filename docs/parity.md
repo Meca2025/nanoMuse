@@ -32,7 +32,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Chat model and Hands model as two settings (`deepseek-v4.1-flash` / `qwen3.8-27b`, the relay's `for`) | ✓ 0.1.34 | ✓ 0.1.34 *(chat; no hands)* | ✓ 0.1.34 | ✓ 0.1.34 |
 | "Ways on" ordered by region (Bailian first on the mainland, OpenRouter first elsewhere) | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 | ✓ 0.1.34 |
 | Own-key catalogue (`providers.json`: 18 providers, what each covers — chat · screen · pictures · clips — key pages, regions; one file, generated for every client) | ✓ 0.1.39 | ✓ 0.1.40 `NanoMuseCatalogue` *(32)* | ✓ 0.1.39 | ✓ 0.1.39 |
-| "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | ✓ 0.1.40 the pinned card, Settings → nanoMuse Cloud and the own-key sheet, one list (`NanoMuseWaysList`) *(32)* | ✓ 0.1.39 Settings → Account, the own-key first-run step | ✓ 0.1.39 |
+| "Ways on" from the catalogue: the region's lead first, *more providers*, the plans one can sign in with, the key taken inline | ✓ 0.1.39 | ✓ 0.1.40 the pinned card, Settings → nanoMuse Cloud and the own-key sheet, one list (`NanoMuseWaysList`) *(32)* | ✓ 0.1.39 Settings → nanoMuse Cloud, the own-key first-run step | ✓ 0.1.39 |
 | The ways read from the relay's `spend.guidance` (providers for the region, plans, caveats, docs) rather than a list in the app; the bundled catalogue only when the relay sends none | ✓ 0.1.40 `guidance` first, the catalogue when none *(34)* | ✓ 0.1.40 the same (`NanoMuseWays`) *(32)* | ✓ 0.1.40 the chat card and Settings → nanoMuse Cloud, one component | ✓ 0.1.39 |
 | A refused turn (`429 allowance_exhausted`) is a card under it in the chat: one sentence, the three ways on, *Open Settings*, *Try again* — never the relay's reply as text | ✓ 0.1.39 `AllowanceWaysCard` | ✓ 0.1.40 pinned under the header like the star card (`NanoMuseAllowanceCard`) *(33)* | ✓ 0.1.40 *(before: the JSON, after five retries as a rate limit)* | ✓ 0.1.39 notice with the ways |
 | The relay's other refusals as one sentence and a button: 413 *too large* → *New chat*, 401 → *Sign in*, 403, 429 busy (with the wait), the daily cap, 404 model, 5xx / no answer → *Try again*; never a status code or JSON | ✓ 0.1.40 `RelayRefusal` + `RelayRefusalCard`, 17 locales *(35)* | ✓ 0.1.40 `NanoMuseRelayRefusal` + `NanoMuseRelayRefusalCard`, 9 locales; a refused chat turn goes through `describe` *(35)* | ✓ 0.1.40 | ✓ 0.1.40 `failures.py` (413, `not_invited`, `too_many_in_flight`, `provider_busy` added) |
@@ -49,7 +49,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Status line = the step's own words (`step`: *打开携程网站*), never the raw command | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 | ✓ 0.1.33 |
 | "Show the agent's steps", on by default since 0.1.37 (a stored off stays off) | ✓ 0.1.37 (`nm.show_steps`) | ✓ 0.1.37 (`nanomuse.show_steps`) *(2)* | ✓ 0.1.37 | ✓ 0.1.37 |
 | Star asks at the relay's moments (`/v1/nudges`: sign-in · 3rd / 10th / 30th task · 7th / 30th day · a goal reached · a new look · allowance spent; 7 days apart, 4 per device; never in the first conversation) | ✓ 0.1.35 | ✓ 0.1.35 *(3)* | ✓ 0.1.35 | ✓ 0.1.35 |
-| First conversation: the app speaks first, asks what to call you, the model's `nanomuse-naming` fence becomes the naming card | ✓ | ✓ 0.1.34 | ✓ 0.1.35 *(25)* | ✓ |
+| First conversation: the app speaks first, asks what to call you, the model's `nanomuse-naming` fence becomes the naming card | ✓ | ✓ 0.1.34 | ✓ 0.1.35 *(25)* | ◐ *(39)* |
 | First run: "Sign in — free" before anything else | ✓ | ✓ 0.1.32 *(4)* | ✓ | ✓ |
 | Approval cards, three tiers, remembered grants | ✓ | upstream's | ✓ | ✓ |
 | Approvals answered outside the app while the hands work | ✓ 0.1.33 capsule *Allow / Deny* | n/a *(10)* | ✓ 0.1.34 stage *Allow once / Always in app / Deny*, capsule when the window is behind *(17)* | n/a |
@@ -69,7 +69,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Skills | ✓ upstream | ✓ upstream | — *(8)* | ✓ |
 | Coding agents (Cursor, Codex, Claude Code on the computers) | ✓ | ✓ 0.1.34 over the hub *(9)* | — *(8)* | ✓ |
 | Devices of the account, remote control, rename, forget | ✓ | ◐ list, Reach sheet 0.1.33 | ✓ | ✓ |
-| Hub, outbound: the model reaches the account's other devices (`devices`, `device_*`, `delegate`, `@<device>`) | ✓ *Computers*, the reach offload | ◐ the Reach sheet by hand and `@device` to the hub; no tool in the model's hands *(29)* | ✓ `reach.ts` | ✓ the runtime's `tools/devices.py` |
+| Hub, outbound: the model reaches the account's other devices (`devices`, `device_*`, `delegate`, `@<device>`) | ✓ *Computers*, the reach offload | ◐ the Reach sheet by hand and `@device` to the hub — since round 9 also a tap on an online device in the account's Devices list, as on Android; no tool in the model's hands *(29)* | ✓ `reach.ts` | ✓ the runtime's `tools/devices.py` |
 | Hub, inbound: the device answers the others (shell · files · open · screen · notify · task) | ✓ `HubActions` | ◐ info · open · notify · task; shell, files and screen answer *not supported* *(10)* | ✓ `actions.ts` | ✓ the runtime; a browser tab is not a device |
 | Hands — the device's own screen as a hand | ✓ | n/a *(10)* | ✓ Linux X11 (Wayland *(21)*); macOS one window while the person keeps the mouse, per-app grants, glow and capsule out of the shots *(19)*; Windows to be tried *(31)* | n/a |
 | Report a problem: one tap opens a GitHub issue | ✓ Settings → Account | ✓ About → *Report an issue* | ✓ the corner menu; under the shell a screenshot goes to Downloads and the issue opens filled in | ✓ Settings → Feedback |
@@ -96,6 +96,7 @@ Legend: **✓** done · **◐** partial (what is missing is in the note) · **�
 | Settings as Muse cards in one order (Image & video models · Avatar · Computers · Appearance · … · Version) | ✓ | ✓ 0.1.35 | ✓ sections | ✓ sections |
 | Memory as a room | — settings page *(14)* | — | ✓ | ✓ |
 | Stage / browser viewer while the hands work | ✓ stage | n/a *(10)* | ✓ the glow and the capsule while the hands work, the run's trajectory in the chat 0.1.40 (a live stage from 0.1.33 to 0.1.39); Allow/Deny, holds 0.1.34 | ✓ browser viewer you can drive 0.1.34 |
+| Every working light breathes (2.4 s in, 2.4 s out), none runs; steady under reduce-motion | ✓ round 9: the stage's comet and scan line gone, the capsule's ring and bars breathe | n/a *(10)* | ✓ 0.1.40 | ✓ 0.1.40 |
 | Quick chat (global shortcut) | n/a | n/a | ✓ | n/a |
 | Widgets | ✓ upstream | ✓ upstream | n/a | n/a |
 | Voice in: dictate into the composer | ✓ upstream | ✓ upstream | ◐ Web Speech where the shell has it; otherwise the Dictation page says what to use *(36)* | ◐ the browser's Web Speech *(36)* |
@@ -320,6 +321,12 @@ notes above; a settled item keeps its number and says how it went.
     (auto · en · zh-CN), the desktop has English and Chinese through the harness's language row.
     *Proposal:* the desktop's `locales.ts` grows the phones' languages as people ask, de and ja
     first; an in-app override on the phones is upstream's call.
+39. **Web · the first conversation.** The web app greets ("Hi, I'm {name}") and the first-run
+    list has a *Meet your nanoMuse* page, but the name comes from a form (`IdentityForm`), not
+    from the conversation: the runtime has no `nanomuse-naming` fence, so the model never asks
+    what to call you and there is no naming card. Doing it the phones' way means a fence in the
+    runtime's prompt (`nanomuse/llm/prompt_tools.py`), a card in `ChatScreen.tsx`, and the
+    first-run list without the naming page — about two days. Until then the form stays.
 
 ## Keeping this true
 
