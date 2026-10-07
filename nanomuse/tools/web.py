@@ -17,7 +17,7 @@ from nanomuse import __version__
 from nanomuse.config import SearchSettings
 from nanomuse.schema import RiskLevel, ToolResult
 from nanomuse.search import WebSearchProvider
-from nanomuse.tools.base import BaseTool, CallAssessment
+from nanomuse.tools.base import BaseTool, CallAssessment, int_arg
 
 USER_AGENT = (
     f"Mozilla/5.0 (X11; Linux x86_64) nanoMuse/{__version__} "
@@ -56,6 +56,8 @@ def _is_private_host(host: str) -> bool:
 
 
 MAX_REDIRECTS = 5
+# a page is read up to here (8 MB); `max_chars` cuts the text further
+MAX_BODY_BYTES = 8 * 1024 * 1024
 
 
 async def fetch_public(
@@ -66,7 +68,8 @@ async def fetch_public(
 ) -> httpx.Response:
     """GET ``url`` following at most :data:`MAX_REDIRECTS` redirects, checking every hop
     against the private-host guard. A redirect to ``http://169.254.169.254/`` or to
-    ``localhost`` is refused instead of followed.
+    ``localhost`` is refused instead of followed. The body is read up to
+    :data:`MAX_BODY_BYTES` and cut there: a link to a disk image does not fill memory.
 
     Raises :class:`PermissionError` for a private destination, :class:`httpx.HTTPError`
     for transport problems.
@@ -80,11 +83,34 @@ async def fetch_public(
                 raise PermissionError("invalid url")
             if await asyncio.to_thread(_is_private_host, host):
                 raise PermissionError(f"refusing to fetch private/internal host '{host}'")
-            resp = await c.get(url)
-            if not resp.is_redirect or "location" not in resp.headers:
-                return resp
-            url = str(resp.next_request.url) if resp.next_request else resp.headers["location"]
+            resp = await c.send(c.build_request("GET", url), stream=True)
+            try:
+                if resp.is_redirect and "location" in resp.headers:
+                    url = (
+                        str(resp.next_request.url)
+                        if resp.next_request
+                        else resp.headers["location"]
+                    )
+                    continue
+                body = await read_capped(resp, MAX_BODY_BYTES)
+            finally:
+                await resp.aclose()
+            return httpx.Response(
+                resp.status_code, headers=resp.headers, content=body, request=resp.request
+            )
         raise PermissionError(f"more than {MAX_REDIRECTS} redirects")
+
+
+async def read_capped(resp: httpx.Response, limit: int) -> bytes:
+    """The first ``limit`` bytes of a streamed response; the rest is never read."""
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in resp.aiter_bytes():
+        chunks.append(chunk)
+        size += len(chunk)
+        if size >= limit:
+            break
+    return b"".join(chunks)[:limit]
 
 
 class WebSearch(BaseTool):
@@ -127,7 +153,7 @@ class WebSearch(BaseTool):
     ) -> ToolResult:
         if not query.strip():
             return ToolResult.fail("empty query")
-        max_results = max(1, min(int(max_results or 6), 20))
+        max_results = int_arg(max_results, 6, 1, 20)
         try:
             results, note = await self.provider.search(query, max_results, region or "")
         except Exception as exc:  # noqa: BLE001
@@ -176,7 +202,7 @@ class WebFetch(BaseTool):
             url = "https://" + url
         if not host_of(url):
             return ToolResult.fail("invalid url")
-        max_chars = max(500, min(int(max_chars or 8_000), 60_000))
+        max_chars = int_arg(max_chars, 8_000, 500, 60_000)
         try:
             resp = await fetch_public(
                 url,

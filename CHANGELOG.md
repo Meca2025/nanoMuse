@@ -19,6 +19,23 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Runtime
 
+- **`auto` mode asks on a warning, as documented.** A call that carries a warning (`rm -rf`, `sudo`, code that reads the environment) was allowed in `auto` mode although step 6 of the policy says it asks in every mode; the gate now keeps it an ask. `nanomuse daemon` declines such a step with a note instead of waiting on a keyboard nobody is at.
+- **A shell timeout stops the whole process tree.** A command that runs past its timeout, or whose turn is cancelled, is stopped together with everything it started (`sleep 999 | tee`, a server put in the background); the coding runner and the hub's shell action stop their trees the same way.
+- **Shell approvals see inside substitutions.** The programs in `$(...)`, backticks and `<(...)` are bound too: a permission for `echo` is not one for `echo $(curl ...)`.
+- **IMAP arguments are quoted.** `read_emails` quotes the folder name and the search text, so a folder or a query with quotes, spaces or non-ASCII letters works and cannot carry a second command; the tool and the mail watcher give up on a silent server after 30 seconds. `send_email` reports a header with a line break instead of crashing.
+- **`files` reads large files in part**, without loading the whole file first, and lists a match under an extra root by its full path.
+- **Numbers from the model are read sensibly.** A value passed as text or out of range (`timeout="sixty"`, `limit=-1`) is parsed or clamped instead of crashing the tool; a crash inside a tool is told apart from a bad argument.
+- **Downloads are capped.** `web_fetch` reads at most 8 MB of a page, and the skill installer reads a SKILL.md only up to its size limit, instead of downloading the whole file first.
+- **`open_app` refuses commands to the machine** (`shutdown`, `reboot`, `sudo`, a shell); the Sentinel marks such a request sensitive with a warning.
+- **`memory forget <text>` is literal and undoable.** `%` and `_` are no longer wildcards, an empty query forgets nothing, and the deletion is logged as one change that `memory restore` brings back.
+- **Removing a person from the agent's own address book is a moderate step**, no longer a safe one.
+- **The hands' model shares the chat model's `proxy`** when both are on the same host.
+- **One answer to "is a model ready".** The Feed, the first feed day, `nanomuse chat` and `nanomuse doctor` agree: a key stored by the app (`{{vault:...}}`), the Cloud key, a ChatGPT sign-in and a local server all count. Before, the Feed said "add a model first" to anyone whose key the app had stored.
+- **`nanomuse config show` masks every credential**: the image and video slots, the mail password, the search key and the chat channels' secrets, not only the chat and hands keys.
+- **`[connectors.search] fallback = false`** makes a failed search fail instead of sending the query to DuckDuckGo as well; the docs say when the fallback reaches a second host.
+- **`deepseek-flash` and `deepseek-v4-flash*` take pictures** (they are served by DeepSeek-V4.1-Flash), so pictures in chat reach them without a first refused request.
+- **Smaller fixes.** A provider key from the environment was not picked up when `[llm] provider` named a catalogue entry and left `base_url` empty; a non-numeric `NANOMUSE_SERVER_PORT` no longer crashes at start; a non-JSON answer from Telegram, DingTalk, the relay or a ChatGPT token endpoint is reported instead of raising; a malformed point in a phone step makes the model try again instead of ending the task; the hub skips an artefact that turns out unreadable instead of failing the call; background work started by the avatar studio, the browser's download handler and the embedder switch is kept alive and its failures logged; `[sandbox] mode`, `[browser] backend` and `profile`, `[hands] backend` accept only their documented values; the `[gui] max_steps` example reads `0` (no cap), the default.
+
 ### Web
 
 - **The model pickers fold long lists and can be searched.** The *Hands model*, *Picture model* and *Clip model* controls on the Connections page became one picker: a button reading `provider · model` opens a panel with *Automatic* first; a provider with a long list (OpenRouter, SiliconFlow) shows eight models at first, its catalogue default for the slot and your current choice first, with *Show {n} more* at the foot of the group; once the rows pass eight in all, a *Search models* field filters every group by model id or name as you type, and *No model matches* says when nothing does. Esc or a click outside closes it. What each control saves is unchanged.

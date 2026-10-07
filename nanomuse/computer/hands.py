@@ -271,11 +271,62 @@ def _platform() -> str:
     return sys.platform
 
 
+# names that are commands to the machine, not applications a person opens: `open_app` is
+# for a window on the screen, and these would stop the session or worse
+NOT_APPLICATIONS = frozenset(
+    {
+        "shutdown",
+        "poweroff",
+        "reboot",
+        "halt",
+        "init",
+        "telinit",
+        "systemctl",
+        "launchctl",
+        "logout",
+        "pkill",
+        "killall",
+        "kill",
+        "taskkill",
+        "rm",
+        "del",
+        "format",
+        "diskutil",
+        "mkfs",
+        "dd",
+        "sh",
+        "bash",
+        "zsh",
+        "fish",
+        "cmd",
+        "powershell",
+        "pwsh",
+        "sudo",
+        "su",
+        "doas",
+        "runas",
+    }
+)
+
+
+def looks_like_an_application(name: str) -> bool:
+    """A bare name a person would call an application: no path, no shell characters,
+    not one of the commands in :data:`NOT_APPLICATIONS`."""
+    bare = name.strip()
+    if not bare or len(bare) > 80:
+        return False
+    if any(ch in bare for ch in "/\\;&|<>`$\"'\n\r\t") or bare.startswith("-"):
+        return False
+    return bare.lower().removesuffix(".exe") not in NOT_APPLICATIONS
+
+
 def open_application(name: str) -> str:
     """Start an application by the name a person uses for it. Returns what was started."""
     name = name.strip()
     if not name:
         raise ValueError("an application name is required")
+    if not looks_like_an_application(name):
+        raise ValueError(f"{name!r} is not an application to open")
     platform = _platform()
     if platform == "darwin":
         subprocess.run(["open", "-a", name], check=True, timeout=20, capture_output=True)

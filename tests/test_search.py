@@ -189,6 +189,14 @@ async def test_failures_fall_back_to_duckduckgo_with_a_note(
     wire.text = None
     r = await p.probe()
     assert r["ok"] is False and "rate limited" in r["error"] and len(ddg) == 4
+    # fallback = false: the query never reaches DuckDuckGo's host
+    strict = WebSearchProvider(SearchSettings(provider="brave", api_key="k", fallback=False))
+    with pytest.raises(RuntimeError, match="rate limited"):
+        await strict.search("nanomuse", 2, "")
+    unset = WebSearchProvider(SearchSettings(provider="brave", fallback=False))
+    with pytest.raises(RuntimeError, match="no API key"):
+        await unset.search("nanomuse", 2, "")
+    assert len(ddg) == 4
 
 
 async def test_unconfigured_provider_uses_duckduckgo_and_says_so(wire: Wire, ddg):

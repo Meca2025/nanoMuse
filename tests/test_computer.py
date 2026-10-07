@@ -474,3 +474,31 @@ def test_hands_switch_adds_the_tools_and_the_card_follows_a_task(server) -> None
     assert "computer_act" not in service.app.tools
     assert "turned off" in service.app.agent.computer_section()
     assert client.post("/api/hands/stop").json()["stopped"] is True  # a last action exists
+
+
+def test_open_app_refuses_commands_to_the_machine(settings: Settings) -> None:
+    assert hands_mod.looks_like_an_application("Notes")
+    assert hands_mod.looks_like_an_application("Visual Studio Code")
+    for name in ("shutdown", "reboot", "poweroff", "SHUTDOWN.EXE", "sudo", "rm", "sh"):
+        assert not hands_mod.looks_like_an_application(name), name
+    for name in ("/usr/bin/env", "notes; reboot", "a && b", "-r", "`id`"):
+        assert not hands_mod.looks_like_an_application(name), name
+    with pytest.raises(ValueError, match="not an application"):
+        hands_mod.open_application("shutdown")
+    # the assessment says so before the Sentinel ever asks
+    link = ComputerLink(HandsSettings(enabled=True, settle_s=0.0), backend=FakeHands())
+    act = ComputerAct(link=link, gui=GUISettings())
+    bad = act.assess({"action": "open_app", "app": "poweroff"})
+    assert bad.risk == RiskLevel.SENSITIVE and any("command" in w for w in bad.warnings)
+    good = act.assess({"action": "open_app", "app": "Notes"})
+    assert good.risk == RiskLevel.MODERATE and not good.warnings
+
+
+def test_parse_step_with_a_broken_point_is_not_a_step() -> None:
+    broken = '<tool_call>{"name": "mobile_use", "arguments": {"action": "click", "coordinate": "x"}}</tool_call>'
+    assert parse_step(broken) is None
+    wrong_type = (
+        '<tool_call>{"name": "mobile_use", "arguments": {"action": "click", "coordinate": {"x": 1}}}'
+        "</tool_call>"
+    )
+    assert parse_step(wrong_type) is None

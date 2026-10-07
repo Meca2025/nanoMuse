@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import uuid
 from datetime import datetime
@@ -11,6 +10,7 @@ from pathlib import Path
 from nanomuse import prompts
 from nanomuse.agent import MuseAgent
 from nanomuse.agent.holds import Holds
+from nanomuse.background import spawn
 from nanomuse.calendar import CalendarFeeds
 from nanomuse.cloud import CLOUD_KEY, DEFAULT_GUI_MODEL, model_url
 from nanomuse.computer.link import ComputerLink
@@ -163,7 +163,7 @@ class NanoMuseApp:
             )
         if old is not None:
             with contextlib.suppress(RuntimeError):
-                asyncio.get_running_loop().create_task(old.close())
+                spawn(old.close(), "closing the previous embedder")
 
     def _embedding_key(self) -> str:
         """The key for the embeddings endpoint, resolved from the vault when it refers
@@ -286,6 +286,8 @@ class NanoMuseApp:
             max_tokens=llm.max_tokens,
             timeout=llm.timeout,
             extra_headers=dict(llm.extra_headers) if not own_host else {},
+            # the same host is reached the same way: through the chat model's proxy
+            proxy=llm.proxy if not own_host else "",
         )
         return create_llm(merged, data_dir=self.settings.data_dir)
 

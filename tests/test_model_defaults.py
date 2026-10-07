@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from nanomuse.app import NanoMuseApp
 from nanomuse.cloud import CLOUD_KEY, DEFAULT_CHAT_MODEL, DEFAULT_GUI_MODEL, model_url
 from nanomuse.config import LLMSettings, Settings
@@ -17,6 +19,11 @@ def test_model_ids_say_whether_they_see():
     assert model_takes_images("deepseek-reasoner") is False
     assert model_takes_images("deepseek-v4.1-flash") is True
     assert model_takes_images("deepseek/deepseek-v4.1-flash") is True
+    # the Flash line is served by V4.1-Flash, which sees; Pro does not
+    assert model_takes_images("deepseek-flash") is True
+    assert model_takes_images("deepseek-v4-flash") is True
+    assert model_takes_images("deepseek-v4-flash-vision-exp") is True
+    assert model_takes_images("deepseek-v4-pro") is False
     assert (
         model_takes_images("deepseek-vision") is True and model_takes_images("deepseek-ocr") is True
     )
@@ -71,3 +78,41 @@ def test_hands_model_follows_the_account(settings: Settings):
     settings.llm.base_url = "https://elsewhere.example/v1"
     settings.llm.api_key = "{{vault:" + CLOUD_KEY + "}}"
     assert app.llm_is_cloud()
+
+
+def test_hands_model_shares_the_chat_models_proxy(settings: Settings):
+    settings.llm.proxy = "http://127.0.0.1:7890"
+    app = NanoMuseApp(settings, ui=AutoApproveUI(), llm=MockLLM([]))  # type: ignore[arg-type]
+    # same host as the chat model: reached the same way
+    assert app.make_gui_llm().settings.proxy == "http://127.0.0.1:7890"  # type: ignore[attr-defined]
+    # a [gui] model on its own host is not sent through the chat model's proxy
+    settings.gui.model = "my-vl"
+    settings.gui.base_url = "https://vision.example/v1"
+    settings.gui.api_key = "k"
+    assert app.make_gui_llm().settings.proxy == ""  # type: ignore[attr-defined]
+
+
+def test_llm_ready_reads_the_vault_and_the_sign_in(settings: Settings, tmp_path: Path):
+    from nanomuse.llm.chatgpt import Token, TokenStore
+    from nanomuse.llm.factory import llm_ready
+    from nanomuse.vault import CredentialVault
+
+    vault = CredentialVault(tmp_path / "v.json", tmp_path / "v.key")
+    llm = LLMSettings(api_key="")
+    assert llm_ready(llm, vault, tmp_path) is False
+    assert llm_ready(LLMSettings(api_key="sk-literal"), vault, tmp_path) is True
+    # the app stores keys as placeholders: ready once the vault has the secret
+    stored = LLMSettings(api_key="{{vault:LLM_API_KEY}}")
+    assert llm_ready(stored, vault, tmp_path) is False
+    vault.set("LLM_API_KEY", "sk-real")
+    assert llm_ready(stored, vault, tmp_path) is True
+    # a local server needs no key; a ChatGPT sign-in is a key of its own
+    assert llm_ready(LLMSettings(base_url="http://localhost:11434/v1"), vault, tmp_path) is True
+    assert llm_ready(LLMSettings(base_url="http://127.0.0.1:8000/v1"), vault, tmp_path) is True
+    assert (
+        llm_ready(LLMSettings(base_url="http://notlocalhost.example/v1"), vault, tmp_path) is False
+    )
+    chatgpt = LLMSettings(provider="chatgpt")
+    assert llm_ready(chatgpt, vault, tmp_path) is False
+    TokenStore.in_dir(tmp_path).save(Token(access="a", refresh="r", expires_at=0, account_id="x"))
+    assert llm_ready(chatgpt, vault, tmp_path) is True

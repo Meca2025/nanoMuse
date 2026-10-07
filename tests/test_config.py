@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from nanomuse.config import load_settings
+from nanomuse.config import Settings, load_settings
 
 
 def test_env_expansion_and_overrides(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -89,6 +89,24 @@ def test_provider_key_fallback_follows_the_host(tmp_path: Path, monkeypatch: pyt
     monkeypatch.delenv("OPENAI_API_KEY")
     assert not key_for("https://api.openai.com/v1")  # DeepSeek's key does not stand in
     assert key_for("https://api.deepseek.com") == "sk-deepseek"
+    # a catalogue id with no base_url resolves to that provider's endpoint first: Moonshot's
+    # host is not DeepSeek's, so the generic variable applies, not DEEPSEEK_API_KEY
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai")
+    cfg.write_text(f'data_dir = "{(tmp_path / "data").as_posix()}"\n[llm]\nprovider = "moonshot"\n')
+    assert load_settings(cfg).llm.api_key == "sk-openai"
+    cfg.write_text(f'data_dir = "{(tmp_path / "data").as_posix()}"\n[llm]\nprovider = "deepseek"\n')
+    assert load_settings(cfg).llm.api_key == "sk-deepseek"
+
+
+def test_bad_server_port_in_the_environment_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("NANOMUSE_SERVER_PORT", "eight")
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(f'data_dir = "{(tmp_path / "data").as_posix()}"\n')
+    assert load_settings(cfg).server.port == Settings().server.port
+    monkeypatch.setenv("NANOMUSE_SERVER_PORT", "8123")
+    assert load_settings(cfg).server.port == 8123
 
 
 def test_workspace_defaults_under_the_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

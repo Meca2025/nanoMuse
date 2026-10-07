@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import shutil
 import tomllib
 from datetime import datetime
@@ -115,7 +116,11 @@ def _settings(config: Path | None, auto: bool = False) -> Settings:
         raise typer.Exit(1) from exc
     if auto:
         settings.sentinel.mode = "auto"
-    if not settings.llm.api_key and "localhost" not in (settings.llm.base_url or ""):
+    from nanomuse.llm.factory import llm_ready
+    from nanomuse.vault import CredentialVault
+
+    vault = CredentialVault(settings.vault_file, settings.vault_key_file)
+    if not llm_ready(settings.llm, vault, settings.data_dir):
         console.print(
             "[yellow]No model yet.[/yellow] Sign in to nanoMuse Cloud in the app, set "
             "[bold]llm.api_key[/bold] in config.toml (run `nanomuse config init`), "
@@ -257,9 +262,11 @@ async def _slash(cmd: str, muse) -> bool:  # noqa: ANN001
         if not grants:
             console.print("[dim]no standing permissions[/dim]")
         for g in grants:
-            until = {"task": "this task", "session": "until restart", "always": "always"}.get(
-                g.scope, f"until {_local_time(g.to_dict()['expires_at'] or '')}"
-            )
+            until = {
+                "conversation": "this conversation",
+                "session": "until restart",
+                "always": "always",
+            }.get(g.scope, f"until {_local_time(g.to_dict()['expires_at'] or '')}")
             console.print(f"  [cyan]{g.key}[/cyan]  {until}")
     elif name == "revoke":
         if muse.sentinel.revoke(arg.strip()):
@@ -313,7 +320,7 @@ def daemon(
         from nanomuse.app import NanoMuseApp
         from nanomuse.console import ConsoleUI
 
-        ui = ConsoleUI(console, quiet=True)
+        ui = ConsoleUI(console, quiet=True, unattended=True)
         _banner(settings)
         while True:
             async with NanoMuseApp(settings, ui) as muse:
@@ -1390,12 +1397,34 @@ def config_init(
 def config_show(config: ConfigOpt = None) -> None:
     """Print the effective configuration (secrets masked)."""
     s = _settings(config)
-    data = s.model_dump(mode="json")
-    for section in ("llm", "gui"):
-        key = (data.get(section) or {}).get("api_key")
-        if key:
-            data[section]["api_key"] = key[:4] + "…" + key[-2:] if len(key) > 8 else "***"
-    console.print_json(json.dumps(data, ensure_ascii=False, default=str))
+    console.print_json(
+        json.dumps(mask_secrets(s.model_dump(mode="json")), ensure_ascii=False, default=str)
+    )
+
+
+_SECRET_KEY_RE = re.compile(r"(api_key|password|secret|token|app_key|passwd)$", re.IGNORECASE)
+
+
+def mask_secrets(data: Any) -> Any:
+    """The same structure with every value under a key that names a credential
+    (``api_key``, ``password``, ``secret``, ``token`` and the like) shortened to its first
+    and last characters, in every section: the image and video slots, the mail account,
+    the search connector and the chat channels hold keys too, not only ``[llm]``."""
+    if isinstance(data, dict):
+        out: dict[str, Any] = {}
+        for k, v in data.items():
+            if isinstance(v, str) and v and _SECRET_KEY_RE.search(str(k)):
+                out[k] = v if v.startswith("{{vault:") else _masked(v)
+            else:
+                out[k] = mask_secrets(v)
+        return out
+    if isinstance(data, list):
+        return [mask_secrets(v) for v in data]
+    return data
+
+
+def _masked(value: str) -> str:
+    return value[:4] + "…" + value[-2:] if len(value) > 8 else "***"
 
 
 @config_app.command("path")
@@ -1584,9 +1613,10 @@ async def _doctor(settings: Settings, check_model: bool) -> None:
             )
         else:
             key_state = "key set"
-    local = "localhost" in (llm.base_url or "") or "127.0.0.1" in (llm.base_url or "")
+    from nanomuse.llm.factory import llm_ready
+
     line(
-        ("MISSING" not in key_state) and (bool(key) or local),
+        llm_ready(llm, app_.vault if app_ is not None else None, settings.data_dir),
         f"model: {llm.model} · {llm.provider} · {llm.base_url or 'provider default'} · "
         f"tools {llm.tool_mode} · {key_state}",
         "no usable API key (set llm.api_key, or enter it under Connections in the app)",

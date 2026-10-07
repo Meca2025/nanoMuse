@@ -20,6 +20,19 @@ from typing import Any, Protocol
 FieldKind = str  # "string" | "secret" | "bool" | "choice"
 
 
+def json_object(response: Any) -> dict[str, Any]:
+    """The JSON object in an HTTP response, or ``{}`` when the body is not one.
+
+    A vendor's gateway answers an outage with an HTML page or an empty body; the caller
+    then reports the status code instead of crashing on the parse.
+    """
+    try:
+        data = response.json()
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 @dataclass(frozen=True)
 class Field:
     """One setting a channel needs, as the app and the CLI show it."""

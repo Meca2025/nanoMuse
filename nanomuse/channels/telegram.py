@@ -21,7 +21,14 @@ from typing import Any
 
 import httpx
 
-from nanomuse.channels.base import Channel, ChannelBus, Field, InboundFile, InboundMessage
+from nanomuse.channels.base import (
+    Channel,
+    ChannelBus,
+    Field,
+    InboundFile,
+    InboundMessage,
+    json_object,
+)
 from nanomuse.logger import logger
 
 API = "https://api.telegram.org"
@@ -122,10 +129,7 @@ class TelegramChannel(Channel):
             response = await self._http.post(f"/{method}", json=params, **kwargs)
         except httpx.HTTPError as exc:
             raise TelegramError(self._redact(f"{type(exc).__name__}: {exc}")[:200]) from exc
-        try:
-            data = response.json()
-        except ValueError:
-            raise TelegramError(f"HTTP {response.status_code} from Telegram") from None
+        data = json_object(response)
         if not data.get("ok"):
             raise TelegramError(str(data.get("description") or f"HTTP {response.status_code}"))
         return data.get("result")
@@ -239,7 +243,7 @@ class TelegramChannel(Channel):
         assert self.bus is not None
         raw = str(callback.get("data") or "")
         value: dict[str, Any] = {}
-        if raw.startswith("a:"):
+        if raw.startswith("a:") and raw.count(":") >= 2:
             _, decision, approval_id = raw.split(":", 2)
             value = {"approval": approval_id, "decision": "allow" if decision == "y" else "deny"}
         message = callback.get("message") or {}
@@ -303,7 +307,7 @@ class TelegramChannel(Channel):
             response = await self._http.post(
                 f"/{method}", data={"chat_id": chat_id}, files={field_name: (path.name, fh, mime)}
             )
-        data = response.json()
+        data = json_object(response)
         if not data.get("ok"):
             raise TelegramError(str(data.get("description") or f"HTTP {response.status_code}"))
 

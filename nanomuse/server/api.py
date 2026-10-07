@@ -1951,11 +1951,12 @@ async def _handle_ws_message(
     send: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
 ) -> None:
     kind = data.get("kind") or data.get("type")
+    reply = send or ws.send_json  # one writer per socket when the pump shares it
     try:
         if kind == "device":
             # a phone announcing itself: from now on the server may ask it for its screen
-            svc.phone.attach(conn_id, data, send or ws.send_json)
-            await ws.send_json({"kind": "device_ack", "phone": svc.phone_view()})
+            svc.phone.attach(conn_id, data, reply)
+            await reply({"kind": "device_ack", "phone": svc.phone_view()})
         elif kind == "device_result":
             if not svc.phone.resolve(data):
                 logger.debug("device result for no pending request: {}", data.get("id"))
@@ -1972,9 +1973,7 @@ async def _handle_ws_message(
                 # nanoMuse: a card raised by another device's run — the answer goes back over the hub
                 ok = await svc.hub.decide_remote(approval_id, bool(data.get("approved")))
                 if not ok:
-                    await ws.send_json(
-                        {"kind": "error", "error": "the device did not take the answer"}
-                    )
+                    await reply({"kind": "error", "error": "the device did not take the answer"})
                 return
             ok = svc.decide(
                 approval_id,
@@ -1983,15 +1982,15 @@ async def _handle_ws_message(
                 str(data.get("reason", "")),
             )
             if not ok:
-                await ws.send_json({"kind": "error", "error": "no pending approval with that id"})
+                await reply({"kind": "error", "error": "no pending approval with that id"})
         elif kind == "ping":
-            await ws.send_json({"kind": "pong", "status": svc.ui.overall_status()})
+            await reply({"kind": "pong", "status": svc.ui.overall_status()})
         elif kind == "auth":
             pass  # a client that sends its token first even though the runtime has none
         else:
-            await ws.send_json({"kind": "error", "error": f"unknown message kind: {kind}"})
+            await reply({"kind": "error", "error": f"unknown message kind: {kind}"})
     except (ValueError, PermissionError) as exc:
-        await ws.send_json({"kind": "error", "error": str(exc)})
+        await reply({"kind": "error", "error": str(exc)})
 
 
 __all__ = ["STATIC_DIR", "create_app"]

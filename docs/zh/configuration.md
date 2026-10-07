@@ -323,9 +323,10 @@ url  = "{{vault:CONTACTS_NEXTCLOUD}}"   # a link, kept in the vault: nanomuse va
 provider = "duckduckgo"          # duckduckgo | brave | tavily | searxng
 api_key  = "{{vault:SEARCH_API_KEY}}"   # brave / tavily: nanomuse vault set SEARCH_API_KEY
 base_url = ""                    # searxng: your instance, e.g. "http://127.0.0.1:8080"
+fallback = true                  # false：搜索失败就失败，不再转去 DuckDuckGo
 ```
 
-不管选的是谁，一次失败的搜索——key 过期、被限流、实例挂了——都改由 DuckDuckGo 回答，只补这一次，并在结果顶上加一条说明，任务就能继续；`nanomuse doctor` 会报告缺了必要配置的服务商。工具的 `region` 参数（`cn-zh`、`us-en`）按每家服务商自己的写法传过去。服务商的主机是你选定的目的地，所以读过私密数据之后再搜索，不像去一个陌生主机那样需要审批（见[污点追踪](sentinel.md#taint-tracking)）；对搜索结果做 `web_fetch` 仍然需要。
+不管选的是谁，一次失败的搜索——key 过期、被限流、实例挂了——都改由 DuckDuckGo 回答，只补这一次，并在结果顶上加一条说明，任务就能继续（这时查询词除了到你选的服务商，也会到 DuckDuckGo 的主机；不希望这样，就在 `[connectors.search]` 下设 `fallback = false`）；`nanomuse doctor` 会报告缺了必要配置的服务商。工具的 `region` 参数（`cn-zh`、`us-en`）按每家服务商自己的写法传过去。服务商的主机是你选定的目的地，所以读过私密数据之后再搜索，不像去一个陌生主机那样需要审批（见[污点追踪](sentinel.md#taint-tracking)）；对搜索结果做 `web_fetch` 仍然需要。
 
 ## `[triggers]` {#triggers}
 
@@ -379,7 +380,7 @@ provider         = "openai"          # the operator's own model; openai | openai
 model            = ""                # empty: the main [llm] model does it — it must take images, the screen is a picture
 base_url         = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 api_key          = "{{vault:GUI_API_KEY}}"
-max_steps        = 30                # the most one phone_task may take
+max_steps        = 0                 # 一次 phone_task 最多走多少步；0 = 不设上限
 device_timeout_s = 20.0              # how long to wait for the phone to answer
 reconnect_grace_s = 30.0             # 手机掉线后，进行中的任务等它回来多久；0 = 立刻放弃
 sensitive_words  = ["确认支付", "立即付款", "转账", "提交订单", "发送", "删除", "pay now", "place order", "send", "delete"]  # a tap on these asks first

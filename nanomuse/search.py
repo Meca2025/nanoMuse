@@ -122,6 +122,8 @@ class WebSearchProvider:
             return await self._ddg(query, max_results, region), ""
         if not self.configured:
             missing = "no API key" if PROVIDERS[self.name]["needs_key"] else "no instance URL"
+            if not self.settings.fallback:
+                raise RuntimeError(f"{self.label}: {missing}")
             logger.warning(
                 "{} is the search provider but has {}; using DuckDuckGo", self.label, missing
             )
@@ -132,6 +134,8 @@ class WebSearchProvider:
             return await self._call(query, max_results, region), ""
         except Exception as exc:  # noqa: BLE001 — a failed provider must not stop the task
             reason = self.explain(exc)
+            if not self.settings.fallback:
+                raise RuntimeError(f"{self.label} failed ({reason})") from exc
             logger.warning("{} search failed ({}); using DuckDuckGo", self.label, reason)
             return await self._ddg(
                 query, max_results, region

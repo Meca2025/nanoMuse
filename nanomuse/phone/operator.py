@@ -435,7 +435,10 @@ def parse_step(text: str | None, tool: str = "mobile_use") -> Step | None:
         return None
     for key in ("coordinate", "coordinate2"):
         if key in arguments:
-            arguments[key] = _normalise_point(arguments[key])
+            try:
+                arguments[key] = _normalise_point(arguments[key])
+            except (TypeError, ValueError):
+                return None  # a point that is not two numbers: not a step, ask again
     # some replies fold Thought and Action into one line: the thought then names the target
     conclusion = parts.get("conclusion") or parts.get("thinking") or _describe(arguments)
     return Step(

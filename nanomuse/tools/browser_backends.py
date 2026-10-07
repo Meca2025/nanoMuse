@@ -21,7 +21,6 @@ a signed-in request without driving the screen).
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import json
 from abc import ABC, abstractmethod
@@ -29,6 +28,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from nanomuse.background import spawn
 from nanomuse.logger import logger
 
 if TYPE_CHECKING:
@@ -290,7 +290,7 @@ class PlaywrightBackend(BrowserBackend):
             except Exception as exc:  # noqa: BLE001
                 logger.warning("browser: download failed: {}", exc)
 
-        asyncio.ensure_future(save())
+        spawn(save(), "saving a browser download")
 
     async def goto(self, url: str) -> None:
         await self._page.goto(url, wait_until="domcontentloaded")

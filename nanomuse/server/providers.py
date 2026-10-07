@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from nanomuse.background import keep_task
 from nanomuse.cloud import model_url
 from nanomuse.config import CHATGPT_PROVIDER, PROTOCOLS, resolve_provider
 from nanomuse.llm import catalogue
@@ -40,7 +41,6 @@ from nanomuse.llm.chatgpt import (
 from nanomuse.llm.chatgpt_proxy import Usage
 from nanomuse.llm.codex import CodexClient
 from nanomuse.logger import logger
-from nanomuse.server.events import keep_task
 
 if TYPE_CHECKING:
     from nanomuse.server.service import MuseService

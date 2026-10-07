@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from nanomuse.config import CHATGPT_PROVIDER, LLMSettings, resolve_provider
 from nanomuse.llm.base import BaseLLM
 from nanomuse.llm.openai_chat import OpenAIChatLLM
 from nanomuse.llm.openai_responses import OpenAIResponsesLLM
 from nanomuse.llm.prompt_tools import PromptToolAdapter
+
+if TYPE_CHECKING:
+    from nanomuse.vault.vault import CredentialVault
 
 
 def create_llm(settings: LLMSettings, data_dir: Path | None = None) -> BaseLLM:
@@ -36,4 +41,40 @@ def create_llm(settings: LLMSettings, data_dir: Path | None = None) -> BaseLLM:
     return llm
 
 
-__all__ = ["create_llm"]
+def is_local_endpoint(base_url: str | None) -> bool:
+    """A model served on this machine (Ollama, vLLM, LM Studio) needs no key."""
+    host = (urlparse(base_url or "").hostname or "").lower()
+    return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal")
+
+
+def llm_ready(
+    settings: LLMSettings, vault: CredentialVault | None = None, data_dir: Path | None = None
+) -> bool:
+    """Can the slot answer a request: a key is set (a ``{{vault:NAME}}`` placeholder counts
+    when the vault has it), a ChatGPT sign-in is stored, or the endpoint is local.
+
+    Every screen that says "add a model first" asks this one question, so the app's stored
+    key, the Cloud key and a signed-in ChatGPT read as ready everywhere.
+    """
+    protocol, base_url = resolve_provider(settings.provider, settings.base_url)
+    if protocol == CHATGPT_PROVIDER:
+        from nanomuse.llm.chatgpt import TokenStore
+
+        return data_dir is not None and TokenStore.in_dir(data_dir).load() is not None
+    if is_local_endpoint(base_url):
+        return True
+    key = settings.api_key
+    if not key:
+        return False
+    if vault is not None and vault.has_placeholders(key):
+        from nanomuse.vault.vault import VaultError
+
+        try:
+            key = vault.resolve(key, strict=False)
+        except VaultError:  # the vault cannot be read (wrong key file): not ready, not a crash
+            return False
+        return bool(key) and not vault.has_placeholders(key)
+    return True
+
+
+__all__ = ["create_llm", "is_local_endpoint", "llm_ready"]

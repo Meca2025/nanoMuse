@@ -196,7 +196,10 @@ class Sentinel:
                 if assessment.warnings
                 else self.grants.match(key, task.conversation_id if task else None)
             )
-            if self.settings.mode == "auto":
+            # auto mode skips the question, except for a call that carries a warning:
+            # step 6 of the policy keeps that one an ASK whatever the mode, and the
+            # gate honours it (docs/sentinel.md), so an unattended pass asks or stops
+            if self.settings.mode == "auto" and not assessment.warnings:
                 decision = Decision.ALLOW
                 reasons.append("auto mode: approval skipped")
             elif grant is not None:

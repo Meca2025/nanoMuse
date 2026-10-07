@@ -146,6 +146,11 @@ class ComputerLink:
             return False
         return True
 
+    def reset_backend(self) -> None:
+        """Forget the chosen backend; the next action picks one again from the settings."""
+        self._backend = None
+        self._backend_error = ""
+
     def _hands(self) -> hands_mod.HandsBackend:
         if self._backend is None:
             try:

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
+from nanomuse.background import keep_task
 from nanomuse.cloud import DEFAULT_CHAT_MODEL as DEFAULT_CLOUD_MODEL
 from nanomuse.cloud import DEFAULT_GUI_MODEL as DEFAULT_CLOUD_GUI_MODEL
 from nanomuse.cloud import model_url
@@ -36,7 +37,6 @@ from nanomuse.llm.chatgpt import DEFAULT_MODEL as CHATGPT_DEFAULT_MODEL
 from nanomuse.logger import logger
 from nanomuse.schema import Message
 from nanomuse.search import WebSearchProvider
-from nanomuse.server.events import keep_task
 from nanomuse.tools import (
     Calendar,
     Contacts,
@@ -1401,7 +1401,7 @@ class Connections:
         apply_app_settings(self.settings, {"hands": hands})
         computer = self.svc.app.computer
         if computer is not None and "backend" in hands:
-            computer._backend = None  # picked again on the next action
+            computer.reset_backend()  # picked again on the next action
         if "enabled" in hands:
             self.svc.app.set_hands_enabled(bool(hands["enabled"]))
         operator = getattr(self.svc.app, "computer_operator", None)

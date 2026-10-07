@@ -10,7 +10,7 @@ from typing import Any
 
 from nanomuse.calendar import CalendarFeeds, make_ics
 from nanomuse.schema import RiskLevel, ToolResult
-from nanomuse.tools.base import BaseTool, CallAssessment
+from nanomuse.tools.base import BaseTool, CallAssessment, int_arg
 
 
 def _parse_day(value: str | None, today: date) -> date:
@@ -125,7 +125,7 @@ class Calendar(BaseTool):
                 return ToolResult(output=head + ("\n" + feeds.render(hits, today) if hits else ""))
             day = _parse_day(args.get("day"), today)
             if action == "free":
-                minutes = int(args.get("minutes") or 30)
+                minutes = int_arg(args.get("minutes"), 30, 1, 24 * 60)
                 s = feeds.settings
                 slots = feeds.free_slots(day, minutes, s.day_start, s.day_end)
                 # All-day events do not block hours, but the user may well be away: say so.
@@ -146,7 +146,7 @@ class Calendar(BaseTool):
                     + "\n".join(lines)
                     + note
                 )
-            days = max(1, min(31, int(args.get("days") or 1)))
+            days = int_arg(args.get("days"), 1, 1, 31)
             items = feeds.agenda(day, days)
             note = self._errors_note()
             return ToolResult(output=feeds.render(items, today) + note)
@@ -174,7 +174,9 @@ class Calendar(BaseTool):
         elif all_day:
             end = start + timedelta(days=1)
         else:
-            end = start + timedelta(minutes=int(args.get("duration_minutes") or 60))
+            end = start + timedelta(
+                minutes=int_arg(args.get("duration_minutes"), 60, 1, 14 * 24 * 60)
+            )
         if end <= start:
             return ToolResult.fail("the end must be after the start")
         ics = make_ics(

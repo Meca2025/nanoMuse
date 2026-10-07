@@ -636,7 +636,12 @@ class Auth:
                 raise ChatGPTError(
                     "refresh_failed", f"token refresh failed with HTTP {r.status_code}"
                 )
-            payload = r.json()
+            try:
+                payload = r.json()
+            except ValueError:
+                raise ChatGPTError(
+                    "refresh_failed", "token refresh answered with something that is not JSON"
+                ) from None
             token = Token.from_payload(payload if isinstance(payload, dict) else {})
             if not token.refresh:
                 token.refresh = current.refresh
@@ -726,7 +731,7 @@ class LoginFlow:
     async def _serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             request_line = await asyncio.wait_for(reader.readline(), 10)
-            while True:
+            for _ in range(200):  # a browser's redirect carries a few dozen header lines
                 line = await asyncio.wait_for(reader.readline(), 10)
                 if line in (b"\r\n", b"\n", b""):
                     break
@@ -852,7 +857,12 @@ class LoginFlow:
             raise ChatGPTError(
                 "exchange_failed", f"token exchange failed with HTTP {r.status_code}"
             )
-        payload = r.json()
+        try:
+            payload = r.json()
+        except ValueError:
+            raise ChatGPTError(
+                "exchange_failed", "token exchange answered with something that is not JSON"
+            ) from None
         token = Token.from_payload(payload if isinstance(payload, dict) else {})
         self.store.save(token)
         logger.info("ChatGPT sign-in stored ({})", token.label)

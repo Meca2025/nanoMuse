@@ -49,15 +49,19 @@ def says_no_images(message: str) -> bool:
 def model_takes_images(model: str) -> bool | None:
     """What the model's id says about pictures, before the first request (contract C4).
 
-    DeepSeek's models are text-only unless the id says ``v4.1``, ``vision`` or ``ocr``
-    (``deepseek-v4.1-flash`` is sighted; ``deepseek-chat`` is not). Qwen's ``*-vl`` models
-    and the ``qwen3.8`` family take pictures. Anything else is ``None``: unknown, so
-    ``llm.vision = "auto"`` finds out from the endpoint's answer, as before.
+    DeepSeek's models are text-only unless the id says ``v4.1``, ``vision`` or ``ocr``, or
+    names the Flash line (``deepseek-flash`` and ``deepseek-v4-flash*`` are served by
+    DeepSeek-V4.1-Flash, which takes pictures; ``deepseek-chat`` and ``deepseek-v4-pro``
+    do not). Qwen's ``*-vl`` models and the ``qwen3.8`` family take pictures. Anything
+    else is ``None``: unknown, so ``llm.vision = "auto"`` finds out from the endpoint's
+    answer, as before.
     """
     name = (model or "").lower().rsplit("/", 1)[-1].strip()
     if not name:
         return None
     if name.startswith("deepseek") or "/deepseek" in (model or "").lower():
+        if name in ("deepseek-flash",) or name.startswith("deepseek-v4-flash"):
+            return True
         return any(mark in name for mark in ("v4.1", "vision", "ocr"))
     if name.startswith("qwen"):
         if "-vl" in name or name.startswith("qwen3.8"):

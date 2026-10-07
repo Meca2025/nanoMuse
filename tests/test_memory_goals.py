@@ -30,6 +30,26 @@ def test_memory_add_search_forget(tmp_path: Path):
     store.close()
 
 
+def test_forget_matching_is_literal_and_undoable(tmp_path: Path):
+    store = MemoryStore(tmp_path / "m.db")
+    store.add("Pays 100% of the rent on the 1st")
+    store.add("Likes under_scores in names")
+    store.add("Dislikes mushrooms")
+    # "%" and "_" are letters here, not SQL wildcards; an empty query forgets nothing
+    assert store.forget_matching("%") == 1
+    assert store.forget_matching("   ") == 0
+    assert store.forget_matching("s_in") == 0
+    assert store.forget_matching("r_s") == 1
+    assert store.count() == 1
+    # the deletion is one logged change and comes back on restore
+    change = store.history(1)[0]
+    assert change.action == "forget" and change.after is None
+    assert {m.content for m in change.before} == {"Likes under_scores in names"}
+    assert store.restore(change.id) is not None
+    assert store.count() == 2
+    store.close()
+
+
 def test_memory_relevant_prefers_matches(tmp_path: Path):
     store = MemoryStore(tmp_path / "m.db")
     for i in range(30):

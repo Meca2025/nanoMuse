@@ -26,7 +26,7 @@ from nanomuse.config import GUISettings
 from nanomuse.phone.link import STOP_MARKER, DeviceError, DeviceStopped, PhoneLink
 from nanomuse.phone.screen import Screen
 from nanomuse.schema import RiskLevel, ToolResult
-from nanomuse.tools.base import BaseTool, CallAssessment
+from nanomuse.tools.base import BaseTool, CallAssessment, number_arg
 
 if TYPE_CHECKING:
     from nanomuse.phone.operator import PhoneOperator
@@ -285,7 +285,7 @@ class PhoneAct(BaseTool):
                 direction = str(kwargs.get("direction"))
                 if direction not in DIRECTIONS:
                     return ToolResult.fail(f"`direction` must be one of {', '.join(DIRECTIONS)}")
-                distance = float(kwargs.get("distance") or 0.5)
+                distance = number_arg(kwargs.get("distance"), 0.5, 0.05, 1.0)
                 params.update(direction=direction, distance=max(0.1, min(0.9, distance)))
                 start = _point(kwargs, "x", "y")
                 if start is not None:
@@ -316,7 +316,7 @@ class PhoneAct(BaseTool):
             params["app"] = self._resolve_app(app)
         if action in ("wait", "long_press"):
             default = 1.0 if action == "wait" else 0.8
-            params["seconds"] = max(0.2, min(10.0, float(kwargs.get("seconds") or default)))
+            params["seconds"] = number_arg(kwargs.get("seconds"), default, 0.2, 10.0)
         try:
             raw = await self.link.act(
                 params, timeout=self.gui.device_timeout_s + params.get("seconds", 0)
