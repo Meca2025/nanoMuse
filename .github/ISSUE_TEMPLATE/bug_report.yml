@@ -63,5 +63,5 @@ body:
     id: logs
     attributes:
       label: Relevant log
-      description: "`<data_dir>/logs/` or the server's terminal output. Remove anything private — API keys, addresses, message contents you would not post publicly."
+      description: "`<data_dir>/logs/` or the server's terminal output. Remove anything private: API keys, addresses, message contents you would not post publicly."
       render: text

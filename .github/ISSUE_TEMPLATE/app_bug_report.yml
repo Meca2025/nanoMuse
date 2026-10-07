@@ -37,7 +37,7 @@ body:
     id: device
     attributes:
       label: Device and Android version
-      description: e.g. Android 15 (API 35), Xiaomi 23049RAD8C — HyperOS 2
+      description: e.g. Android 15 (API 35), Xiaomi 23049RAD8C, HyperOS 2
     validations:
       required: true
   - type: input

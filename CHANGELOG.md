@@ -152,6 +152,7 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - The phone's welcome, sign-in and capsule texts lost their em dashes and say nanoMuse Cloud by name.
 - The showcase phone opens its Muse with the access token in the address's fragment (`#token=`), the form the runtime has printed since 0.1.31, instead of the older `?token=` query that reached the gateway; the gateway's log line for a container that does not answer names the path without the query, and a refusal from a session's host carries the CORS headers so the page reads the reason instead of a bare network failure.
 - Removed `scripts/rootfs/`, the rootfs builder of the retired Python line (it stays in the history at the tag `pre-openminis`), and added an `.editorconfig` that states the indentation and line endings the tree already uses.
+- The Code of Conduct says where a conduct report goes (SECURITY.md never had an address), the pull request template lists the current obligations (CHANGELOG line, every locale, docs twin, generated catalogues, DCO), and the issue forms read without dashes.
 
 ## [0.1.41] - 2026-10-07 · Choice
 

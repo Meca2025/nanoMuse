@@ -2,6 +2,7 @@
   "name": "nanomuse-docs",
   "private": true,
   "version": "0.0.0",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "description": "The nanoMuse docs site: VitePress over ../docs",
   "scripts": {
