@@ -518,7 +518,6 @@
     <string name="nm_hands_need_ok">Готово</string>
     <string name="nm_hands_need_set_up">Настроить</string>
     <string name="nm_hands_section_model">Модель для рук</string>
-    <string name="nm_hands_model_auto">Автоматически: qwen3.8-27b (от nanoMuse Cloud или под вашим ключом), иначе выбранная чат-модель, если она видит, иначе Vision Group</string>
     <string name="nm_hands_model_footer">Каждый шаг отправляет этой модели один снимок экрана; это отдельная настройка от чат-модели. Небольшие vision-модели здесь подходят и стоят дешевле. Модель из широкого каталога Cloud используется только когда вы её выберете.</string>
     <string name="nm_hands_why_chosen">выбрана здесь</string>
     <string name="nm_hands_why_default">модель рук по умолчанию под вашим ключом</string>

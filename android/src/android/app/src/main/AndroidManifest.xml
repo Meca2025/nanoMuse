@@ -488,7 +488,7 @@
         <receiver
             android:name=".offload.AlarmReceiver"
             android:exported="true"
-            android:permission="${applicationId}.permission.ALARM">
+            android:permission="${applicationId}.permission.ALARM"><!-- nanoMuse: only this app's own alarms reach the receiver -->
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>

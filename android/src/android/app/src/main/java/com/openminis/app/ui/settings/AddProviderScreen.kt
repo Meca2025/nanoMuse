@@ -115,7 +115,7 @@ fun AddProviderScreen(
     // Voice Chat Provider template row — preseeds type/base URL/label/appendV1
     // on the configure step (mirrors iOS applyVoiceTemplate).
     var selectedVoiceTemplate by remember {
-        mutableStateOf<com.openminis.app.data.model.VoiceProviderTemplate?>(presetTemplate)
+        mutableStateOf<com.openminis.app.data.model.VoiceProviderTemplate?>(presetTemplate) // nanoMuse: a preset opens on its template
     }
 
     // Unified back handler: reuse each step's onBack so predictive-back gesture
@@ -952,7 +952,7 @@ private fun ColumnScope.OAuthConfigSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            enabled = manualToken.isNotBlank() && manualBaseProblem == null,
+            enabled = manualToken.isNotBlank() && manualBaseProblem == null, // nanoMuse: LanOnly
         ) {
             Text(stringResource(R.string.provider_list_add_provider))
         }

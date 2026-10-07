@@ -1265,7 +1265,7 @@ internal fun ToolDetailSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Back button (iOS: backward.end.fill)
-                    if (pager) IconButton(
+                    if (pager) IconButton( // nanoMuse: no arrows for a single step
                         onClick = { if (currentIdx > 0) currentIdx-- },
                         enabled = currentIdx > 0,
                         modifier = Modifier.size(32.dp),
@@ -1316,7 +1316,7 @@ internal fun ToolDetailSheet(
                     Spacer(modifier = Modifier.weight(1f))
 
                     // Forward button (iOS: forward.end.fill)
-                    if (pager) IconButton(
+                    if (pager) IconButton( // nanoMuse: no arrows for a single step
                         onClick = { if (currentIdx < toolBlocks.lastIndex) currentIdx++ },
                         enabled = currentIdx < toolBlocks.lastIndex,
                         modifier = Modifier.size(32.dp),

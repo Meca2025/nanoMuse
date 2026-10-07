@@ -512,7 +512,6 @@
     <string name="nm_hands_need_ok">Handa na</string>
     <string name="nm_hands_need_set_up">I-set up</string>
     <string name="nm_hands_section_model">Modelo ng mga kamay</string>
-    <string name="nm_hands_model_auto">Awtomatiko: qwen3.8-27b (sa nanoMuse Cloud, o sa ilalim ng sarili mong key), kung hindi ay ang chat model na pinili mo kapag nakakakita ito, kung hindi ay ang Vision Group</string>
     <string name="nm_hands_model_footer">Bawat hakbang ay nagpapadala ng isang screenshot sa modelong ito; isa itong setting na hiwalay sa chat model. Sapat na dito ang mas maliliit na vision model at mas mura. Ginagamit lang ang modelo mula sa mas malawak na catalog ng Cloud kapag pinili mo ito.</string>
     <string name="nm_hands_why_chosen">pinili dito</string>
     <string name="nm_hands_why_default">ang default ng mga kamay sa ilalim ng sarili mong key</string>

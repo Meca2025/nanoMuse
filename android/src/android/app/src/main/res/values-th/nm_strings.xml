@@ -509,7 +509,6 @@
     <string name="nm_hands_need_ok">พร้อม</string>
     <string name="nm_hands_need_set_up">ตั้งค่า</string>
     <string name="nm_hands_section_model">โมเดลของมือ</string>
-    <string name="nm_hands_model_auto">อัตโนมัติ qwen3.8-27b (ของ nanoMuse Cloud หรือภายใต้คีย์ของคุณเอง) ไม่เช่นนั้นใช้โมเดลแชทที่คุณเลือกหากมันมองเห็นได้ ไม่เช่นนั้นใช้กลุ่มวิชัน</string>
     <string name="nm_hands_model_footer">ทุกขั้นตอนส่งภาพหน้าจอหนึ่งภาพไปยังโมเดลนี้ เป็นการตั้งค่าแยกจากโมเดลแชท โมเดลวิชันขนาดเล็กใช้ได้ดีและราคาถูกกว่า โมเดลจากแคตตาล็อกที่กว้างกว่าของ Cloud จะใช้เฉพาะเมื่อคุณเลือกเท่านั้น</string>
     <string name="nm_hands_why_chosen">เลือกไว้ที่นี่</string>
     <string name="nm_hands_why_default">ค่าเริ่มต้นของมือภายใต้คีย์ของคุณเอง</string>

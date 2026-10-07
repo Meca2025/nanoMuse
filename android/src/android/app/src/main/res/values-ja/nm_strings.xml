@@ -509,7 +509,6 @@
     <string name="nm_hands_need_ok">準備完了</string>
     <string name="nm_hands_need_set_up">設定する</string>
     <string name="nm_hands_section_model">ハンズのモデル</string>
-    <string name="nm_hands_model_auto">自動：qwen3.8-27b（nanoMuse Cloud のもの、または自分のキーで）。なければ画面を見られる場合に選んだチャットモデル、それもなければビジョングループ</string>
     <string name="nm_hands_model_footer">各ステップでスクリーンショットを 1 枚このモデルに送ります。チャットモデルとは別の設定です。小さめのビジョンモデルで十分で、費用も抑えられます。Cloud の広いカタログのモデルは、自分で選んだときだけ使われます。</string>
     <string name="nm_hands_why_chosen">ここで選択</string>
     <string name="nm_hands_why_default">自分のキーでのハンズの既定</string>

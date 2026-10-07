@@ -84,6 +84,13 @@ class ProviderReachTest {
         val bare = ProviderReach.Reach(ProviderReach.Kind.SIGNED_OUT, "chatgpt.com")
         assertEquals(bare, ProviderReach.classify(ProviderReach.canonical(bare)))
         assertNull(ProviderReach.classify("nm_reach:nonsense"))
+        // an IPv6 host carries colons of its own (a LAN server at http://[fd00::1]:8080)
+        val v6 = ProviderReach.Reach(ProviderReach.Kind.UNREACHABLE, "fd00::1", "failed to connect", null)
+        assertEquals(v6, ProviderReach.classify(ProviderReach.canonical(v6)))
+        val v6retry = ProviderReach.Reach(ProviderReach.Kind.RATE_LIMITED, "[fd00::1]", "", 30)
+        assertEquals(v6retry, ProviderReach.classify(ProviderReach.canonical(v6retry)))
+        // a line written before the retry field existed still reads
+        assertEquals(ProviderReach.Reach(ProviderReach.Kind.QUOTA, "chatgpt.com", "x", null), ProviderReach.classify("nm_reach:quota:chatgpt.com|x"))
     }
 
     @Test fun `plan hosts`() {

@@ -512,7 +512,6 @@
     <string name="nm_hands_need_ok">Hazır</string>
     <string name="nm_hands_need_set_up">Ayarla</string>
     <string name="nm_hands_section_model">Eller modeli</string>
-    <string name="nm_hands_model_auto">Otomatik: qwen3.8-27b (nanoMuse Cloud’unki ya da kendi anahtarınla), yoksa görebiliyorsa seçtiğin sohbet modeli, yoksa Görü Grubu</string>
     <string name="nm_hands_model_footer">Her adım bu modele bir ekran görüntüsü gönderir; sohbet modelinden ayrı bir ayardır. Daha küçük görü modelleri burada yeterlidir ve daha ucuzdur. Cloud’un geniş kataloğundan bir model yalnızca sen seçtiğinde kullanılır.</string>
     <string name="nm_hands_why_chosen">burada seçildi</string>
     <string name="nm_hands_why_default">kendi anahtarınla ellerin varsayılanı</string>
