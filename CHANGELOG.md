@@ -6,6 +6,24 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 
 ### Cloud
 
+### Runtime
+
+### Web
+
+### Desktop
+
+### Android
+
+### iOS
+
+### Project
+
+## [0.1.41] - 2026-10-07 · Choice
+
+Choice: a person with a key of their own now picks which model does each of four jobs, on every client. *Settings › Models* has one row each for *Chat*, *Operating the screen*, *Making pictures* and *Making clips* on Android, the iPhone and the desktop, and the web console's *Connections* page has the same four slots; after a key is saved a *Use it for* card asks what it should handle, a row nobody set follows one order under an *Automatic* entry (the chat model's provider when it can, then nanoMuse Cloud, then the first key that can), and a model of your own that fails never falls back on its own: the card offers *Use nanoMuse Cloud this time* for that one turn. The desktop draws pictures through your own key and picks up a new hands model without a restart, the runtime gained `PUT /api/connections/image` and `/video`, the README opens with the film, the paper is on arXiv, and the docs site has a 简体中文 edition.
+
+### Cloud
+
 - **A sign-in for the app store's reviewer.** `REVIEW_ADDRESSES` (e-mail addresses) and `REVIEW_CODE` (six digits), both empty by default: a code request for one of those addresses sends nothing and answers as if it had, and `/v1/auth/verify` accepts exactly that code for it, under the same code lifetime, attempt and rate limits as anyone's. The account is an ordinary one; the admin console tags it *review* in the People table and on its page and leaves it out of the sign-up counts on the Overview and the Stats page. With either value empty nothing changes.
 - **The web console says why the relay refused**, in Chinese and English: sign-ups paused, service paused, sync paused, device hub paused, account deleted, too many requests under way, rate limited; a paused free allowance is told apart from a spent one; a deleted account signs the page out, and a paused hub is shown as such.
 - **The console's files are revalidated on every load**, so a deploy reaches the next reload; both console pages set the document language to the one they draw.
@@ -81,9 +99,9 @@ All notable changes to nanoMuse. The format follows [Keep a Changelog](https://k
 - **The maintainers' release recipe** in CONTRIBUTING.md was rewritten, with `scripts/release-bump.sh` and `scripts/release-docs.py`, so a release can be made from the repository alone.
 - **The privacy page** says that the operator's page shows an address's country, province and city from an offline copy of ip2region, computed when drawn and not stored; `docs/cloud.md` says the star policy sets when an ask may appear, not its words; docs/parity.md, docs/ios.md and docs/roadmap.md describe 0.1.40's behaviour and the paper's roadmap.
 - **CI runs the relay's `ruff check` and `pytest`** on every change under `cloud/`; it never had.
-
 - **`THIRD_PARTY_NOTICES.md` covers the iOS app**, which it said had been removed: iSH, FFmpeg and LAME, rclone, cppjieba, the tiktoken vocabulary, the models.dev snapshot and the Swift packages, with their licenses. `docs/cloud.md` describes how each app is pointed at another relay as the apps do it today; test fixtures use `.example` addresses only.
 - **One bug form for every surface but Android**: *Where* offers the web console, the desktop app, the iPhone app, the relay, the terminal, the daemon, Docker, the library and the showcase; the repository has the `android`, `ios` and `desktop` labels the forms apply, and the Android form no longer claims to be pre-filled by the app (its link opens the chooser, for bugs and ideas alike). Dependabot watches the packages where they are (`harness/desktop`, `harness/dsh-nanomuse`, `website`); it had pointed at a directory that no longer exists.
+
 ## [0.1.40] - 2026-10-06 · Clear
 
 Clear: the iPhone's input field is in the clear again — it sat behind the bottom bar, a safe-area inset the chat stopped keeping clear of once the keyboard had come and gone; the bar and the composer are plain rows now, and a page in Settings shows where the app laid them out. Every chat on a phone belongs to the account that made it, so a shared device keeps accounts' chats clearly apart, and signing out asks one question. Every refusal from the relay is one clear sentence, or a card, on every client, and the operator of a relay can close the door with a switch on a *Controls* page, with *Stats* and *Site* beside it. The Mac takes a true picture of the screen with ScreenCaptureKit or says why it cannot, Windows starts again after the update that moved the app, and the desktop's lights, glow and capsule move as the phone's do.
