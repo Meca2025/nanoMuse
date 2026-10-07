@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { intlLocale, setLocaleSetting } from "./i18n";
-import { cx, fileKind, relativeTime, safeDecodeURIComponent, timeShort, truncate } from "./util";
+import { cx, fileKind, relativeSeconds, relativeTime, safeDecodeURIComponent, timeShort, truncate } from "./util";
 
 describe("relativeTime", () => {
   beforeEach(() => {
@@ -89,5 +89,25 @@ describe("safeDecodeURIComponent", () => {
     // a stray "%" from a model's reply must not throw and take the bubble down with it
     expect(safeDecodeURIComponent("save 100% of it")).toBe("save 100% of it");
     expect(safeDecodeURIComponent("%E4%BA")).toBe("%E4%BA");
+  });
+});
+
+describe("relativeSeconds", () => {
+  beforeEach(() => {
+    setLocaleSetting("en");
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-22T12:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("reads a Unix timestamp, the past only", () => {
+    const now = Math.floor(Date.UTC(2026, 8, 22, 12) / 1000);
+    expect(relativeSeconds(now - 10)).toBe("just now");
+    expect(relativeSeconds(now + 100)).toBe("just now");
+    expect(relativeSeconds(now - 3 * 60)).toBe("3 min ago");
+    expect(relativeSeconds(now - 5 * 3600)).toBe("5 h ago");
+    expect(relativeSeconds(now - 2 * 86400)).toBe("2 d ago");
+    // a week or more is the date itself
+    expect(relativeSeconds(now - 9 * 86400)).toMatch(/2026/);
   });
 });

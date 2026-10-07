@@ -387,7 +387,6 @@ export interface UsageRow {
   cost_cny: number;
 }
 
-/** `/api/cloud/me`: the account as the relay sees it. */
 /** GET /v1/config on the relay (0.15): what a client prints before anyone signs in. */
 export interface CloudConfig {
   version?: string;
@@ -404,6 +403,7 @@ export interface CloudConfig {
   improve_default?: boolean;
 }
 
+/** `/api/cloud/me`: the account as the relay sees it. */
 export interface CloudMe {
   account: {
     id: string;
@@ -1420,6 +1420,5 @@ export type WsMessage =
   | { kind: "skills"; skills: SkillsData }
   | { kind: "approvals_reset" }
   | { kind: "coding"; event: CodingEvent; agent: string; session_id: string; device?: string; run: CodingRun | null }
-  | { kind: "call"; state: "started" | "turn" | "ended" | string; turns?: number; cost_cny?: number; seconds?: number; reason?: string; source?: string; model?: string; video?: boolean }
   | { kind: "error"; error: string }
   | { kind: "pong"; status: Status };

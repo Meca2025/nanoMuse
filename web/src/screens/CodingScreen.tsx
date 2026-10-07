@@ -6,10 +6,10 @@ import { MuseRoundButton } from "../components/MuseHeader";
 import { inputCls, primaryBtn, secondaryBtn } from "../components/Form";
 import { Markdown } from "../components/Markdown";
 import { Sheet } from "../components/Sheet";
-import { useT, intlLocale } from "../i18n";
+import { useT } from "../i18n";
 import { useStore, type CodingLive } from "../store";
 import type { CodingAgent, CodingRun, CodingSession } from "../types";
-import { cx } from "../util";
+import { cx, relativeSeconds } from "../util";
 
 const AGENT_META: Record<string, { label: string; tone: string; glyph: string }> = {
   cursor: { label: "Cursor", tone: "from-slate-700 to-slate-900", glyph: "C" },
@@ -176,7 +176,7 @@ export function CodingScreen() {
                             <FolderOpen size={11} /> <span className="truncate">{basename(s.workspace)}</span>
                           </span>
                         )}
-                        <span>· {relative(s.updated_at, t)}</span>
+                        <span>· {relativeSeconds(s.updated_at)}</span>
                         <span>· {t("{n} messages", { n: s.messages })}</span>
                       </span>
                     </span>
@@ -202,7 +202,7 @@ export function CodingScreen() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13.5px]">{r.text}</span>
                       <span className="block truncate text-[11.5px] text-muted">
-                        {r.status === "done" ? t("done") : r.status === "failed" ? t("failed") : t("stopped")} · {relative(r.started_at, t)}
+                        {r.status === "done" ? t("done") : r.status === "failed" ? t("failed") : t("stopped")} · {relativeSeconds(r.started_at)}
                         {r.tools ? ` · ${t("{n} steps", { n: r.tools })}` : ""}
                         {r.error ? ` · ${r.error}` : ""}
                       </span>
@@ -573,13 +573,4 @@ function deviceName(devices: Array<{ id: string; name: string }>, id: string): s
 function basename(path: string): string {
   const parts = path.replace(/[\\/]+$/, "").split(/[\\/]/);
   return parts[parts.length - 1] || path;
-}
-
-function relative(ts: number, t: (s: string, v?: Record<string, string | number>) => string): string {
-  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
-  if (s < 60) return t("just now");
-  if (s < 3600) return t("{n} min ago", { n: Math.floor(s / 60) });
-  if (s < 86400) return t("{n} h ago", { n: Math.floor(s / 3600) });
-  if (s < 86400 * 7) return t("{n} d ago", { n: Math.floor(s / 86400) });
-  return new Date(ts * 1000).toLocaleDateString(intlLocale());
 }

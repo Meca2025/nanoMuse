@@ -8,7 +8,7 @@ import { asIdea, catalogue } from "../ideas";
 import { useStore } from "../store";
 import type { Idea, IdeasData } from "../types";
 import { relativeTime } from "../util";
-import { CATEGORIES } from "./GoalsScreen";
+import { CATEGORIES } from "../goals";
 
 /** The areas an idea can belong to, in the order they are listed; the emoji Muse puts in front of a row, and the label. */
 const AREAS: Array<{ id: string; label: string; emoji: string }> = [

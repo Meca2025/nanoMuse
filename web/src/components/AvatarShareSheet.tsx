@@ -195,7 +195,7 @@ export function AvatarShareSheet({ open, onClose }: { open: boolean; onClose: ()
   const share = async () => {
     setBusy(true);
     try {
-      const palette = PALETTES[selected] ?? PALETTES[0]!;
+      const palette = PALETTES[selected] ?? PALETTES[0];
       const canvas = await render(palette, profile, name, bubble, tagline, 2);
       const blob = await toBlob(canvas);
       if (!blob) throw new Error(t("The card could not be drawn."));

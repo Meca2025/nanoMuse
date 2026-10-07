@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { isDesktopApp } from "../desktop";
 import { useT } from "../i18n";
 import { useStore } from "../store";
+import { readStorage, writeStorage } from "../util";
 
 const SEEN_KEY = "nm.desktop.remote_hint";
 
@@ -14,13 +15,13 @@ const SEEN_KEY = "nm.desktop.remote_hint";
 export function DesktopRemoteHint() {
   const { state, setTab } = useStore();
   const t = useT();
-  const [seen, setSeen] = useState(() => !isDesktopApp() || localStorage.getItem(SEEN_KEY) === "1");
+  const [seen, setSeen] = useState(() => !isDesktopApp() || readStorage(SEEN_KEY) === "1");
   const hub = state.hub;
   const due = !seen && !!hub && hub.state === "connected" && hub.remote_control && hub.account.signed_in;
 
   // the hint is owed only once the hub is actually up; remember that it was shown, not that it was due
   useEffect(() => {
-    if (due) localStorage.setItem(SEEN_KEY, "1");
+    if (due) writeStorage(SEEN_KEY, "1");
   }, [due]);
 
   if (!due) return null;
