@@ -1085,4 +1085,6 @@
     <string name="nm_useit_footnote">設定 › モデル からいつでも変更できます。</string>
     <string name="nm_retry_on_cloud">今回は nanoMuse Cloud を使う</string>
     <string name="nm_hands_why_chat_provider">チャットのプロバイダーでのハンズの既定</string>
+    <string name="nm_models_auto">自動</string>
+    <string name="nm_models_auto_currently">現在は %1$s</string>
 </resources>

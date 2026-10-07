@@ -1089,4 +1089,6 @@
     <string name="nm_useit_footnote">Você pode mudar isso a qualquer momento em Configurações › Modelos.</string>
     <string name="nm_retry_on_cloud">Usar o nanoMuse Cloud desta vez</string>
     <string name="nm_hands_why_chat_provider">o padrão das mãos do seu provedor de chat</string>
+    <string name="nm_models_auto">Automático</string>
+    <string name="nm_models_auto_currently">Atualmente %1$s</string>
 </resources>

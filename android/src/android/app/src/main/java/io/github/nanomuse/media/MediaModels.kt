@@ -83,14 +83,15 @@ object MediaModels {
      * Image & video models); with nothing chosen, in the Models page's order (0.1.41,
      * [io.github.nanomuse.models.SlotOrder]): the chat provider's own video model when the
      * chat provider is the person's own and makes clips, else nanoMuse Cloud's when signed
-     * in, else the first own provider that can. Off stays off.
+     * in, else the first own provider that can. Off stays off. [automatic] leaves the choice
+     * (and Off) aside and answers what that order gives now, for the picker's *Automatic* row.
      */
-    fun videoEndpoint(context: Context): VideoGen.Endpoint? {
+    fun videoEndpoint(context: Context, automatic: Boolean = false): VideoGen.Endpoint? {
         val app = context.applicationContext as? MinisApp ?: return null
         val repo = app.providerRepositoryOrNull ?: return null
         val p = prefs(context)
         val eligible = eligibleVideoInstances(context)
-        val saved = p.getString(KEY_VIDEO_INSTANCE, null)
+        val saved = if (automatic) null else p.getString(KEY_VIDEO_INSTANCE, null)
         val cloudId = NanoMuseCloud.instance(context)?.id
         val inst = when (saved) {
             VIDEO_OFF -> return null
@@ -113,6 +114,14 @@ object MediaModels {
             .putString(KEY_VIDEO_INSTANCE, instanceId ?: VIDEO_OFF)
             .putString(KEY_VIDEO_MODEL, model.trim())
             .apply()
+    }
+
+    /** True when the person chose a video model or switched it off; false when the slot follows the automatic order. */
+    fun videoChosen(context: Context): Boolean = prefs(context).getString(KEY_VIDEO_INSTANCE, null) != null
+
+    /** Forgets the choice (a model, or Off): the slot follows the automatic order again. Nothing else moves. */
+    fun clearVideo(context: Context) {
+        prefs(context).edit().remove(KEY_VIDEO_INSTANCE).remove(KEY_VIDEO_MODEL).apply()
     }
 
     // ── which video models the key can use ────────────────────────────────

@@ -28,6 +28,17 @@ class SlotOrderTest {
         assertEquals(SlotOrder.Pick("own", SlotOrder.Why.FIRST_OWN), pick)
     }
 
+    @Test fun `clearing the choice returns the slot to the order`() {
+        val chosen = SlotOrder.resolve(chosen = "mine", chatProvider = "qwen3-vl-plus", cloud = "cloud", firstOwn = "own")
+        assertEquals(SlotOrder.Why.CHOSEN, chosen?.why)
+        // Automatic: the stored choice is gone, everything else as it was
+        val automatic = SlotOrder.resolve<String>(chosen = null, chatProvider = "qwen3-vl-plus", cloud = "cloud", firstOwn = "own")
+        assertEquals(SlotOrder.Pick("qwen3-vl-plus", SlotOrder.Why.CHAT_PROVIDER), automatic)
+        // and with no chat provider of one's own, the Cloud, then the first own model
+        assertEquals(SlotOrder.Why.CLOUD, SlotOrder.resolve<String>(null, null, "cloud", "own")?.why)
+        assertEquals(SlotOrder.Why.FIRST_OWN, SlotOrder.resolve<String>(null, null, null, "own")?.why)
+    }
+
     @Test fun `nothing can serve the slot`() {
         assertNull(SlotOrder.resolve<String>(null, null, null, null))
     }

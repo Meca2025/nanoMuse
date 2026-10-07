@@ -989,18 +989,19 @@ object NanoMuseCloud {
      * The relay's menu changes between versions (0.4 draws with qwen-image-3.0 and animates with
      * wan2.2-i2v-flash instead of the Pro tier and MiniMax-H3). A phone that still points its
      * image or video model at a name the relay no longer offers is moved to what it offers now;
-     * a user's own providers are never touched.
+     * a user's own providers are never touched, and a slot that was never chosen (it follows
+     * the automatic order, which already reads the relay's current menu) is left unchosen.
      */
     private fun migrateMediaModels(context: Context, models: JSONArray?) {
         val inst = instance(context) ?: return
         val offered = (0 until (models?.length() ?: 0)).mapNotNull { models?.optJSONObject(it) }
         if (offered.isEmpty()) return
         val ids = offered.map { it.optString("id") }.toSet()
-        val image = ImageGen.endpoint(context)
+        val image = ImageGen.endpoint(context)?.takeIf { ImageGen.isChosen(context) }
         if (image != null && image.instanceId == inst.id && image.model !in ids) {
             offered.firstOrNull { drawsOnly(it) }?.optString("id")?.let { ImageGen.save(context, inst.id, it) }
         }
-        val video = io.github.nanomuse.media.MediaModels.videoEndpoint(context)
+        val video = io.github.nanomuse.media.MediaModels.videoEndpoint(context)?.takeIf { io.github.nanomuse.media.MediaModels.videoChosen(context) }
         if (video != null && video.instanceId == inst.id && video.model !in ids) {
             val offeredVideo = offered.filter { films(it) }
             val pick = offeredVideo.firstOrNull { it.optJSONObject("nanomuse")?.optBoolean("recommended") == true } ?: offeredVideo.firstOrNull()

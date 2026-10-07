@@ -1066,4 +1066,6 @@
     <string name="nm_useit_footnote">You can change this any time under Settings › Models.</string>
     <string name="nm_retry_on_cloud">Use nanoMuse Cloud this time</string>
     <string name="nm_hands_why_chat_provider">the hands\' default of your chat provider</string>
+    <string name="nm_models_auto">Automatic</string>
+    <string name="nm_models_auto_currently">Currently %1$s</string>
 </resources>

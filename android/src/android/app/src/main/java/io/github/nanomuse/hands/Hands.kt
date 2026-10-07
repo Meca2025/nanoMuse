@@ -38,7 +38,10 @@ object Hands {
 
     /** The chosen screen model's entry id; null means "pick one" ([screenModel]). */
     fun modelEntryId(context: Context): String? = prefs(context).getString(KEY_MODEL, null)?.takeIf { it.isNotBlank() }
-    fun setModelEntryId(context: Context, id: String?) { prefs(context).edit().putString(KEY_MODEL, id ?: "").apply() }
+    /** Null forgets the choice: the screen's model follows the automatic order again. */
+    fun setModelEntryId(context: Context, id: String?) {
+        prefs(context).edit().apply { if (id == null) remove(KEY_MODEL) else putString(KEY_MODEL, id) }.apply()
+    }
 
     // ── readiness ──────────────────────────────────────────────────────────
 
@@ -113,9 +116,10 @@ object Hands {
      * group, the Vision Group, and last any enabled vision model, preferring names that say so
      * (`vl`, `vision`) — but never one of the Cloud's catalog models the person did not pick,
      * so a member is not quietly billed for `qwen-vl-max` because its name has `vl` in it.
-     * Null when none of the user's models sees.
+     * Null when none of the user's models sees. [automatic] leaves the choice aside and answers
+     * what the rest of the order gives now, for the picker's *Automatic* row.
      */
-    fun screenModel(context: Context): ScreenModel? {
+    fun screenModel(context: Context, automatic: Boolean = false): ScreenModel? {
         val repo = repo(context) ?: return null
         val cfg = repo.config.value
         fun usable(inst: ProviderInstance?, entry: ModelEntry?, why: Why): ScreenModel? {
@@ -125,7 +129,7 @@ object Hands {
         }
         fun byEntry(entry: ModelEntry?, why: Why): ScreenModel? =
             entry?.let { e -> usable(cfg.instances.firstOrNull { it.id == e.providerInstanceId }, e, why) }
-        modelEntryId(context)?.let { id -> byEntry(cfg.modelEntries.firstOrNull { it.id == id }, Why.CHOSEN) }?.let { return it }
+        if (!automatic) modelEntryId(context)?.let { id -> byEntry(cfg.modelEntries.firstOrNull { it.id == id }, Why.CHOSEN) }?.let { return it }
         val cloud = NanoMuseCloud.instance(context)
         // the chat provider's own model for the screen, when the chat provider is the
         // person's own and sees: `defaults.hands` of the catalogue, else its first that sees

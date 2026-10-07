@@ -1085,4 +1085,6 @@
     <string name="nm_useit_footnote">Kamu bisa mengubahnya kapan saja di Setelan › Model.</string>
     <string name="nm_retry_on_cloud">Pakai nanoMuse Cloud kali ini</string>
     <string name="nm_hands_why_chat_provider">bawaan tangan dari penyedia chat-mu</string>
+    <string name="nm_models_auto">Otomatis</string>
+    <string name="nm_models_auto_currently">Saat ini %1$s</string>
 </resources>

@@ -1062,4 +1062,6 @@
     <string name="nm_useit_footnote">以后可以在 设置 › 模型 里改。</string>
     <string name="nm_retry_on_cloud">这次改用 nanoMuse Cloud</string>
     <string name="nm_hands_why_chat_provider">你对话服务商的动手默认模型</string>
+    <string name="nm_models_auto">自动</string>
+    <string name="nm_models_auto_currently">当前为 %1$s</string>
 </resources>
