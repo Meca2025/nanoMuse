@@ -117,7 +117,7 @@ test('GET /models: the four slots; signed in with nothing else, every row is the
     assert.deepEqual(view.slots.hands.options.map((o) => [o.id, Boolean(o.recommended)]), [['qwen3.8-27b', true]])
     assert.equal(view.slots.hands.chosen, false)
     // pictures and clips: the account's models, the recommended image model marked
-    assert.deepEqual(view.slots.image, { provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', model: 'qwen-image-3.0', options: [{ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: 'qwen-image-3.0', name: 'Qwen Image', recommended: true }], chosen: false })
+    assert.deepEqual(view.slots.image, { provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', model: 'qwen-image-3.0', options: [{ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: 'qwen-image-3.0', name: 'Qwen Image', recommended: true }], chosen: false, auto: { provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', model: 'qwen-image-3.0' } })
     assert.equal(view.slots.video.model, 'wan2.2-i2v-flash')
     assert.equal(view.slots.video.off, undefined)
   } finally {
@@ -313,6 +313,56 @@ test('the video order: the choice, else the chat provider, else the account, els
     await out.api('POST', '/media', { videoModel: 'wan2.2-i2v-flash' })
     assert.equal((await out.svc.videoEndpoint()).instanceId, PROVIDER_ID)
     assert.equal((await out.api('POST', '/video-model', { model: 'nope', provider: 'nobody' })).status, 400)
+  } finally {
+    await server.close()
+    await out.done()
+  }
+})
+
+test('Automatic: an empty model drops the stored choice and the slot follows the order again; the view says what the order gives while a choice is in force', async () => {
+  const out = await cloud({ signedIn: true })
+  const server = await modelsServer(BAILIAN_MODELS)
+  try {
+    await out.api('POST', '/providers/save', { id: 'bailian', apiKey: 'sk-test', baseURL: server.url })
+    await out.api('POST', '/chat-model', { model: 'deepseek-v4.1-flash', provider: PROVIDER_ID })
+    // nothing stored: every dependent row is automatic and `auto` is the row's own value
+    let view = (await out.api('GET', '/models')).body
+    for (const slot of ['hands', 'image', 'video']) {
+      assert.equal(view.slots[slot].chosen, false, slot)
+      assert.deepEqual(view.slots[slot].auto, { provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', model: view.slots[slot].model }, slot)
+    }
+    // explicit choices on the own row; `auto` still names what the order would give (the account)
+    await out.api('POST', '/hands-model', { model: 'qwen3-vl-plus', provider: 'bailian' })
+    await out.api('POST', '/image-model', { model: 'qwen-image-3.0', provider: 'bailian' })
+    await out.api('POST', '/video-model', { model: 'wan2.2-i2v-flash', provider: 'bailian' })
+    view = (await out.api('GET', '/models')).body
+    for (const slot of ['hands', 'image', 'video']) {
+      assert.equal(view.slots[slot].chosen, true, slot)
+      assert.equal(view.slots[slot].provider, 'bailian', slot)
+      assert.equal(view.slots[slot].auto.provider, PROVIDER_ID, slot)
+    }
+    assert.equal(view.slots.hands.auto.model, 'qwen3.8-27b')
+    assert.equal(JSON.parse(await readFile(join(out.home, 'hands.json'), 'utf8')).model, 'qwen3-vl-plus')
+    // the Automatic entry: an empty model, the same routes; chat and the other rows stay as they were
+    assert.equal((await out.api('POST', '/hands-model', { model: '' })).status, 200)
+    assert.deepEqual(out.svc.handsChoice(), { provider: PROVIDER_ID, model: 'qwen3.8-27b' })
+    assert.equal(JSON.parse(await readFile(join(out.home, 'hands.json'), 'utf8')).model, 'qwen3.8-27b')
+    assert.equal((await out.svc.imageEndpoint()).instanceId, 'bailian')
+    assert.equal((await out.api('POST', '/image-model', { model: '' })).status, 200)
+    assert.equal((await out.svc.imageEndpoint()).instanceId, PROVIDER_ID)
+    assert.equal((await out.api('POST', '/media', { videoModel: '' })).status, 200)
+    assert.equal((await out.svc.videoEndpoint()).instanceId, PROVIDER_ID)
+    view = (await out.api('GET', '/models')).body
+    assert.deepEqual(out.selection.current, { provider: PROVIDER_ID, model: 'deepseek-v4.1-flash' })
+    for (const slot of ['hands', 'image', 'video']) assert.equal(view.slots[slot].chosen, false, slot)
+    assert.equal(out.state().handsModel, undefined)
+    assert.equal(out.state().media?.imageModel, undefined)
+    assert.equal(out.state().media?.videoModel, undefined)
+    // the order moves with chat again: chat to the own row, the three follow it
+    await out.api('POST', '/chat-model', { model: 'deepseek-v4.1-flash', provider: 'bailian' })
+    assert.equal(out.svc.handsChoice().provider, 'bailian')
+    assert.equal((await out.svc.imageEndpoint()).instanceId, 'bailian')
+    assert.equal((await out.svc.videoEndpoint()).instanceId, 'bailian')
   } finally {
     await server.close()
     await out.done()

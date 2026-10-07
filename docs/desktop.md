@@ -183,7 +183,10 @@ can do shows one sentence naming who could and *Add a provider*.
 
 What a row uses when you have not chosen: the provider new chats answer through, when it
 is one of your own and has a model for the job (its catalogue default); else nanoMuse
-Cloud while signed in; else the first of your providers that can. A chat change applies to
+Cloud while signed in; else the first of your providers that can. The three rows that
+follow this order have *Automatic* as their first entry, with the row saying what it gives
+right now (*Currently nanoMuse Cloud · qwen3.8-27b*, say); pick it to drop a choice you
+made and let the row follow the order again. A chat change applies to
 new chats. Pictures through your own key go straight to that provider — Model Studio's
 native image API, OpenRouter's image API, or the OpenAI shape for the rest — and nothing
 is billed to the account; the avatar studio says so in place of the cost line. Clips come
