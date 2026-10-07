@@ -239,7 +239,13 @@ final class NanoMuseAvatarFlow: ObservableObject {
         stage = .finalizing(session: session, description: desc, chosen: index)
         let line = typed ?? String(format: AppLocalized("Option %d"), index + 1)
         let fence = NanoMuseFences.fence(Self.blockOptions, ["desc": desc, "chosen": index, "files": files])
-        vm?.nmLocalTurn(user: line, assistant: String(format: AppLocalized("Done — my new look is on. I'm %@ now."), desc) + "\n\n" + fence)
+        var reply = String(format: AppLocalized("Done — my new look is on. I'm %@ now."), desc)
+        // With a video model set the clips follow in the background (NanoMuseAvatarMotion); say so,
+        // as Android's `nm_avatar_clips_coming` does.
+        if NanoMuseAvatarMotion.shared.enabled {
+            reply += " " + AppLocalized("I'll also make four short clips so I can move — a few minutes in the background, through your video model.")
+        }
+        vm?.nmLocalTurn(user: line, assistant: reply + "\n\n" + fence)
         appendMemory(desc)
     }
 

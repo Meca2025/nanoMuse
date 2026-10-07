@@ -42,7 +42,7 @@
 
     <!-- First conversation: the scripted opening (see io.github.nanomuse.onboarding) -->
     <string name="nm_intro_hello">Hi, I\'m nanoMuse, the assistant that lives on your phone. Let me take a few things off your plate.</string>
-    <string name="nm_intro_how_i_work">A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you mount for me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone; your messages go only to the model you configured.</string>
+    <string name="nm_intro_how_i_work">A bit about how I work:\n\n- I have my own computer — a Linux sandbox and a browser — so I can run commands, open websites and fill in forms.\n- I can read and organise the files and photos you mount for me, and take care of reminders and scheduled tasks.\n- Before any step that matters, I ask you first.\n- Everything runs on this phone. Your messages go to the model you configured; signed in to nanoMuse Cloud, this conversation also follows you to your other devices — Data controls switches that off.</string>
     <string name="nm_intro_ask_name">Before we start — what should I call you?</string>
 
     <!-- First conversation: the name chooser -->
