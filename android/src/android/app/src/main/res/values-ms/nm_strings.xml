@@ -1085,4 +1085,6 @@
     <string name="nm_useit_footnote">Anda boleh mengubahnya bila-bila masa di Tetapan › Model.</string>
     <string name="nm_retry_on_cloud">Guna nanoMuse Cloud kali ini</string>
     <string name="nm_hands_why_chat_provider">lalai tangan daripada penyedia sembang anda</string>
+    <string name="nm_models_auto">Automatik</string>
+    <string name="nm_models_auto_currently">Kini %1$s</string>
 </resources>

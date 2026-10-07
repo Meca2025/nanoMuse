@@ -181,13 +181,15 @@ object ImageGen {
      * nothing chosen, in the Models page's order (0.1.41, [io.github.nanomuse.models.SlotOrder]):
      * the chat provider's own image model when the chat provider is the person's own and
      * draws, else nanoMuse Cloud's when signed in, else the first own provider that draws.
+     * [automatic] leaves the choice aside and answers what that order gives now (the picker's
+     * *Automatic* row says so).
      */
-    fun endpoint(context: Context): Endpoint? {
+    fun endpoint(context: Context, automatic: Boolean = false): Endpoint? {
         val app = context.applicationContext as? MinisApp ?: return null
         val repo = app.providerRepositoryOrNull ?: return null
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val eligible = eligibleInstances(context)
-        val savedId = prefs.getString(KEY_INSTANCE, null)
+        val savedId = if (automatic) null else prefs.getString(KEY_INSTANCE, null)
         val cloudId = io.github.nanomuse.cloud.NanoMuseCloud.instance(context)?.id
         val inst = eligible.firstOrNull { it.id == savedId }
             ?: io.github.nanomuse.models.SlotOrder.resolve(
@@ -206,6 +208,15 @@ object ImageGen {
     fun save(context: Context, instanceId: String, model: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_INSTANCE, instanceId).putString(KEY_MODEL, model.trim()).apply()
+    }
+
+    /** True when the person chose an image model; false when the slot follows the automatic order. */
+    fun isChosen(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_INSTANCE, null) != null
+
+    /** Forgets the choice: the slot follows the automatic order again. Nothing else moves. */
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_INSTANCE).remove(KEY_MODEL).apply()
     }
 
     private fun provider(context: Context, ep: Endpoint, modelId: String): OpenAIProvider {

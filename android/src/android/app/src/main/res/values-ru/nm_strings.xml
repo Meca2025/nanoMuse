@@ -1097,4 +1097,6 @@
     <string name="nm_useit_footnote">Это можно изменить в любой момент в Настройки › Модели.</string>
     <string name="nm_retry_on_cloud">В этот раз использовать nanoMuse Cloud</string>
     <string name="nm_hands_why_chat_provider">модель рук по умолчанию у вашего чат-провайдера</string>
+    <string name="nm_models_auto">Автоматически</string>
+    <string name="nm_models_auto_currently">Сейчас %1$s</string>
 </resources>

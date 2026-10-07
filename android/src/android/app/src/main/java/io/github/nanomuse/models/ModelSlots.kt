@@ -112,6 +112,47 @@ object ModelSlots {
     /** True when the video slot was switched off on purpose (a value of its own, not "nothing chosen"). */
     fun videoOff(context: Context): Boolean = MediaModels.videoSwitchedOff(context)
 
+    /**
+     * Whether the person chose for [slot] (a stored choice; for clips, Off counts), or the slot
+     * follows the automatic order. Chat has no automatic row: it is the anchor the other three
+     * lean on, so it always counts as chosen.
+     */
+    fun isChosen(context: Context, slot: Slot): Boolean = when (slot) {
+        Slot.CHAT -> true
+        Slot.HANDS -> Hands.modelEntryId(context) != null
+        Slot.IMAGE -> ImageGen.isChosen(context)
+        Slot.VIDEO -> MediaModels.videoChosen(context)
+    }
+
+    /** What the automatic order gives [slot] right now, the choice left aside; null when nothing can serve it. */
+    fun automatic(context: Context, slot: Slot): Value? = when (slot) {
+        Slot.CHAT -> current(context, slot)
+        Slot.HANDS -> Hands.screenModel(context, automatic = true)?.let { m ->
+            Value(m.instance, m.modelId, when (m.why) {
+                Hands.Why.CHAT_PROVIDER -> SlotOrder.Why.CHAT_PROVIDER
+                Hands.Why.MENU -> SlotOrder.Why.CLOUD
+                else -> SlotOrder.Why.FIRST_OWN
+            })
+        }
+        Slot.IMAGE -> ImageGen.endpoint(context, automatic = true)?.takeIf { it.model.isNotBlank() }?.let { Value(it.instance, it.model) }
+        Slot.VIDEO -> MediaModels.videoEndpoint(context, automatic = true)?.let { Value(it.instance, it.model) }
+    }
+
+    /**
+     * *Automatic*: forgets the choice for [slot] (for clips, Off too) and changes nothing else,
+     * so the slot follows the order again: the chat provider when it can, nanoMuse Cloud when
+     * signed in, the first own model that can. Chat is left alone.
+     */
+    fun clear(context: Context, slot: Slot) {
+        when (slot) {
+            Slot.CHAT -> return
+            Slot.HANDS -> Hands.setModelEntryId(context, null)
+            Slot.IMAGE -> ImageGen.clear(context)
+            Slot.VIDEO -> MediaModels.clearVideo(context)
+        }
+        lastChanged.value = slot
+    }
+
     // ── what each slot can be ───────────────────────────────────────────
 
     /** The person's own providers that are switched on and hold a credential, in the order they were added; never the relay. */
