@@ -368,16 +368,26 @@ stock General plugin switched off in the bundle layer:
   Harness controls* (the model picker, the modes, the workspace browser in place of the
   chats column). The harness's other rows (permission presets, font size, link opening,
   Enter to send, performance, session log) live under *Advanced → Harness*.
+- **Models** (right after General, since 0.1.41) — one row per thing a model does for
+  you: **Chat** (*The model that talks with you.*), **Operating the screen** (*Looks at the
+  screen and acts for you. Needs a model that can see images.*), **Making pictures**
+  (*Portraits of your Muse and the pictures you ask for.*) and **Making clips** (*Short
+  clips of your Muse.*), a picker on each. Every picker lists nanoMuse Cloud first while
+  signed in, its recommended model marked *Recommended*, then one group per provider you
+  added, each holding only the models that can do the row's job; the value reads
+  `<provider> · <model>`. A chat change says *Applies to new chats.*; a hands change takes
+  effect at the hands' next step (the plugin restarts `nanomuse mcp` with the new model,
+  no cold restart). The hands speak OpenAI's shape only, so an Anthropic or native Gemini
+  key is named in one sentence under the row and not listed. A row nothing can do shows
+  the gate's sentence — *Pictures need a provider with image models — Alibaba Cloud
+  Bailian, Zhipu GLM, SiliconFlow, …* — and *Add a provider*; the page ends with *Add a
+  provider*, which opens the ways on under Account. When you have not chosen, a row
+  follows the provider new chats answer through (its catalogue default for the job) when
+  that is one of your own, else nanoMuse Cloud while signed in, else the first of your
+  providers that can.
 - **Account** (under *Advanced*) — the nanoMuse account: sign in or the masked
-  identifier, the allowance, the look, *Open Devices*, and two blocks the own keys share
-  with the account:
-  - **Chat and hands models** — one chooser for each: the account's models while signed in
-    and every own row's, grouped by where they come from. The hands list carries only
-    sighted models (the ones that read a screenshot); a row with none says *No sighted model
-    yet*. A chat model takes effect for new chats; the hands model when nanoMuse next starts.
-    Under the pickers, one sentence for what nothing configured covers — *Pictures need a
-    provider with image models — Alibaba Cloud Bailian, Zhipu GLM, SiliconFlow, …* — and
-    nothing when something does.
+  identifier, the allowance, the look, *Open Devices*, a line that opens Settings → Models
+  with what chat and the hands use now, and the block the own keys share with the account:
   - **Ways on** — your account's row first while signed in (what it covers right now, from
     the relay's model list), then the catalogue in the first run's groups: the region's
     providers, the ChatGPT sign-in, the rest ordered by how much they cover, the local
@@ -389,16 +399,27 @@ stock General plugin switched off in the bundle layer:
     sign-in covers chat and the hands only, not pictures or clips, and the line about
     OpenAI's terms sits under it. Without the runtime the row says so and stays disabled. A
     sign-in on file comes back after a restart, with its local bridge. Signed out of the
-    account, the same two blocks are under the sign-in form, so a key can be changed without
-    an account.
-- **Media** — the models that draw the face and its clips. The image row names the
-  account's model, or an own row with image models; the video row the account's or a
-  Bailian key's. When nothing configured covers pictures or clips the row says who could,
+    account, the same block is under the sign-in form, so a key can be changed without an
+    account. Once a key is saved, a card asks **Use it for** — *Pick what this key should
+    handle. nanoMuse Cloud keeps the rest.* — with a toggle per thing the key can handle
+    (chat, the screen, pictures, clips), all on, each naming the model it would get; *Use
+    it* switches those rows on the Models page to the provider, *Not now* changes nothing,
+    and a footnote says *You can change this any time under Settings › Models.*
+- **Media** — the models that draw the face and its clips: the same two pickers as
+  Settings → Models' *Making pictures* and *Making clips*, nanoMuse Cloud first while
+  signed in, then each own provider's models (the video picker has *Off* too). Pictures
+  through your own key go to that provider directly — Model Studio's native image API,
+  OpenRouter's image API, the OpenAI shape for OpenAI, Zhipu, SiliconFlow, Volcengine and
+  xAI — and the studio says *Drawn with <provider> · <model>. Nothing is billed to your
+  nanoMuse Cloud account.* in place of the estimate; a Google key draws only through the
+  OpenAI-compatible layer. When nothing configured covers pictures or clips the row says who could,
   where you are, with the way to Settings → nanoMuse Cloud — the same sentence the avatar studio
   shows in place of the estimate — and with only the ChatGPT sign-in, that pictures and
   clips are not covered by it.
   Below: *Animate the avatar after a change*, *Make / Redo clips* with the state of each
-  of the four, and the cost note.
+  of the four, and the cost note. When clips through your own key failed and you are
+  signed in, the failure line offers *Use nanoMuse Cloud this time*: that one run through
+  the account, the picker untouched; the studio offers the same after a failed round.
 - **Models**, **Agents** — the harness's pages, unchanged, under *Advanced*.
 - **Connectors** — Muse's catalogue shape: a search field, category chips (*All*,
   *Built in*, *Work*, *Talk*, *Files*, *Developer*, *Data*, *Design*, *Money*,
@@ -588,12 +609,16 @@ nowhere else.
   desktop's status line counts it; *Reach* lets either side ask the other for something
   ([hub.md](hub.md)).
 - **Any model, your key.** The relay's models for members, a DeepSeek key, or any
-  OpenAI-compatible provider the harness supports. Settings → nanoMuse Cloud shows two rows:
-  the **chat model** (the relay's `/v1/models` entries marked `for: ["chat"]`, default
-  `deepseek-v4.1-flash`) and the **hands model** (`for: ["gui"]`, default
-  `qwen3.8-27b`); a DeepSeek entry is shown as sighted only when its id says `v4.1`,
-  `vision` or `ocr`. The hands model is written to `$DSH_HOME/nanomuse/hands.json`
-  (mode 0600) and the preset passes it to the runtime at the next start.
+  OpenAI-compatible provider the harness supports. Settings → Models shows four rows:
+  **Chat** (the relay's `/v1/models` entries marked `for: ["chat"]`, default
+  `deepseek-v4.1-flash`), **Operating the screen** (`for: ["gui"]`, default
+  `qwen3.8-27b`), **Making pictures** and **Making clips**; a DeepSeek entry is shown as
+  sighted only when its id says `v4.1`, `vision` or `ocr`. The hands model is written to
+  `$DSH_HOME/nanomuse/hands.json` (mode 0600) and handed to `nanomuse mcp` as its
+  environment by the plugin's own MCP client, which it restarts when the model changes.
+  When a model of your own fails under a turn, the card offers *Use nanoMuse Cloud this
+  time* (signed in): that one message again through the account, the chat back to its
+  model when the turn ends, the Models page as it was. Nothing falls back on its own.
 - **Connectors on every device.** What you connected here (service, label, URL for a
   custom MCP, how it signs in, which device) is published to the account's profile
   (contract C3; never a token or a key — the host refuses any field named like one), so

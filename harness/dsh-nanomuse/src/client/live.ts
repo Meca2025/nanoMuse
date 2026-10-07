@@ -168,6 +168,8 @@ export interface LiveMotionProgress {
   current?: MotionMood
   stage?: { kind: 'uploading' | 'submitted' | 'running' | 'downloading'; elapsedSec?: number }
   error?: string
+  /** Where the run drew (0.1.41): `nanomuse` for the account, else an own row's id. Absent on an older host. */
+  source?: string
 }
 
 export interface LiveMotion {

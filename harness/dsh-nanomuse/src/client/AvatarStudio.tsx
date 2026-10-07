@@ -12,6 +12,7 @@
 import { createElement as h, Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { StarNudgeOnce } from './AccountPage.tsx'
 import { call, errorCode, type Translate } from './api.ts'
+import { useLive } from './live.ts'
 import type { Words } from './locales.ts'
 import { UnavailableLine, useProviders } from './OwnKey.tsx'
 import { useRooms } from './rooms.ts'
@@ -61,6 +62,9 @@ export interface Estimate {
   /** The four clips of the new face, when the account would draw them (C3); 0 or absent otherwise. */
   clips?: number
   videoModel?: string
+  /** Who draws (0.1.41): the account, or an own provider (nothing billed by the account). Absent on an older host. */
+  source?: 'cloud' | 'provider'
+  label?: string
 }
 
 type Stage = 'describe' | 'drawing' | 'posing' | 'done'
@@ -125,6 +129,9 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
   const [moods, setMoods] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | undefined>()
   const [busy, setBusy] = useState(false)
+  // *Use nanoMuse Cloud this time* (0.1.41): the round after an own provider failed draws through the account, the slot untouched
+  const [viaCloud, setViaCloud] = useState(false)
+  const live = useLive()
   const alive = useRef(true)
   const round = useRef(0)
   // what is configured and what it covers (C11): decides whether a failed estimate is "nobody draws pictures here"
@@ -134,10 +141,11 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
     call<Estimate>('studio/estimate').then((e) => { if (alive.current) setEstimate(e) }).catch((err: unknown) => { if (alive.current) setEstimateError(errorCode(err) === 'signed_out' ? t('stSignedOut') : (err as Error).message) })
   }, [])
 
-  const draw = () => {
+  const draw = (cloud = viaCloud) => {
     const description = text.trim()
     if (!description) return
     const mine = ++round.current
+    setViaCloud(cloud)
     setStage('drawing')
     setBusy(true)
     setError(undefined)
@@ -146,7 +154,7 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
     let failures = 0
     const one = async (index: number) => {
       try {
-        const r = await call<{ image: string }>('studio/draw', { prompt: buildPrompt(description, index, style) })
+        const r = await call<{ image: string }>('studio/draw', { prompt: buildPrompt(description, index, style), ...(cloud ? { cloud: true } : {}) })
         if (alive.current && round.current === mine) setCandidates((c) => c.map((v, i) => (i === index ? r.image : v)))
       } catch (err: unknown) {
         failures++
@@ -177,7 +185,7 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
       setMoods({ idle })
       const one = async (mood: string) => {
         try {
-          const r = await call<{ image: string }>('studio/pose', { image: source, prompt: KEEP + MOOD_INSTRUCTIONS[mood] })
+          const r = await call<{ image: string }>('studio/pose', { image: source, prompt: KEEP + MOOD_INSTRUCTIONS[mood], ...(viaCloud ? { cloud: true } : {}) })
           stills[mood] = await still(r.image)
         } catch {
           stills[mood] = idle // a pose that failed shows the idle still, so the face is never blank
@@ -206,7 +214,7 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
   if (stage === 'describe') {
     const cannot = estimate && !estimate.affordable
     const noImage = Boolean(estimateError) && providers.view !== undefined && !providers.view.capabilities.includes('image')
-    body = h('form', { id: 'nm-studio', className: 'nm-sheet-form', onSubmit: (e: FormEvent) => { e.preventDefault(); draw() } },
+    body = h('form', { id: 'nm-studio', className: 'nm-sheet-form', onSubmit: (e: FormEvent) => { e.preventDefault(); draw(false) } },
       h('p', { className: 'nm-sheet-lead' }, t('stLead')),
       h('textarea', { className: 'nm-textarea', rows: 3, value: text, placeholder: t('stPlaceholder'), maxLength: 200, onChange: (e: FormEvent<HTMLTextAreaElement>) => setText(e.currentTarget.value), 'data-modal-autofocus': true }),
       h('div', { className: 'nm-st-label' }, t('stStyle')),
@@ -217,6 +225,7 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
         noImage ? null
           : estimateError ? t('stNoModel', { message: estimateError })
           : !estimate ? t('stEstimating')
+          : estimate.source === 'provider' ? t('stDrawnWith', { label: estimate.label ?? '', model: estimate.imageModel })
           : estimate.unlimited ? (estimate.clips ? t('stCostUnlimitedClips', { n: 8, clips: estimate.clips }) : t('stCostUnlimited', { n: 8 }))
           : cannot ? t('stCannotAfford', { cost: estimate.cny.toFixed(2), left: estimate.leftCny.toFixed(2) })
           : estimate.clips ? t('stCostClips', { cost: estimate.cny.toFixed(2), left: estimate.leftCny.toFixed(2) })
@@ -233,11 +242,15 @@ export function AvatarStudioSheet({ t, initial, style: initialStyle, onClose }: 
         h('button', { key: index, type: 'button', role: 'radio', 'aria-checked': picked === index, disabled: !image, className: `nm-st-cell${picked === index ? ' nm-active' : ''}`, onClick: () => setPicked(index) },
           image ? h('img', { src: `data:image/png;base64,${image}`, alt: t('stOption', { n: index + 1 }) }) : h('span', { className: 'nm-st-wait' }, busy ? '…' : '—'),
           h('span', { className: 'nm-st-tag' }, t('stOption', { n: index + 1 }))))),
-      error ? h('div', { className: 'nm-room-error' }, error) : null)
+      error ? h('div', { className: 'nm-room-error' }, error) : null,
+      // an own provider failed and the account could draw: this round through nanoMuse Cloud, the slot untouched
+      error && !busy && !viaCloud && estimate?.source === 'provider' && live.cloud.signedIn
+        ? h('div', { style: { marginTop: 6 } }, h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', 'data-testid': 'nm-st-cloud-once', onClick: () => draw(true) }, t('rfUseCloudOnce')))
+        : null)
     footer = h('div', { className: 'nm-sheet-actions' },
-      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: busy, onClick: () => { setStage('describe'); setError(undefined) } }, t('stChange')),
+      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: busy, onClick: () => { setStage('describe'); setError(undefined); setViaCloud(false) } }, t('stChange')),
       h('span', { style: { flex: 1 } }),
-      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: busy, onClick: draw }, t('stAgain')),
+      h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', disabled: busy, onClick: () => draw(false) }, t('stAgain')),
       h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: busy || picked === null || !candidates[picked], onClick: () => void choose() }, t('stThisOne')))
   } else if (stage === 'posing') {
     const done = Object.keys(moods).length

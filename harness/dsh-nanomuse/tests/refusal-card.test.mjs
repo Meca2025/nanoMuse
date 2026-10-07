@@ -180,6 +180,10 @@ test('another provider’s failure (an own key): a plain sentence by the harness
   const quiet = render('zh', { kind: 'turn-error', data: { message: 'The model returned an empty response.', code: 'EMPTY_RESPONSE' } })
   assert.match(quiet, /模型这次没有回答。/)
   assert.match(quiet, />再试一次</)
+  // *Use nanoMuse Cloud this time* (0.1.41) needs a signed-in account: the live state here says signed out, so no button; the strings exist in both dictionaries
+  assert.doesNotMatch(auth, /nm-rf-cloud-once/)
+  assert.equal(bundle.en.rfUseCloudOnce, 'Use nanoMuse Cloud this time')
+  assert.equal(bundle.zh.rfUseCloudOnce, '这次改用 nanoMuse Cloud')
 })
 
 test('every key the card reads exists in both dictionaries', () => {

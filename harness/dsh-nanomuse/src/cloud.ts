@@ -54,6 +54,7 @@ import { Trajectory, type StepAction, type TrajectoryView } from './trajectory.t
 import { RemoteStore, SyncEngine, SyncRelay, type RemoteLine, type SessionInfo, type SessionLine, type SyncState } from './sync.ts'
 import { AvatarMotion, ANIMATED, type MotionMood, type MotionView } from './motion.ts'
 import { DEFAULT_VIDEO_MODEL, hostOf, KNOWN_DASHSCOPE_MODELS, looksLikeVideoModel, probe as probeVideoModel, speaksDashScope, type VideoEndpoint } from './video.ts'
+import { editImage as ownEditImage, generateImage as ownGenerateImage, imageShapeOf, type ImageEndpoint } from './images.ts'
 import { checkMove, checkScreenshot, displayInfo, isBlack, runtimeInfo, type MoveCheck, type RuntimeInfo, type ScreenshotCheck } from './hands-check.ts'
 import { apiOf, baseUrlFor, CAPABILITIES, capabilitiesForAuth, capabilitiesOf, CHATGPT_KEY_REF, CHATGPT_PROVIDER, ChatGptDesk, keyRefFor, listModels, loadCatalogue, modelsOf, ownProviderRow, regionOf, type Capability, type ChatGptState, type LoginView, type OwnModel, type OwnProvider, type ProviderEntry, type Region } from './providers.ts'
 
@@ -294,6 +295,45 @@ export interface ModelOption {
   providerLabel: string
   id: string
   name: string
+  /** The relay's recommended one for that lane (marked in the picker). */
+  recommended?: boolean
+}
+
+/** The four slots of Settings → Models (0.1.41). */
+export type Slot = 'chat' | 'hands' | 'image' | 'video'
+export const SLOTS: readonly Slot[] = ['chat', 'hands', 'image', 'video']
+
+/** One row of Settings → Models: what is in use, where it lives, and what the picker lists. */
+export interface SlotView {
+  /** `nanomuse` for the account, an own row's id, something else of dsh's, or '' for nothing. */
+  provider: string
+  /** The provider's label as the row shows it (`nanoMuse Cloud`, the row's label); '' for nothing. */
+  providerLabel: string
+  model: string
+  options: ModelOption[]
+  /** The person chose this (an explicit choice); false when it is the resolution order's pick. */
+  chosen: boolean
+  /** The clips are switched off (the video slot only). */
+  off?: boolean
+}
+
+/** `GET /models`: the page in one read. */
+export interface ModelsView {
+  signedIn: boolean
+  slots: Record<Slot, SlotView>
+  /** Own rows with sighted models the hands cannot use: the runtime speaks OpenAI's shape only (their labels). */
+  handsExcluded: string[]
+}
+
+/** The "Use it for" card after a key is saved: the slots the row could take and the model each would get. */
+export type SlotOffer = Partial<Record<Slot, string>>
+
+/** The session-local switch behind *Use nanoMuse Cloud this time*: the selection to put back when the turn ends. */
+interface CloudOnce {
+  provider: string
+  model: string
+  reasoningEffort?: string
+  at: number
 }
 
 /** How long after the last hands call the stage keeps its frame. */
@@ -340,6 +380,11 @@ const ALLOWANCE_CHECK_EVERY_MS = 60_000
 /** The Media settings as stored. `videoModel` empty means the endpoint's default; `off` means no clips. */
 export interface MediaState {
   videoModel?: string
+  /** Where the chosen video model lives (0.1.41): `nanomuse` or an own row's id; absent with a `videoModel` means whichever source lists it (0.1.40 and before). */
+  videoProvider?: string
+  /** The image model the person chose (0.1.41) and where it lives; absent means the resolution order's pick. */
+  imageModel?: string
+  imageProvider?: string
   /** Absent means on. */
   animate?: boolean
   /** The last check of which video models the own key reaches: by host, with the models and when. */
@@ -471,6 +516,10 @@ export default class NanomuseCloud extends Service {
   private readonly streams = new Set<ServerResponse>()
   private readonly changeListeners = new Set<() => void>()
   private readonly calls = new Map<string, HandsCall>()
+  /** Sessions sent through the account for one turn (*Use nanoMuse Cloud this time*), with what to put back. */
+  private readonly cloudOnce = new Map<string, CloudOnce>()
+  /** The scoped context with the session API, once it is up. */
+  private sessionCtx: Context | undefined
   private steps = 0
   private lastCallAt = 0
   private notices: Notice[] = []
@@ -527,7 +576,7 @@ export default class NanomuseCloud extends Service {
     this.profile = new ProfileStore(this.dir(), this.relay)
     this.motion = new AvatarMotion({
       dir: join(this.dir(), 'avatar', 'motion'),
-      endpoint: () => this.videoEndpoint(),
+      endpoint: (viaCloud) => this.videoEndpoint({ cloud: viaCloud === true }),
       animate: () => this.state.media?.animate !== false,
       faceId: () => this.faceId(),
       still: (mood) => this.faceStill(mood),
@@ -603,6 +652,10 @@ export default class NanomuseCloud extends Service {
     void this.coding.load()
     // A task from another device runs in a dsh session here; needs the session API, so only once it is up.
     this.ctx.inject(['sessionController', 'approval'], (ctx) => {
+      this.sessionCtx = ctx
+      ctx.effect(() => () => {
+        this.sessionCtx = undefined
+      })
       // The stage answers approvals too; registered before the task runner so a task from another
       // device (answered on that device) never reaches this desk.
       ctx.effect(() => ctx.on('approval/request', (req, next) => this.approvalDesk.handle(req, next), true), 'nanomuse cloud: approvals on the stage')
@@ -703,6 +756,7 @@ export default class NanomuseCloud extends Service {
             // `session/title` is dsh-session-title's event (not a dependency here): matched by name
             const id = String(session.id)
             this.logChanged(id)
+            if (event.type === 'turn/end' && this.cloudOnce.has(id)) void this.cloudOnceDone(id)
             if (event.type === 'turn/end') sync.turnEnded(id)
             else if (event.type === 'user/message' && (event.data as { source?: { kind?: string } }).source?.kind === 'user') sync.messageSent(id)
             else if ((event as { type: string }).type === 'session/title') sync.sessionRenamed(String(session.id))
@@ -999,10 +1053,12 @@ export default class NanomuseCloud extends Service {
   }
 
   /**
-   * The hands model and where it lives (C11): the person's choice when it still exists — an own
-   * row's sighted model, or the account's `gui` model — else the account's default while signed
-   * in, else the first own row with a sighted model. The runtime only speaks OpenAI's shape (and
-   * the ChatGPT backend), so an Anthropic or native-Gemini row never drives the hands.
+   * The hands model and where it lives (C11, order of 0.1.41): the person's choice when it still
+   * exists — an own row's sighted model, or the account's `gui` model; else the chat provider's
+   * `defaults.hands` when new chats answer through an own row that sees pictures; else the
+   * account's `gui` model while signed in; else the first own row with a sighted model. The
+   * runtime only speaks OpenAI's shape (and the ChatGPT backend), so an Anthropic or
+   * native-Gemini row never drives the hands.
    */
   handsChoice(): { provider: string; model: string } {
     const chosen = this.state.handsModel
@@ -1013,6 +1069,11 @@ export default class NanomuseCloud extends Service {
     }
     const models = this.signedInCache && this.state.account ? (this.state.models ?? []) : []
     if (chosen && !this.state.handsProvider && models.some((m) => m.id === chosen && modelFor(m).includes('gui'))) return { provider: PROVIDER_ID, model: chosen }
+    const chat = this.chatOwnRow()
+    if (chat && this.handsCapable(chat.row)) {
+      const model = this.ownModelFor(chat.row, 'hands')
+      if (model) return { provider: chat.id, model }
+    }
     const cloud = pickHandsModel(models)
     if (cloud) return { provider: PROVIDER_ID, model: cloud.id }
     for (const [id, row] of Object.entries(own)) {
@@ -1027,11 +1088,42 @@ export default class NanomuseCloud extends Service {
     return row.capabilities.includes('vision') && (row.provider === CHATGPT_PROVIDER || apiOf(row.protocol, row.baseURL) === 'openai-completions')
   }
 
-  /** The sighted models the hands may use, the account's first, then each own row's (C11). */
+  /** The own row new chats answer through, when they do (the chat slot's provider is one of ours). */
+  private chatOwnRow(): { id: string; row: OwnProvider } | undefined {
+    const chat = this.chatChoice()
+    const row = chat.provider ? this.state.providers?.[chat.provider] : undefined
+    return row ? { id: chat.provider, row } : undefined
+  }
+
+  /**
+   * The model an own row would get for a slot: the catalogue's `defaults.<slot>` when the row
+   * lists it (or listed nothing, so the defaults stand in), else the row's first model with
+   * that capability; '' when the row has none. `hands` wants a sighted model; `image` and
+   * `video` their kinds.
+   */
+  private ownModelFor(row: OwnProvider, slot: Slot): string {
+    const entry = this.catalogue.find((p) => p.id === row.provider)
+    const fits = (m: OwnModel): boolean => (slot === 'chat' ? m.kind === 'chat' : slot === 'hands' ? m.vision : m.kind === slot)
+    const capability: Capability = slot === 'hands' ? 'vision' : slot
+    if (!row.capabilities.includes(capability)) return ''
+    if (slot === 'hands' && !this.handsCapable(row)) return ''
+    const wanted = entry?.defaults[slot]
+    if (wanted && row.models.some((m) => m.id === wanted && fits(m))) return wanted
+    const first = row.models.find(fits)
+    if (first) return first.id
+    // a video row lists no video models by name (Model Studio's `/models` leaves Wan out): the catalogue's default, else the known one
+    if (slot === 'video') return wanted ?? DEFAULT_VIDEO_MODEL
+    return ''
+  }
+
+  /** The sighted models the hands may use, the account's first (the recommended one marked), then each own row's (C11). */
   handsOptions(): ModelOption[] {
     const out: ModelOption[] = []
     if (this.signedInCache && this.state.account) {
-      for (const m of this.state.models ?? []) if (modelFor(m).includes('gui')) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id })
+      const models = this.state.models ?? []
+      const pick = pickHandsModel(models)
+      for (const m of models) if (modelFor(m).includes('gui')) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(pick && m.id === pick.id ? { recommended: true } : {}) })
+      out.sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)))
     }
     for (const [id, row] of Object.entries(this.state.providers ?? {})) {
       if (!this.handsCapable(row)) continue
@@ -1040,11 +1132,19 @@ export default class NanomuseCloud extends Service {
     return out
   }
 
-  /** The chat models new chats may answer through: the account's, then each own row's (C11). */
+  /** The own rows that see pictures but cannot drive the hands (Anthropic, Google's native API): their labels, for the one sentence under the row. */
+  handsExcluded(): string[] {
+    return Object.values(this.state.providers ?? {}).filter((row) => row.capabilities.includes('vision') && !this.handsCapable(row)).map((row) => row.label)
+  }
+
+  /** The chat models new chats may answer through: the account's (the recommended one first and marked), then each own row's (C11). */
   chatOptions(): ModelOption[] {
     const out: ModelOption[] = []
     if (this.signedInCache && this.state.account) {
-      for (const m of this.state.models ?? []) if (modelFor(m).includes('chat')) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id })
+      const models = this.state.models ?? []
+      const pick = pickChatModel(models)
+      for (const m of models) if (modelFor(m).includes('chat')) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(pick && m.id === pick.id ? { recommended: true } : {}) })
+      out.sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)))
     }
     for (const [id, row] of Object.entries(this.state.providers ?? {})) {
       if (!row.capabilities.includes('chat')) continue
@@ -1053,7 +1153,7 @@ export default class NanomuseCloud extends Service {
     return out
   }
 
-  /** Choose the hands model (`provider` an own row's id, or the account); the bundled runtime reads it at its next start. */
+  /** Choose the hands model (`provider` an own row's id, or the account); the hands' MCP client is remounted with it (`hands-tools.ts`). */
   async setHandsModel(id: string, provider = PROVIDER_ID): Promise<void> {
     if (id && !this.handsOptions().some((o) => o.id === id && o.provider === provider)) throw new RelayError(400, 'bad_model', 'Not a hands model of the account or of an own key')
     this.state = { ...this.state, ...(id ? { handsModel: id } : {}), ...(id && provider !== PROVIDER_ID ? { handsProvider: provider } : {}) }
@@ -1065,29 +1165,52 @@ export default class NanomuseCloud extends Service {
   }
 
   /**
-   * What the bundled runtime's `[gui]` gets: `$DSH_HOME/nanomuse/hands.json` with the relay's
-   * OpenAI-style base, the hands model and the account key (0600, next to `cloud.json`, which
-   * holds the same key) — or, with an own key chosen (C11), that row's base URL and key; with
-   * the ChatGPT sign-in, `provider: chatgpt`, which the runtime answers from its own token store.
-   * The preset reads it when it starts `nanomuse mcp`.
+   * What the bundled runtime's `[gui]` gets: the relay's OpenAI-style base, the hands model and
+   * the account key — or, with an own key chosen (C11), that row's base URL and key (a local
+   * server may have no key); with the ChatGPT sign-in, `provider: chatgpt`, which the runtime
+   * answers from its own token store. Nothing when no sighted model is configured.
+   */
+  private async handsBody(): Promise<Record<string, string> | undefined> {
+    const { provider, model } = this.handsChoice()
+    if (provider === PROVIDER_ID) {
+      const token = await this.token()
+      if (token && this.state.account && model) return { provider: 'openai', model, base_url: this.relay.openaiBase, api_key: token }
+      return undefined
+    }
+    const row = provider ? this.state.providers?.[provider] : undefined
+    if (!row || !model) return undefined
+    if (row.provider === CHATGPT_PROVIDER) return { provider: 'chatgpt', model }
+    const apiKey = row.keyRef ? await this.credential(row.keyRef) : ''
+    if (!apiKey && row.keyRef) return undefined
+    return { provider: 'openai', model, base_url: row.baseURL, ...(apiKey ? { api_key: apiKey } : {}) }
+  }
+
+  /**
+   * The runtime's `NANOMUSE_GUI_*` environment for `nanomuse mcp` (`hands-tools.ts` mounts the
+   * MCP client with it, and mounts it again when this changes): the hands model, where it
+   * lives and the key. `{}` when nothing is configured, so the runtime starts without hands.
+   */
+  async handsEnv(): Promise<Record<string, string>> {
+    const body = await this.handsBody()
+    if (!body?.model) return {}
+    return { NANOMUSE_GUI_ENABLED: '1', NANOMUSE_GUI_PROVIDER: body.provider ?? 'openai', NANOMUSE_GUI_MODEL: body.model, NANOMUSE_GUI_BASE_URL: body.base_url ?? '', NANOMUSE_GUI_API_KEY: body.api_key ?? '' }
+  }
+
+  /** A hands call is in flight: the MCP client is not remounted under it. */
+  handsBusy(): boolean {
+    for (const call of this.calls.values()) if (call.name.startsWith('mcp__nanomuse__')) return true
+    return false
+  }
+
+  /**
+   * `$DSH_HOME/nanomuse/hands.json` (0600, next to `cloud.json`): the same body as `handsEnv`,
+   * kept for anything that reads the file (the hands check, a person looking); the preset of
+   * 0.1.40 read it once at start, `hands-tools.ts` now takes the environment straight from the
+   * service. Removed when nothing is configured.
    */
   private async writeHands(): Promise<void> {
     const path = join(this.dir(), 'hands.json')
-    const { provider, model } = this.handsChoice()
-    let body: Record<string, unknown> | undefined
-    if (provider === PROVIDER_ID) {
-      const token = await this.token()
-      if (token && this.state.account && model) body = { provider: 'openai', model, base_url: this.relay.openaiBase, api_key: token }
-    } else if (provider) {
-      const row = this.state.providers?.[provider]
-      if (row && model) {
-        if (row.provider === CHATGPT_PROVIDER) body = { provider: 'chatgpt', model }
-        else {
-          const apiKey = row.keyRef ? await this.credential(row.keyRef) : ''
-          if (apiKey || !row.keyRef) body = { provider: 'openai', model, base_url: row.baseURL, ...(apiKey ? { api_key: apiKey } : {}) }
-        }
-      }
-    }
+    const body = await this.handsBody()
     if (!body) {
       await rm(path, { force: true }).catch(() => undefined)
       return
@@ -1193,6 +1316,43 @@ export default class NanomuseCloud extends Service {
     return row
   }
 
+  /**
+   * The "Use it for" card (0.1.41): the slots an own row could take and the model each would
+   * get — the catalogue's `defaults.<slot>` when the row lists it, else its first model with
+   * the capability. A slot the row has no model for is left out, so the card shows no toggle for it.
+   */
+  slotOffer(id: string): SlotOffer {
+    const row = this.state.providers?.[id]
+    if (!row) return {}
+    const offer: SlotOffer = {}
+    for (const slot of SLOTS) {
+      const model = this.ownModelFor(row, slot)
+      if (model) offer[slot] = model
+    }
+    return offer
+  }
+
+  /**
+   * *Use it*: every ticked slot switches to the row, model as `slotOffer` says, through the
+   * same setters the Models page uses. Unticked slots change nothing. Returns what was set.
+   */
+  async adoptProvider(id: string, slots: Slot[]): Promise<SlotOffer> {
+    const row = this.state.providers?.[id]
+    if (!row) throw new RelayError(404, 'not_found', 'No such row')
+    const offer = this.slotOffer(id)
+    const done: SlotOffer = {}
+    for (const slot of SLOTS) {
+      const model = offer[slot]
+      if (!slots.includes(slot) || !model) continue
+      if (slot === 'chat') await this.setChatModel(model, id)
+      else if (slot === 'hands') await this.setHandsModel(model, id)
+      else if (slot === 'image') await this.setImageModel(model, id)
+      else await this.setVideoModel(model, id)
+      done[slot] = model
+    }
+    return done
+  }
+
   /** New chats answer through the first own key when the default is still dsh's stock DeepSeek without a key (as `adoptDefaultModel` does for the account). */
   private async adoptOwnDefault(id: string, row: OwnProvider): Promise<void> {
     const pick = row.models.find((m) => m.kind === 'chat')
@@ -1233,6 +1393,18 @@ export default class NanomuseCloud extends Service {
     if (this.state.handsProvider === id) {
       delete this.state.handsProvider
       delete this.state.handsModel
+    }
+    if (this.state.media?.imageProvider === id || this.state.media?.videoProvider === id) {
+      const media: MediaState = { ...this.state.media }
+      if (media.imageProvider === id) {
+        delete media.imageProvider
+        delete media.imageModel
+      }
+      if (media.videoProvider === id) {
+        delete media.videoProvider
+        delete media.videoModel
+      }
+      this.state = { ...this.state, media }
     }
     const svc = this.defaultModelService()
     try {
@@ -1367,13 +1539,93 @@ export default class NanomuseCloud extends Service {
     }
   }
 
-  /** Make an account chat model — or an own row's (C11) — the default for new chats (Settings → Account → Chat model). */
+  /**
+   * Make an account chat model — or an own row's (C11) — the default for new chats (Settings →
+   * Models → Chat). The hands, the pictures and the clips follow the chat provider while the
+   * person has not chosen them, so the hands' environment is written again.
+   */
   async setChatModel(id: string, provider = PROVIDER_ID): Promise<void> {
     if (!this.chatOptions().some((o) => o.id === id && o.provider === provider)) throw new RelayError(400, 'bad_model', 'Not a chat model of the account or of an own key')
     const svc = this.defaultModelService()
     if (!svc) throw new RelayError(503, 'no_models', 'Not available yet')
     await svc.saveSelection({ provider, model: id })
+    await this.writeHands().catch((error: unknown) => this.ctx.logger.warn('nanomuse cloud: hands model not written: %s', message(error)))
     this.broadcast()
+  }
+
+  /** The chat slot as the Models page shows it: the provider's label next to the id. */
+  private labelOf(provider: string): string {
+    if (provider === PROVIDER_ID) return 'nanoMuse Cloud'
+    return this.state.providers?.[provider]?.label ?? provider
+  }
+
+  /** `GET /models`: the four slots, what each uses and lists (0.1.41). */
+  async modelsView(): Promise<ModelsView> {
+    const signedIn = this.signedInCache && Boolean(this.state.account)
+    const chat = this.chatChoice()
+    const hands = this.handsChoice()
+    const image = await this.imageEndpoint()
+    const video = await this.videoEndpoint()
+    const media = this.state.media ?? {}
+    const slot = (provider: string, model: string, options: ModelOption[], chosen: boolean): SlotView => ({ provider, providerLabel: provider ? this.labelOf(provider) : '', model, options, chosen })
+    return {
+      signedIn,
+      slots: {
+        chat: slot(chat.provider, chat.model, this.chatOptions(), Boolean(chat.provider)),
+        hands: slot(hands.provider, hands.model, this.handsOptions(), Boolean(this.state.handsModel)),
+        image: slot(image?.instanceId ?? '', image?.model ?? '', this.imageOptions(), Boolean(media.imageModel)),
+        video: { ...slot(video?.instanceId ?? '', video?.model ?? '', await this.videoOptions(), Boolean(media.videoModel)), ...(media.videoModel === VIDEO_OFF ? { off: true } : {}) },
+      },
+      handsExcluded: this.handsExcluded(),
+    }
+  }
+
+  /**
+   * *Use nanoMuse Cloud this time* under a failed turn (contract section 4): the session's
+   * next request goes through the account's recommended chat model, and the selection it had
+   * is put back when that turn ends; the chat slot (the default for new chats) is left as it
+   * was, whatever dsh saved along the way. The browser half then sends the words again.
+   */
+  async retryOnCloud(sessionId: string): Promise<{ provider: string; model: string }> {
+    const token = await this.token()
+    if (!token || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in to use nanoMuse Cloud')
+    const pick = pickChatModel(this.state.models ?? [])
+    if (!pick) throw new RelayError(409, 'no_chat_model', 'The account lists no chat model')
+    const ctx = this.sessionCtx
+    if (!ctx) throw new RelayError(503, 'not_ready', 'The session API is not up yet')
+    const slot = this.defaultModelService()?.currentSelection()
+    const resolved = await ctx.sessionController.resolveAgent(sessionId as SessionId)
+    if ('error' in resolved) throw new RelayError(404, 'not_found', String(resolved.error))
+    // the session's model as dsh resolves it: a pending choice, else the last request's, else the default
+    type Selection = { provider: string; model: string; reasoningEffort?: string }
+    const session = resolved.agent.session as unknown as { requestHeader?(): { config?: Selection } | undefined }
+    const projections = (ctx as unknown as { get(name: string): unknown }).get('sessionProjections') as { stateOf(session: unknown, key: string): { pending?: Selection | null } | undefined } | undefined
+    const pending = projections?.stateOf(resolved.agent.session, 'modelSelection')?.pending ?? undefined
+    const logged = session.requestHeader?.()?.config
+    const was: Selection | undefined = pending ?? (logged?.provider && logged.model ? logged : slot)
+    const before: CloudOnce | undefined = was ? { provider: was.provider, model: was.model, ...(was.reasoningEffort ? { reasoningEffort: was.reasoningEffort } : {}), at: Date.now() } : undefined
+    await ctx.sessionController.selectModel({ sessionId: sessionId as SessionId, provider: PROVIDER_ID, model: pick.id })
+    // dsh saves a session's selection as the default in the background; the slot stays what it was
+    if (slot) await this.defaultModelService()?.saveSelection(slot).catch(() => undefined)
+    if (before && before.provider !== PROVIDER_ID) this.cloudOnce.set(sessionId, before)
+    else this.cloudOnce.delete(sessionId)
+    return { provider: PROVIDER_ID, model: pick.id }
+  }
+
+  /** The turn after *Use nanoMuse Cloud this time* ended: the session goes back to its own model, the slot stays. */
+  private async cloudOnceDone(sessionId: string): Promise<void> {
+    const before = this.cloudOnce.get(sessionId)
+    if (!before) return
+    this.cloudOnce.delete(sessionId)
+    const ctx = this.sessionCtx
+    if (!ctx) return
+    const slot = this.defaultModelService()?.currentSelection()
+    try {
+      await ctx.sessionController.selectModel({ sessionId: sessionId as SessionId, provider: before.provider, model: before.model, ...(before.reasoningEffort ? { reasoningEffort: before.reasoningEffort } : {}) })
+    } catch (error: unknown) {
+      this.ctx.logger.warn('nanomuse cloud: the session did not go back to %s/%s: %s', before.provider, before.model, message(error))
+    }
+    if (slot) await this.defaultModelService()?.saveSelection(slot).catch(() => undefined)
   }
 
   /** The live state, as `/events` streams it. */
@@ -1539,19 +1791,156 @@ export default class NanomuseCloud extends Service {
     return pick ? pick.id : ''
   }
 
-  private async studioToken(): Promise<string> {
-    const token = await this.token()
-    if (!token || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in to draw a face')
-    if (!this.imageModel()) throw new RelayError(409, 'no_image_model', 'The account has no image model to draw with')
-    return token
+  /** The account's image models, for the picker (the recommended one first and marked). */
+  private cloudImageOptions(): ModelOption[] {
+    if (!this.signedInCache || !this.state.account) return []
+    const models = (this.state.models ?? []).filter((m) => m.kind === 'image')
+    const pick = this.imageModel()
+    return models.map((m) => ({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(m.id === pick ? { recommended: true } : {}) })).sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)))
   }
 
-  /** What four candidates and four poses would cost today — and the four clips, when the account would draw them (C3). */
+  /** The image models the pictures may be drawn with: the account's, then each own row's (0.1.41). */
+  imageOptions(): ModelOption[] {
+    const out = this.cloudImageOptions()
+    for (const [id, row] of this.ownWith('image')) {
+      const entry = this.catalogue.find((p) => p.id === row.provider)
+      const listed = row.models.filter((m) => m.kind === 'image')
+      if (listed.length) for (const m of listed) out.push({ provider: id, providerLabel: row.label, id: m.id, name: m.name })
+      else if (entry?.defaults.image) out.push({ provider: id, providerLabel: row.label, id: entry.defaults.image, name: entry.defaults.image })
+    }
+    return out
+  }
+
+  /**
+   * Where a picture would be drawn (contract section 3): the person's choice when it still
+   * exists; else the chat provider's `defaults.image` when new chats answer through an own row
+   * with pictures; else the account while signed in and it lists an image model; else the first
+   * own row with image models. `cloud: true` asks for the account whatever the order says
+   * (*Use nanoMuse Cloud this time*). Nothing when no source has one.
+   */
+  async imageEndpoint(opts: { cloud?: boolean } = {}): Promise<ImageEndpoint | undefined> {
+    const cloud = async (model = this.imageModel()): Promise<ImageEndpoint | undefined> => {
+      const token = this.signedInCache && this.state.account ? await this.token() : undefined
+      if (!token || !model) return undefined
+      return { shape: 'cloud', baseURL: this.relay.openaiBase, apiKey: token, model, label: 'nanoMuse Cloud', instanceId: PROVIDER_ID }
+    }
+    if (opts.cloud) return cloud()
+    const media = this.state.media ?? {}
+    const own = async (id: string, model: string): Promise<ImageEndpoint | undefined> => {
+      const row = this.state.providers?.[id]
+      if (!row || !model || !row.capabilities.includes('image')) return undefined
+      const apiKey = row.keyRef ? await this.credential(row.keyRef) : ''
+      if (!apiKey && row.keyRef) return undefined
+      return { shape: imageShapeOf(row.provider, row.baseURL), baseURL: row.baseURL, apiKey, model, label: row.label, instanceId: id }
+    }
+    if (media.imageModel) {
+      if (!media.imageProvider || media.imageProvider === PROVIDER_ID) {
+        if ((this.state.models ?? []).some((m) => m.kind === 'image' && m.id === media.imageModel)) {
+          const ep = await cloud(media.imageModel)
+          if (ep) return ep
+        }
+      } else if (this.imageOptions().some((o) => o.provider === media.imageProvider && o.id === media.imageModel)) {
+        const ep = await own(media.imageProvider, media.imageModel)
+        if (ep) return ep
+      }
+    }
+    const chat = this.chatOwnRow()
+    if (chat) {
+      const ep = await own(chat.id, this.ownModelFor(chat.row, 'image'))
+      if (ep) return ep
+    }
+    const account = await cloud()
+    if (account) return account
+    for (const [id, row] of this.ownWith('image')) {
+      const ep = await own(id, this.ownModelFor(row, 'image'))
+      if (ep) return ep
+    }
+    return undefined
+  }
+
+  /** Settings → Models → Making pictures: the image model and where it lives (`nanomuse` or an own row). */
+  async setImageModel(id: string, provider = PROVIDER_ID): Promise<void> {
+    if (id && !this.imageOptions().some((o) => o.id === id && o.provider === provider)) throw new RelayError(400, 'bad_model', 'Not an image model of the account or of an own key')
+    const next: MediaState = { ...this.state.media }
+    if (id) {
+      next.imageModel = id
+      next.imageProvider = provider
+    } else {
+      delete next.imageModel
+      delete next.imageProvider
+    }
+    this.state = { ...this.state, media: next }
+    await this.writeState()
+    this.broadcast()
+  }
+
+  /** Settings → Models → Making clips: the video model and where it lives; '' puts the order back, `off` keeps the face still. */
+  async setVideoModel(id: string, provider = PROVIDER_ID): Promise<void> {
+    const next: MediaState = { ...this.state.media }
+    if (id === VIDEO_OFF) {
+      next.videoModel = VIDEO_OFF
+      delete next.videoProvider
+    } else if (id) {
+      const options = await this.videoOptions()
+      if (!options.some((o) => o.id === id && o.provider === provider) && !(provider !== PROVIDER_ID && this.state.providers?.[provider] && (looksLikeVideoModel(id) || KNOWN_DASHSCOPE_MODELS.includes(id)))) {
+        throw new RelayError(400, 'bad_model', 'Not a video model of the account or of an own key')
+      }
+      next.videoModel = id
+      next.videoProvider = provider
+    } else {
+      delete next.videoModel
+      delete next.videoProvider
+    }
+    this.state = { ...this.state, media: next }
+    await this.writeState()
+    this.broadcast()
+  }
+
+  /** The video models the clips may be drawn with: the account's (recommended first), then each own Model Studio row's known ones. */
+  async videoOptions(): Promise<ModelOption[]> {
+    const out: ModelOption[] = []
+    if (this.signedInCache && this.state.account) {
+      const cloud = this.cloudVideoModels()
+      const pick = (cloud.find((m) => m.recommended) ?? cloud[0])?.id
+      for (const m of cloud) out.push({ provider: PROVIDER_ID, providerLabel: 'nanoMuse Cloud', id: m.id, name: m.name || m.id, ...(m.id === pick ? { recommended: true } : {}) })
+      out.sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)))
+    }
+    for (const own of await this.dashScopeProviders()) {
+      const known = this.state.media?.checked?.[own.host]
+      const ids = known && Date.now() - known.at < VIDEO_CHECK_TTL_MS && known.models.length ? known.models : KNOWN_DASHSCOPE_MODELS
+      for (const id of ids) out.push({ provider: own.id, providerLabel: own.label, id, name: id })
+    }
+    return out
+  }
+
+  /**
+   * The source the studio would draw with, and whether the account would bill it. Throws
+   * `signed_out` only when nothing at all can draw and the person is signed out, so an own
+   * image provider draws without an account.
+   */
+  private async studioEndpoint(viaCloud = false): Promise<ImageEndpoint> {
+    const ep = await this.imageEndpoint({ cloud: viaCloud })
+    if (ep) return ep
+    if (!this.signedInCache || !this.state.account) throw new RelayError(401, 'signed_out', 'Sign in to draw a face')
+    throw new RelayError(409, 'no_image_model', 'Nothing configured has an image model to draw with')
+  }
+
+  /**
+   * What four candidates and four poses would cost today — and the four clips, when the account
+   * would draw them (C3). With an own image provider nothing is billed by the account: the
+   * estimate says so (`source: provider`) and names the provider and model.
+   */
   async studioEstimate(): Promise<Estimate> {
-    const token = await this.studioToken()
-    const ep = await this.videoEndpoint()
-    const clips = ep && ep.instanceId === PROVIDER_ID && this.state.media?.animate !== false ? ANIMATED.length : 0
-    return this.relay.estimate(token, STUDIO_PICTURES, clips)
+    const ep = await this.studioEndpoint()
+    const video = await this.videoEndpoint()
+    const clips = video && video.instanceId === PROVIDER_ID && this.state.media?.animate !== false ? ANIMATED.length : 0
+    if (ep.instanceId !== PROVIDER_ID) {
+      return { cny: 0, leftCny: 0, unlimited: true, affordable: true, imageModel: ep.model, clips, videoModel: clips ? (video?.model ?? '') : '', source: 'provider', label: ep.label }
+    }
+    const token = await this.token()
+    if (!token) throw new RelayError(401, 'signed_out', 'Sign in to draw a face')
+    const estimate = await this.relay.estimate(token, STUDIO_PICTURES, clips)
+    return { ...estimate, source: 'cloud', label: 'nanoMuse Cloud' }
   }
 
   // ---- Settings → Media: the video model and the face's clips (desk-b) -------------------
@@ -1592,44 +1981,78 @@ export default class NanomuseCloud extends Service {
   }
 
   /**
-   * Where a clip would be drawn: the account when signed in and it lists a video model (the
-   * relay mirrors Model Studio's `/api/v1` paths), else an own Model Studio key among the
-   * providers the person added. Nothing when the setting says off, or no key speaks DashScope
-   * (OpenRouter and the like have no video API).
+   * Where a clip would be drawn (contract section 3): the person's choice when it still exists
+   * (an account model, or an own Model Studio row's); else the chat provider's `defaults.video`
+   * when new chats answer through an own row with clips; else the account when signed in and it
+   * lists a video model (the relay mirrors Model Studio's `/api/v1` paths); else the first own
+   * Model Studio key among the providers the person added. Nothing when the setting says off,
+   * or no key speaks DashScope (OpenRouter and the like have no video API). `cloud: true` asks
+   * for the account whatever the order says.
    */
-  async videoEndpoint(): Promise<VideoEndpoint | undefined> {
+  async videoEndpoint(opts: { cloud?: boolean } = {}): Promise<VideoEndpoint | undefined> {
     const media = this.state.media ?? {}
-    if (media.videoModel === VIDEO_OFF) return undefined
-    const token = this.signedInCache ? await this.token() : undefined
-    const cloud = this.cloudVideoModels()
-    if (token && cloud.length) {
-      const wanted = media.videoModel && cloud.some((m) => m.id === media.videoModel) ? media.videoModel : (cloud.find((m) => m.recommended) ?? cloud[0])?.id
-      if (wanted) return { host: this.relay.origin, apiKey: token, model: wanted, label: 'nanoMuse Cloud', instanceId: PROVIDER_ID }
+    if (media.videoModel === VIDEO_OFF && !opts.cloud) return undefined
+    const token = this.signedInCache && this.state.account ? await this.token() : undefined
+    const cloudModels = this.cloudVideoModels()
+    const cloud = (wanted?: string): VideoEndpoint | undefined => {
+      if (!token || !cloudModels.length) return undefined
+      const model = wanted && cloudModels.some((m) => m.id === wanted) ? wanted : (cloudModels.find((m) => m.recommended) ?? cloudModels[0])?.id
+      return model ? { host: this.relay.origin, apiKey: token, model, label: 'nanoMuse Cloud', instanceId: PROVIDER_ID } : undefined
     }
-    const own = await this.dashScopeProvider()
-    if (!own) return undefined
-    const known = this.state.media?.checked?.[own.host]
-    const models = known && Date.now() - known.at < VIDEO_CHECK_TTL_MS ? known.models : []
-    let model = media.videoModel && (!models.length || models.includes(media.videoModel)) ? media.videoModel : ''
-    if (!model) model = models[0] ?? DEFAULT_VIDEO_MODEL
-    return { host: own.host, apiKey: own.apiKey, model, label: own.label, instanceId: own.id }
+    if (opts.cloud) return cloud(media.videoProvider === PROVIDER_ID ? media.videoModel : undefined)
+    const rows = await this.dashScopeProviders()
+    const own = (row: (typeof rows)[number], wanted?: string): VideoEndpoint => {
+      const known = media.checked?.[row.host]
+      const models = known && Date.now() - known.at < VIDEO_CHECK_TTL_MS ? known.models : []
+      let model = wanted && (!models.length || models.includes(wanted)) ? wanted : ''
+      if (!model) {
+        const ours = this.state.providers?.[row.id]
+        model = models[0] || (ours ? this.ownModelFor(ours, 'video') : '') || DEFAULT_VIDEO_MODEL
+      }
+      return { host: row.host, apiKey: row.apiKey, model, label: row.label, instanceId: row.id }
+    }
+    if (media.videoModel && media.videoModel !== VIDEO_OFF) {
+      if (media.videoProvider === PROVIDER_ID) {
+        const ep = cloud(media.videoModel)
+        if (ep) return ep
+      } else if (media.videoProvider) {
+        const row = rows.find((r) => r.id === media.videoProvider)
+        if (row) return own(row, media.videoModel)
+      } else {
+        // 0.1.40 and before: a model without a source, whichever lists it
+        const ep = cloud(media.videoModel)
+        if (ep && ep.model === media.videoModel) return ep
+        if (rows[0] && !cloudModels.some((m) => m.id === media.videoModel)) return own(rows[0], media.videoModel)
+        if (ep) return ep
+      }
+    }
+    const chat = this.chatOwnRow()
+    if (chat) {
+      const row = rows.find((r) => r.id === chat.id)
+      if (row) return own(row, this.ownModelFor(chat.row, 'video'))
+    }
+    const account = cloud()
+    if (account) return account
+    return rows[0] ? own(rows[0]) : undefined
   }
 
-  /** The first provider row the person added that points at Model Studio, with its key. */
-  private async dashScopeProvider(): Promise<{ id: string; host: string; apiKey: string; label: string } | undefined> {
+  /** The provider rows the person added that point at Model Studio, with their keys (the order the settings list them). */
+  private async dashScopeProviders(): Promise<Array<{ id: string; host: string; apiKey: string; label: string }>> {
     let rows: Record<string, unknown> = {}
     try {
       const row = this.ctx.settings.describe().find((d) => d.ns === LLM_ROW)
       const value = row?.value as { providers?: Record<string, unknown> } | undefined
       rows = value?.providers ?? {}
     } catch {
-      return undefined
+      return []
     }
+    const out: Array<{ id: string; host: string; apiKey: string; label: string }> = []
     for (const [id, raw] of Object.entries(rows)) {
       if (id === PROVIDER_ID || !raw || typeof raw !== 'object') continue
       const p = raw as { displayName?: unknown; baseURL?: unknown; apiKeyEnv?: unknown; apiKey?: unknown }
       const baseURL = typeof p.baseURL === 'string' ? p.baseURL : ''
-      if (!baseURL || !speaksDashScope(baseURL)) continue
+      // a Model Studio host, or one of our rows the catalogue gives clips to (the same API behind another address)
+      if (!baseURL || !(speaksDashScope(baseURL) || this.state.providers?.[id]?.capabilities.includes('video'))) continue
       let apiKey = ''
       if (typeof p.apiKeyEnv === 'string' && p.apiKeyEnv) {
         try {
@@ -1640,16 +2063,20 @@ export default class NanomuseCloud extends Service {
       }
       if (!apiKey && typeof p.apiKey === 'string') apiKey = p.apiKey
       if (!apiKey) continue
-      return { id, host: hostOf(baseURL), apiKey, label: typeof p.displayName === 'string' && p.displayName ? p.displayName : id }
+      out.push({ id, host: hostOf(baseURL), apiKey, label: typeof p.displayName === 'string' && p.displayName ? p.displayName : id })
     }
-    return undefined
+    return out
+  }
+
+  /** The first provider row the person added that points at Model Studio, with its key. */
+  private async dashScopeProvider(): Promise<{ id: string; host: string; apiKey: string; label: string } | undefined> {
+    return (await this.dashScopeProviders())[0]
   }
 
   /** The Media page: models, the switch, the clips. */
   async media(): Promise<MediaView> {
     const media = this.state.media ?? {}
     const off = media.videoModel === VIDEO_OFF
-    const cloud = this.cloudVideoModels()
     const signedIn = this.signedInCache && Boolean(this.state.account)
     const view: MediaView = {
       imageModel: signedIn ? this.imageModel() : '',
@@ -1658,28 +2085,17 @@ export default class NanomuseCloud extends Service {
       animate: media.animate !== false,
       motion: this.motion.view(),
     }
-    // Pictures (C11): the account's image model while signed in, else the first own row with image models;
-    // nothing configured has one → `no_image`, and the page says so rather than asking the cloud.
-    if (signedIn && this.imageModel()) view.image = { source: 'cloud', label: 'nanoMuse Cloud', model: this.imageModel(), reason: '' }
-    else {
-      const [ownImage] = this.ownWith('image')
-      if (ownImage) {
-        const [, row] = ownImage
-        const entry = this.catalogue.find((p) => p.id === row.provider)
-        view.image = { source: 'provider', label: row.label, model: row.models.find((m) => m.kind === 'image')?.id ?? entry?.defaults.image ?? '', reason: '' }
-      }
-    }
-    if (signedIn && cloud.length) {
-      const ep = off ? undefined : await this.videoEndpoint()
-      view.video = { source: 'cloud', label: 'nanoMuse Cloud', model: ep?.model ?? '', models: cloud.map((m) => ({ id: m.id, name: m.name || m.id })), off, reason: '' }
-      return view
-    }
-    const own = await this.dashScopeProvider()
-    if (own) {
-      const known = media.checked?.[own.host]
-      const ids = known && Date.now() - known.at < VIDEO_CHECK_TTL_MS ? known.models : KNOWN_DASHSCOPE_MODELS
-      const ep = off ? undefined : await this.videoEndpoint()
-      view.video = { source: 'provider', label: own.label, model: ep?.model ?? '', models: ids.map((id) => ({ id, name: id })), off, reason: known ? '' : 'unchecked' }
+    // Pictures: the image slot's resolution (Settings → Models); nothing configured has one → `no_image`,
+    // and the page says so rather than asking the cloud.
+    const image = await this.imageEndpoint()
+    if (image) view.image = { source: image.instanceId === PROVIDER_ID ? 'cloud' : 'provider', label: image.label, model: image.model, reason: '' }
+    const video = off ? undefined : await this.videoEndpoint()
+    const source = video ?? (await this.videoEndpoint({ cloud: true })) ?? (await this.dashScopeProvider().then((own) => (own ? { instanceId: own.id, label: own.label, host: own.host } : undefined)))
+    if (source) {
+      const cloud = source.instanceId === PROVIDER_ID
+      const known = cloud ? undefined : media.checked?.[source.host]
+      const ids = cloud ? this.cloudVideoModels().map((m) => ({ id: m.id, name: m.name || m.id })) : (known && Date.now() - known.at < VIDEO_CHECK_TTL_MS ? known.models : KNOWN_DASHSCOPE_MODELS).map((id) => ({ id, name: id }))
+      view.video = { source: cloud ? 'cloud' : 'provider', label: source.label, model: video?.model ?? '', models: ids, off, reason: cloud || known ? '' : 'unchecked' }
       return view
     }
     // nothing configured has video models (C11): one sentence, not a call to the cloud
@@ -1688,23 +2104,24 @@ export default class NanomuseCloud extends Service {
   }
 
   /** Settings → Media: the video model (`off` for none) and the animate switch. */
-  async setMedia(patch: { videoModel?: string; animate?: boolean }): Promise<MediaView> {
-    const next: MediaState = { ...this.state.media }
+  async setMedia(patch: { videoModel?: string; videoProvider?: string; animate?: boolean }): Promise<MediaView> {
     if (patch.videoModel !== undefined) {
       const id = patch.videoModel.trim()
-      if (id && id !== VIDEO_OFF && !looksLikeVideoModel(id) && !KNOWN_DASHSCOPE_MODELS.includes(id) && !this.cloudVideoModels().some((m) => m.id === id)) {
-        throw new RelayError(400, 'bad_model', 'Not a video model')
+      let provider = patch.videoProvider
+      if (!provider && id && id !== VIDEO_OFF) {
+        // the Media page of 0.1.40 sends the id alone: the source that lists it
+        provider = this.cloudVideoModels().some((m) => m.id === id) ? PROVIDER_ID : ((await this.dashScopeProvider())?.id ?? PROVIDER_ID)
       }
-      if (id) next.videoModel = id
-      else delete next.videoModel
+      await this.setVideoModel(id, provider)
     }
     if (patch.animate !== undefined) {
+      const next: MediaState = { ...this.state.media }
       if (patch.animate) delete next.animate
       else next.animate = false
+      this.state = { ...this.state, media: next }
+      await this.writeState()
+      this.broadcast()
     }
-    this.state = { ...this.state, media: next }
-    await this.writeState()
-    this.broadcast()
     return this.media()
   }
 
@@ -1755,16 +2172,23 @@ export default class NanomuseCloud extends Service {
     this.broadcast()
   }
 
-  /** One candidate, drawn from the words; PNG bytes as the model gave them. */
-  async studioDraw(prompt: string): Promise<Buffer> {
-    const token = await this.studioToken()
-    return this.relay.generateImage(token, this.imageModel(), prompt)
+  /**
+   * One candidate, drawn from the words; PNG bytes as the model gave them. The image slot's
+   * source draws it: the account through the relay, an own row through its own API
+   * (`images.ts`). `viaCloud` is *Use nanoMuse Cloud this time*: the account for this one
+   * picture, the slot untouched.
+   */
+  async studioDraw(prompt: string, viaCloud = false): Promise<Buffer> {
+    const ep = await this.studioEndpoint(viaCloud)
+    if (ep.instanceId === PROVIDER_ID) return this.relay.generateImage(ep.apiKey, ep.model, prompt)
+    return ownGenerateImage(ep, prompt)
   }
 
-  /** One pose of the chosen candidate. */
-  async studioPose(image: Buffer, prompt: string): Promise<Buffer> {
-    const token = await this.studioToken()
-    return this.relay.editImage(token, this.imageModel(), image, prompt)
+  /** One pose of the chosen candidate, by the same source as the candidate. */
+  async studioPose(image: Buffer, prompt: string, viaCloud = false): Promise<Buffer> {
+    const ep = await this.studioEndpoint(viaCloud)
+    if (ep.instanceId === PROVIDER_ID) return this.relay.editImage(ep.apiKey, ep.model, image, prompt)
+    return ownEditImage(ep, image, prompt)
   }
 
   /**
@@ -2484,14 +2908,14 @@ export default class NanomuseCloud extends Service {
       if (req.method === 'GET' && route === '/studio/estimate') return send(res, 200, await this.studioEstimate())
       if (req.method === 'POST' && route === '/studio/draw') {
         const body = await json(req)
-        const png = await this.studioDraw(String(body.prompt ?? '').slice(0, 2000))
+        const png = await this.studioDraw(String(body.prompt ?? '').slice(0, 2000), body.cloud === true)
         return send(res, 200, { image: png.toString('base64') })
       }
       if (req.method === 'POST' && route === '/studio/pose') {
         const body = await json(req, 8 * 1024 * 1024)
         const image = Buffer.from(String(body.image ?? ''), 'base64')
         if (!image.length) return send(res, 400, { error: { code: 'bad_request', message: 'image is the base64 PNG to pose' } })
-        const png = await this.studioPose(image, String(body.prompt ?? '').slice(0, 2000))
+        const png = await this.studioPose(image, String(body.prompt ?? '').slice(0, 2000), body.cloud === true)
         return send(res, 200, { image: png.toString('base64') })
       }
       if (req.method === 'POST' && route === '/studio/wear') {
@@ -2609,13 +3033,33 @@ export default class NanomuseCloud extends Service {
         await this.setHandsModel(String(body.model ?? ''), typeof body.provider === 'string' && body.provider ? body.provider : PROVIDER_ID)
         return send(res, 200, this.handsChoice())
       }
+      // Settings → Models (0.1.41): the four slots in one read, the two media slots' setters, the one-time Cloud retry.
+      if (req.method === 'GET' && route === '/models') return send(res, 200, await this.modelsView())
+      if (req.method === 'POST' && route === '/image-model') {
+        const body = await json(req)
+        await this.setImageModel(String(body.model ?? ''), typeof body.provider === 'string' && body.provider ? body.provider : PROVIDER_ID)
+        return send(res, 200, (await this.modelsView()).slots.image)
+      }
+      if (req.method === 'POST' && route === '/video-model') {
+        const body = await json(req)
+        await this.setVideoModel(String(body.model ?? ''), typeof body.provider === 'string' && body.provider ? body.provider : PROVIDER_ID)
+        return send(res, 200, (await this.modelsView()).slots.video)
+      }
+      if (req.method === 'POST' && route === '/retry-cloud') {
+        const body = await json(req)
+        const sessionId = String(body.sessionId ?? '')
+        if (!sessionId) return send(res, 400, { error: { code: 'bad_request', message: 'sessionId is the chat to send through nanoMuse Cloud' } })
+        return send(res, 200, await this.retryOnCloud(sessionId))
+      }
       // Own keys and the ChatGPT sign-in (C11): the catalogue and the rows, a key saved or removed, the pickers' options.
       if (req.method === 'GET' && route === '/providers') return send(res, 200, await this.providersView(url.searchParams.get('lang') ?? ''))
       if (req.method === 'GET' && route === '/providers/models') {
         const cap = url.searchParams.get('cap')
         if (cap === 'chat') return send(res, 200, { options: this.chatOptions() })
         if (cap === 'vision') return send(res, 200, { options: this.handsOptions() })
-        return send(res, 400, { error: { code: 'bad_request', message: 'cap is chat or vision' } })
+        if (cap === 'image') return send(res, 200, { options: this.imageOptions() })
+        if (cap === 'video') return send(res, 200, { options: await this.videoOptions() })
+        return send(res, 400, { error: { code: 'bad_request', message: 'cap is chat, vision, image or video' } })
       }
       if (req.method === 'POST' && route === '/providers/save') {
         const body = await json(req)
@@ -2625,7 +3069,14 @@ export default class NanomuseCloud extends Service {
         if (typeof body.label === 'string') input.label = body.label
         if (typeof body.lang === 'string') input.lang = body.lang
         if (Array.isArray(body.capabilities)) input.capabilities = body.capabilities.map(String)
-        return send(res, 200, await this.serialize(() => this.saveProvider(input)))
+        const row = await this.serialize(() => this.saveProvider(input))
+        // the "Use it for" card: the slots this row could take and the model each would get
+        return send(res, 200, { ...row, offer: this.slotOffer(row.provider) })
+      }
+      if (req.method === 'POST' && route === '/providers/adopt') {
+        const body = await json(req)
+        const slots = Array.isArray(body.slots) ? body.slots.map(String).filter((s): s is Slot => (SLOTS as readonly string[]).includes(s)) : []
+        return send(res, 200, { done: await this.serialize(() => this.adoptProvider(String(body.id ?? ''), slots)) })
       }
       if (req.method === 'POST' && route === '/providers/remove') {
         const body = await json(req)
@@ -2650,17 +3101,19 @@ export default class NanomuseCloud extends Service {
       if (req.method === 'GET' && route === '/media') return send(res, 200, await this.media())
       if (req.method === 'POST' && route === '/media') {
         const body = await json(req)
-        const patch: { videoModel?: string; animate?: boolean } = {}
+        const patch: { videoModel?: string; videoProvider?: string; animate?: boolean } = {}
         if (typeof body.videoModel === 'string') patch.videoModel = body.videoModel
+        if (typeof body.videoProvider === 'string' && body.videoProvider) patch.videoProvider = body.videoProvider
         if (typeof body.animate === 'boolean') patch.animate = body.animate
         return send(res, 200, await this.setMedia(patch))
       }
       if (req.method === 'POST' && route === '/media/check') return send(res, 200, { models: await this.checkVideoModels() })
       if (req.method === 'POST' && route === '/media/animate') {
         const body = await json(req)
+        const viaCloud = body.cloud === true
         if (!this.faceId()) return send(res, 409, { error: { code: 'no_face', message: 'No drawn face to animate' } })
-        if (!(await this.videoEndpoint())) return send(res, 409, { error: { code: 'no_video_model', message: 'No video model to draw clips with' } })
-        const started = await this.motion.animateAll(body.force === true)
+        if (!(await this.videoEndpoint({ cloud: viaCloud }))) return send(res, 409, { error: { code: viaCloud ? 'signed_out' : 'no_video_model', message: viaCloud ? 'Sign in to draw the clips with nanoMuse Cloud' : 'No video model to draw clips with' } })
+        const started = await this.motion.animateAll(body.force === true, viaCloud)
         return send(res, 200, { started, motion: this.motion.view() })
       }
       if (req.method === 'POST' && route === '/media/cancel') {

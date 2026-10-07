@@ -1,8 +1,8 @@
 /**
  * Settings → Media: the models that draw the face and its clips, after the phone's
- * `MediaModelsScreen`. The image model is the account's (read-only here; the studio draws
- * through the relay). The video model is nanoMuse Cloud when signed in and the account
- * lists one, or an own Model Studio (Bailian) key among the providers, or off — OpenRouter
+ * `MediaModelsScreen`. The image and video rows are the same pickers as Settings → Models'
+ * *Making pictures* and *Making clips* (0.1.41): nanoMuse Cloud first while signed in, then
+ * each own provider's models that can do the job; the video picker also has *Off*. OpenRouter
  * and the like have no video API, so the face keeps still with one line saying why. Below:
  * the switch that animates a new face by itself (default on), "Make the clips now / Redo
  * clips" with the host's progress ("Animating 2/4…", the stage of the current clip), and
@@ -14,6 +14,7 @@ import { call, errorStyle, type Translate } from './api.ts'
 import { motionStatus } from './Avatar.tsx'
 import { IconCheck, IconImage, IconVideo } from './icons.tsx'
 import { useLive, type LiveMotion, type MotionMood } from './live.ts'
+import { SlotPicker, useModels } from './ModelsSection.tsx'
 import { UnavailableLine, useProviders } from './OwnKey.tsx'
 
 export interface MediaView {
@@ -41,8 +42,9 @@ export function makeMediaSection(t: Translate) {
   return function MediaSection(): ReactNode {
     const live = useLive()
     const providers = useProviders(t)
+    const models = useModels()
     const [view, setView] = useState<MediaView | null>(null)
-    const [busy, setBusy] = useState<'model' | 'animate' | 'clips' | 'check' | null>(null)
+    const [busy, setBusy] = useState<'model' | 'image' | 'animate' | 'clips' | 'check' | null>(null)
     const [error, setError] = useState('')
     const [checked, setChecked] = useState<number | null>(null)
     const reload = useCallback(() => {
@@ -60,11 +62,19 @@ export function makeMediaSection(t: Translate) {
     const face = live.profile.avatar === 'face' && live.profile.faceId ? live.profile.faceId : ''
     const haveClips = MOODS.filter((m) => motion.clips[m] && motion.faceId === face)
 
-    const setModel = (id: string) => {
+    const setModel = (provider: string, id: string) => {
       setBusy('model')
       setError('')
-      void call<MediaView>('media', { videoModel: id })
-        .then(setView)
+      void call<MediaView>('media', id === 'off' ? { videoModel: 'off' } : { videoModel: id, videoProvider: provider })
+        .then((v) => { setView(v); models.reload() })
+        .catch((err: unknown) => setError((err as Error).message))
+        .finally(() => setBusy(null))
+    }
+    const setImage = (provider: string, id: string) => {
+      setBusy('image')
+      setError('')
+      void call('image-model', { model: id, provider })
+        .then(() => { reload(); models.reload() })
         .catch((err: unknown) => setError((err as Error).message))
         .finally(() => setBusy(null))
     }
@@ -75,10 +85,10 @@ export function makeMediaSection(t: Translate) {
         .catch((err: unknown) => setError((err as Error).message))
         .finally(() => setBusy(null))
     }
-    const animate = (force: boolean) => {
+    const animate = (force: boolean, cloud = false) => {
       setBusy('clips')
       setError('')
-      void call('media/animate', { force })
+      void call('media/animate', cloud ? { force, cloud: true } : { force })
         .catch((err: unknown) => setError((err as Error).message))
         .finally(() => setBusy(null))
     }
@@ -102,29 +112,34 @@ export function makeMediaSection(t: Translate) {
     const gate = providers.view
     const noImage = gate && !gate.capabilities.includes('image') && !view.imageModel && view.image?.source !== 'provider'
     const noVideo = gate && !gate.capabilities.includes('video') && video.source === 'none'
-    const imageSub = view.imageModel
-      ? `${t('mdImageModelSub')} · ${view.imageModel}`
-      : view.image?.source === 'provider'
-        ? `${t('mdImageModelSub')} · ${view.image.label}${view.image.model ? ` · ${view.image.model}` : ''}`
+    // the image row: the slot's source and model, as Settings → Models resolves them (`<provider> · <model>`)
+    const imageSub = view.image && view.image.source !== 'none'
+      ? `${t('mdImageModelSub')} · ${view.image.label}${view.image.model ? ` · ${view.image.model}` : ''}`
+      : view.imageModel
+        ? `${t('mdImageModelSub')} · nanoMuse Cloud · ${view.imageModel}`
         : noImage
           ? h(UnavailableLine, { t, view: gate, capability: 'image', link: true, className: 'nm-wrap', tag: 'span' })
           : t('mdImageNone')
+    const slots = models.view?.slots
     const videoSelect =
-      video.source === 'none'
+      video.source === 'none' && !slots?.video.options.length
         ? null
-        : h(
-            'select',
-            {
-              className: 'nm-field nm-select',
-              value: video.off ? 'off' : video.model || '',
-              disabled: busy !== null,
-              'aria-label': t('mdVideoModel'),
-              onChange: (e: { currentTarget: HTMLSelectElement }) => setModel(e.currentTarget.value),
-            },
-            h('option', { value: 'off' }, t('mdVideoOff')),
-            !video.off && !video.models.some((m) => m.id === video.model) && video.model ? h('option', { value: video.model }, video.model) : null,
-            video.models.map((m) => h('option', { key: m.id, value: m.id }, m.name)),
-          )
+        : slots
+          ? h(SlotPicker, { t, slot: 'video', view: slots.video, disabled: busy !== null, onPick: setModel })
+          : h(
+              'select',
+              {
+                className: 'nm-field nm-select',
+                value: video.off ? 'off' : video.model || '',
+                disabled: busy !== null,
+                'aria-label': t('mdVideoModel'),
+                onChange: (e: { currentTarget: HTMLSelectElement }) => setModel('', e.currentTarget.value),
+              },
+              h('option', { value: 'off' }, t('mdVideoOff')),
+              !video.off && !video.models.some((m) => m.id === video.model) && video.model ? h('option', { value: video.model }, video.model) : null,
+              video.models.map((m) => h('option', { key: m.id, value: m.id }, m.name)),
+            )
+    const imageSelect = slots && slots.image.options.length ? h(SlotPicker, { t, slot: 'image', view: slots.image, disabled: busy !== null, onPick: setImage }) : null
     const videoSub: ReactNode = video.source === 'none'
       ? (noVideo ? h(UnavailableLine, { t, view: gate, capability: 'video', link: true, className: 'nm-wrap', tag: 'span' }) : t('mdVideoNone'))
       : video.off ? t('mdVideoModelSub') : video.reason === 'unchecked' ? t('mdVideoUnchecked') : `${t('mdVideoModelSub')} · ${video.label}`
@@ -145,6 +160,7 @@ export function makeMediaSection(t: Translate) {
           { className: 'nm-row' },
           h('span', { className: 'nm-row-icon' }, h(IconImage, { size: 18 })),
           h('div', { className: 'nm-row-main' }, h('span', { className: 'nm-row-title' }, t('mdImageModel')), h('span', { className: 'nm-row-sub nm-wrap' }, imageSub)),
+          imageSelect,
         ),
         h(
           'div',
@@ -195,7 +211,12 @@ export function makeMediaSection(t: Translate) {
             : h('button', { type: 'button', className: 'nm-pill nm-pill-sm', disabled: busy !== null || !face || !videoOn, onClick: () => animate(haveClips.length > 0) }, haveClips.length ? t('mdRedoClips') : t('mdMakeClips')),
         ),
         progress && !progress.running && progress.failed.length
-          ? h('div', { className: 'nm-row' }, h('span', { className: 'nm-row-sub nm-wrap nm-md-failed' }, t('mdClipsFailed', { moods: progress.failed.map(moodName).join(', ') }), progress.error ? ` ${t('mdClipsError', { error: progress.error })}` : ''))
+          ? h('div', { className: 'nm-row' },
+              h('span', { className: 'nm-row-sub nm-wrap nm-md-failed' }, t('mdClipsFailed', { moods: progress.failed.map(moodName).join(', ') }), progress.error ? ` ${t('mdClipsError', { error: progress.error })}` : ''),
+              // an own provider's run failed and the account could draw them: this once, the slot untouched
+              progress.source && progress.source !== 'nanomuse' && live.cloud.signedIn
+                ? h('button', { type: 'button', className: 'nm-pill nm-pill-ghost nm-pill-sm', 'data-testid': 'nm-md-cloud-once', disabled: busy !== null || !face, onClick: () => animate(true, true) }, t('rfUseCloudOnce'))
+                : null)
           : null,
         progress?.running
           ? h('div', { className: 'nm-md-bar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': progress.total, 'aria-valuenow': progress.done }, h('span', { style: { width: `${Math.round((progress.done / Math.max(1, progress.total)) * 100)}%` } }))

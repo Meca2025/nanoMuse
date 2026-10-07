@@ -129,6 +129,10 @@ export interface Estimate {
   clips: number
   /** The video model the relay would use for them, when it counted any. */
   videoModel: string
+  /** Who draws the pictures (0.1.41): the account, or an own row (nothing billed by the account). */
+  source?: 'cloud' | 'provider'
+  /** That source's label (`nanoMuse Cloud`, the row's label). */
+  label?: string
 }
 
 /** The account's profile as the relay keeps it (`docs/hub.md`): the agent's name and look. */

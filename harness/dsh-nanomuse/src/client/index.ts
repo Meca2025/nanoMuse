@@ -56,6 +56,7 @@ import { nav as roomsNav, roomsCall } from './rooms.ts'
 import { SearchModal } from './SearchModal.tsx'
 import { makeChannelsSection, makeComputerSection, makeHelpSection, makeLegalSection, makeStorageSection, makeWalletSection } from './Sections.tsx'
 import { makeMediaSection } from './MediaSection.tsx'
+import { makeModelsSection, MODELS_SECTION } from './ModelsSection.tsx'
 import { ensureStyles, setAccent, setMuseMode } from './styles.ts'
 import { useWin, win } from './win.ts'
 
@@ -572,6 +573,10 @@ export function apply(ctx: ClientContext): void {
   const ComputerSection = makeComputerSection(t)
   slots.inject('settings.section', () =>
     slots.register({ name: 'settings.section', id: COMPUTER_SECTION, order: 22, label: () => t('navComputer'), locale: 'nanomuse' }, ComputerSection))
+  // Settings → Models (0.1.41): chat, hands, pictures and clips, one picker each.
+  const ModelsSection = makeModelsSection(t)
+  slots.inject('settings.section', () =>
+    slots.register({ name: 'settings.section', id: MODELS_SECTION, order: 5, label: () => t('mlTitle'), locale: 'nanomuse' }, ModelsSection))
   // Settings → Media (desk-b): the image and video models, the face's clips.
   const MediaSection = makeMediaSection(t)
   slots.inject('settings.section', () =>
